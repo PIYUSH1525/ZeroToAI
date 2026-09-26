@@ -1,0 +1,66 @@
+---
+title: "Gradient Descent"
+order: 2
+category: "ML Fundamentals"
+difficulty: "Beginner"
+description: "The foundational optimization algorithm used to minimize the error of a machine learning model."
+---
+
+### 1. What is it?
+Gradient Descent is a first-order iterative optimization algorithm used to find the minimum value of a function. In machine learning, we use it to find the optimal parameters (like weights and biases) that minimize the model's cost or loss function.
+
+### 2. Why do we need it?
+While some simple models can be solved with direct mathematical formulas, most machine learning models (especially neural networks) are too complex for direct calculation. We need an automated, step-by-step way to find the lowest possible error.
+
+### 3. Intuition
+Imagine you are blindfolded at the top of a bumpy mountain and want to reach the lowest valley. You feel the slope of the ground beneath your feet. If the ground tilts down to the right, you take a step to the right. You keep feeling the slope and taking steps downhill until the ground is completely flat—you've reached the bottom.
+
+### 4. Visual Explanation
+<Mermaid chart="
+graph TD
+    A[Start: Random Weights] --> B[Calculate Loss]
+    B --> C[Calculate Gradient / Slope]
+    C --> D{Is Slope zero?}
+    D -- No --> E[Take step downhill using Learning Rate]
+    E --> B
+    D -- Yes --> F[Stop: Minimum Error Found!]
+" />
+
+### 5. Mathematical Explanation
+To update a parameter $w$, we calculate the gradient (derivative) of the loss function $J(w)$ with respect to $w$. This gradient points in the direction of the steepest ascent. To go down, we subtract it, controlled by a learning rate $\alpha$:
+
+$$w_{new} = w_{old} - \alpha \frac{\partial J(w_{old})}{\partial w}$$
+
+Where:
+* $w$ represents the weight or parameter.
+* $\alpha$ is the learning rate (step size).
+* $\frac{\partial J}{\partial w}$ is the gradient of the loss function.
+
+### 6. Concrete Example
+Suppose your current weight is $w = 3$, the learning rate is $\alpha = 0.1$, and the gradient at this point is $4$. 
+
+The new weight becomes:
+
+$$w_{new} = 3 - (0.1 \times 4) = 3 - 0.4 = 2.6$$
+
+By taking this step, the weight moves closer to the optimal value that minimizes the error.
+
+### 7. Python Implementation
+```python
+import numpy as np
+
+def gradient_descent(X, y, w_init, lr=0.01, iterations=1000):
+    w = w_init
+    n = len(y)
+    
+    for i in range(iterations):
+        # 1. Predict with current weights
+        y_pred = np.dot(X, w)
+        
+        # 2. Calculate the gradient
+        gradient = (2/n) * np.dot(X.T, (y_pred - y))
+        
+        # 3. Update weights downhill
+        w = w - (lr * gradient)
+        
+    return w

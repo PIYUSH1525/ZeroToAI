@@ -1,0 +1,43 @@
+---
+title: "Attention Mechanism"
+order: 1
+category: "Transformers"
+difficulty: "Intermediate"
+description: "The core innovation behind modern LLMs, allowing models to weigh the importance of different words in a sequence dynamically."
+---
+
+### 1. What is it?
+The Attention Mechanism allows a neural network to focus on specific parts of the input sequence when producing a specific part of the output, rather than treating all inputs equally.
+
+### 2. Why do we need it?
+Before attention, models squashed entire sentences into a single fixed-size vector, causing them to "forget" earlier words in long sentences. Attention solves this by looking at the entire sequence at once.
+
+### 3. Visual Explanation (Upgraded Engine)
+<Mermaid chart="
+graph TD
+    Input([Input Sequence]) --> Q{{Query Matrix Q}}
+    Input --> K{{Key Matrix K}}
+    Input --> V{{Value Matrix V}}
+    
+    Q --> Dot[Dot Product: Q × K^T]
+    K --> Dot
+    
+    Dot --> Scale[Scale by √d_k]
+    Scale --> Softmax(Softmax Activation)
+    
+    Softmax --> Multiply[Multiply by V]
+    V --> Multiply
+    
+    Multiply --> Out([Context Vector Output])
+" />
+
+### 4. Mathematical Explanation
+The standard Scaled Dot-Product Attention is defined as:
+
+$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
+
+Where:
+* $Q$ is the Query matrix (what we are looking for).
+* $K$ is the Key matrix (what the input represents).
+* $V$ is the Value matrix (the actual content).
+* $\sqrt{d_k}$ scales the dot product to prevent vanishing gradients during the softmax step.

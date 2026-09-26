@@ -1,0 +1,30 @@
+---
+title: "Linear Regression"
+order: 1
+category: "ML Fundamentals"
+difficulty: "Beginner"
+description: "The foundational supervised learning algorithm for predicting continuous real numbers."
+---
+
+### 1. What is it?
+Linear Regression models the relationship between an input feature $X$ and a continuous outcome $Y$ by fitting a straight line through observed data points.
+
+### 2. Why do we need it?
+When we need to predict continuous values—such as housing prices, temperature fluctuations, or sales forecasts—classification models fail. Linear regression provides a mathematically transparent baseline.
+
+### 3. Visual Explanation
+<Mermaid chart="
+graph LR
+    X[Input Feature X] -->|Multiply by Weight w| W[wX]
+    W -->|Add Bias b| Y[Predicted Output y_hat]
+    Y -->|Compare with Actual y| L[Loss Function MSE]
+" />
+
+### 4. Mathematical Explanation
+The hypothesis function is formulated as:
+
+$$y = wx + b$$
+
+Where:
+* $w$ represents the slope (weight).
+* $b$ represents the y-intercept (bias).
