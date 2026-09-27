@@ -23,6 +23,7 @@
   [![TypeScript 5](https://img.shields.io/badge/TypeScript_5-05070D?style=for-the-badge&logo=typescript&logoColor=8B5CF6)](https://www.typescriptlang.org)
   [![MDX Content](https://img.shields.io/badge/MDX_Engine-05070D?style=for-the-badge&logo=markdown&logoColor=10B981)](https://mdxjs.com)
   [![Status](https://img.shields.io/badge/Status-In_Orbit-05070D?style=for-the-badge&labelColor=05070D&color=8B5CF6)]()
+  [![Visitors](https://komarev.com/ghpvc/?username=PIYUSH1525&repo=ZeroToAI&label=VISITORS&color=00f0ff&style=for-the-badge&base=0)](https://github.com/PIYUSH1525/ZeroToAI)
 
 </div>
 
