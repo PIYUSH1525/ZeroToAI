@@ -19,7 +19,7 @@ export function getAllConcepts(): ConceptMeta[] {
         slug: file.replace(/\.mdx$/, ""),
       };
     })
-    .sort((a, b) => a.order - b.order);
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 export function getConceptBySlug(slug: string) {

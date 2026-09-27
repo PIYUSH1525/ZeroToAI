@@ -5,17 +5,20 @@ import { Sparkles, ArrowRight, Layers } from "lucide-react";
 export default function HomePage() {
   const concepts = getAllConcepts();
 
-  // Define our curriculum category order
-  const categories = [
-    "Mathematics",
-    "ML Fundamentals",
-    "Deep Learning",
-    "NLP",
-    "Transformers",
-    "LLMs",
-    "RAG",
-    "Agents",
-  ];
+  // 1. Group concepts dynamically by their frontmatter category
+  const categoriesMap = concepts.reduce((acc, concept) => {
+    const category = concept.category || "General";
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(concept);
+    return acc;
+  }, {} as Record<string, typeof concepts>);
+
+  // 2. Sort categories in alphabetical order (A → Z)
+  const sortedCategories = Object.keys(categoriesMap).sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" })
+  );
 
   return (
     <div className="bg-grid min-h-[calc(100vh-4rem)]">
@@ -35,11 +38,13 @@ export default function HomePage() {
         </p>
       </section>
 
-      {/* Categorized Modules Section */}
+      {/* Dynamic Alphabetized Modules Section */}
       <section id="roadmap" className="max-w-5xl mx-auto px-4 pb-24 space-y-12">
-        {categories.map((category) => {
-          const categoryConcepts = concepts.filter((c) => c.category === category);
-          if (categoryConcepts.length === 0) return null;
+        {sortedCategories.map((category) => {
+          // Sort sub-content concept cards inside this category alphabetically by title (A → Z)
+          const categoryConcepts = [...categoriesMap[category]].sort((a, b) =>
+            a.title.localeCompare(b.title, undefined, { sensitivity: "base" })
+          );
 
           return (
             <div key={category}>
@@ -56,7 +61,7 @@ export default function HomePage() {
 
               {/* Module Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {categoryConcepts.map((concept) => (
+                {categoryConcepts.map((concept, index) => (
                   <Link
                     key={concept.slug}
                     href={`/concepts/${concept.slug}`}
@@ -64,8 +69,9 @@ export default function HomePage() {
                   >
                     <div>
                       <div className="flex justify-between items-start mb-2">
+                        {/* Auto-assigned sequential tag */}
                         <span className="text-xs font-mono text-[var(--color-cyber-cyan)]">
-                          #{concept.order}
+                          #{index + 1}
                         </span>
                         <span className="text-xs text-gray-500 border border-white/5 px-2 py-0.5 rounded">
                           {concept.difficulty}

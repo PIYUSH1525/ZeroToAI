@@ -1,30 +1,555 @@
 ---
 title: "Linear Regression"
-order: 1
 category: "ML Fundamentals"
 difficulty: "Beginner"
-description: "The foundational supervised learning algorithm for predicting continuous real numbers."
+description: "A complete step-by-step intuitive and mathematical guide to Linear Regression with visual diagrams and worked examples."
 ---
 
-### 1. What is it?
-Linear Regression models the relationship between an input feature $X$ and a continuous outcome $Y$ by fitting a straight line through observed data points.
+<div className="mx-auto w-full max-w-4xl">
 
-### 2. Why do we need it?
-When we need to predict continuous values—such as housing prices, temperature fluctuations, or sales forecasts—classification models fail. Linear regression provides a mathematically transparent baseline.
 
-### 3. Visual Explanation
-<Mermaid chart="
-graph LR
-    X[Input Feature X] -->|Multiply by Weight w| W[wX]
-    W -->|Add Bias b| Y[Predicted Output y_hat]
-    Y -->|Compare with Actual y| L[Loss Function MSE]
-" />
 
-### 4. Mathematical Explanation
-The hypothesis function is formulated as:
+  <main className="pt-2 space-y-16">
 
-$$y = wx + b$$
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        1. What is Linear Regression?
+      </h2>
 
-Where:
-* $w$ represents the slope (weight).
-* $b$ represents the y-intercept (bias).
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Linear Regression is a supervised learning algorithm used to predict a <strong className="font-semibold text-white">continuous numerical value</strong>.
+        </div>
+
+        <div>
+          It learns the relationship between an input feature $X$ and an output target $Y$ by fitting a straight line through the observed training data.
+        </div>
+
+        <div className="my-7 rounded-xl border border-blue-400/15 bg-blue-400/[0.06] p-6">
+          <div className="mb-3 font-semibold text-blue-200">For example:</div>
+
+          <div className="space-y-3 text-center text-slate-200">
+            <div><strong>Years of Experience → Monthly Salary</strong></div>
+            <div><strong>House Size ($m^2$) → Market Price ($)</strong></div>
+          </div>
+        </div>
+
+        <div>
+          If you know how much the input variable changes, the model discovers the exact rate of change so you can predict the outcome for new, unseen data points.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        2. The Core Mental Model &amp; Visual Intuition
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          Suppose we collect real-world data points comparing house sizes to sale prices. On a two-dimensional grid, they scatter like an elongated cloud:
+        </div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+<div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+  <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+    Feature Space
+  </div>
+  <div className="grid gap-4 md:grid-cols-3">
+    <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.06] px-4 py-5 text-center font-mono text-sm text-blue-100">
+      Data Point (x1, y1)
+    </div>
+    <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.06] px-4 py-5 text-center font-mono text-sm text-blue-100">
+      Data Point (x2, y2)
+    </div>
+    <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.06] px-4 py-5 text-center font-mono text-sm text-blue-100">
+      Data Point (x3, y3)
+    </div>
+  </div>
+  <div className="my-4 text-center text-xl text-slate-500">↓</div>
+  <div className="mx-auto max-w-xl rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-5 py-4 text-center font-semibold text-emerald-100">
+    Fitted Straight Line (y_hat = wx + b)
+  </div>
+  <div className="my-4 text-center text-xl text-slate-500">↓</div>
+  <div className="mx-auto max-w-xl rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-5 py-4 text-center font-semibold text-violet-100">
+    Minimizes Total Squared Residuals
+  </div>
+</div>
+        </div>
+
+        <div>
+          Because real data contains noise, the points never align perfectly on a line. The algorithm finds the single straight line that passes through the dense center of that cloud.
+        </div>
+
+        <div className="my-7 space-y-4 rounded-xl border border-white/10 bg-white/[0.03] p-6">
+          <div className="border-l-2 border-amber-400/60 pl-4">
+            <div><strong className="text-white">Residual (Error):</strong> The vertical distance between an actual observed point $y_i$ and the line's estimate $\hat{y}_i$.</div>
+          </div>
+
+          <div className="border-l-2 border-emerald-400/60 pl-4">
+            <div><strong className="text-white">Core Objective:</strong> Shift and tilt the line until the cumulative sum of these squared residuals is minimized.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        3. How Does It Make a Prediction?
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          Linear Regression uses the standard slope-intercept algebraic formula:
+        </div>
+
+        <div className="my-8 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.04] px-6 py-8 text-center text-xl">
+          $$
+          \hat{y} = wx + b
+          $$
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
+          <div className="mb-4 font-semibold text-white">Where:</div>
+
+          <ul className="space-y-3 pl-5">
+            <li><code>$x$</code> = input feature (e.g., house square footage)</li>
+            <li><code>$\hat{y}$</code> = predicted value (e.g., estimated price)</li>
+            <li><code>$w$</code> = weight or slope (rate of change per unit of $x$)</li>
+            <li><code>$b$</code> = bias or y-intercept (baseline value when $x = 0$)</li>
+          </ul>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-blue-400/15 bg-blue-400/[0.05] p-6 sm:p-8">
+          <h3 className="mb-5 text-xl font-bold text-white">
+            Step-by-Step Worked Example:
+          </h3>
+
+          <div className="space-y-5">
+            <div>
+              Suppose our fitted model discovers $w = 900$ and $b = 2{,}100$:
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-slate-950/60 px-5 py-4 text-center">
+              $$
+              \text{Salary} = (900 \times \text{Experience}) + 2{,}100
+              $$
+            </div>
+
+            <div>
+              If an applicant has $x = 4$ years of experience:
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-slate-950/60 px-5 py-4 text-center">
+              $$
+              \hat{y} = (900)(4) + 2{,}100 = 3{,}600 + 2{,}100 = \$5{,}700
+              $$
+            </div>
+          </div>
+        </div>
+
+        <div>
+          The data pipeline runs through the following sequence:
+        </div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+<div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+  <div className="flex flex-col items-stretch justify-center gap-3 md:flex-row md:items-center">
+    <div className="rounded-xl border border-blue-400/25 bg-blue-400/[0.06] px-5 py-4 text-center font-semibold text-blue-100">
+      Input: x
+    </div>
+    <div className="text-center text-xl text-slate-500">→</div>
+    <div className="rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-5 py-4 text-center font-semibold text-violet-100">
+      Multiply by w
+    </div>
+    <div className="text-center text-xl text-slate-500">→</div>
+    <div className="rounded-xl border border-orange-400/25 bg-orange-400/[0.06] px-5 py-4 text-center font-semibold text-orange-100">
+      Add bias b
+    </div>
+    <div className="text-center text-xl text-slate-500">→</div>
+    <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-5 py-4 text-center font-semibold text-emerald-100">
+      Prediction: y_hat
+    </div>
+  </div>
+</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        4. How Does It Learn the Best Line?
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          The model starts with initial guesses for $w$ and $b$, then iteratively refines them through an optimization loop:
+        </div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+<div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+  <div className="mx-auto flex max-w-2xl flex-col items-center gap-3">
+    <div className="w-full rounded-xl border border-blue-400/25 bg-blue-400/[0.06] px-5 py-4 text-center font-semibold text-blue-100">
+      1. Initialize weights w and b
+    </div>
+    <div className="text-xl text-slate-500">↓</div>
+    <div className="w-full rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-5 py-4 text-center font-semibold text-violet-100">
+      2. Compute Predictions y_hat
+    </div>
+    <div className="text-xl text-slate-500">↓</div>
+    <div className="w-full rounded-xl border border-orange-400/25 bg-orange-400/[0.06] px-5 py-4 text-center font-semibold text-orange-100">
+      3. Calculate Loss via MSE
+    </div>
+    <div className="text-xl text-slate-500">↓</div>
+    <div className="w-full rounded-xl border border-pink-400/25 bg-pink-400/[0.06] px-5 py-4 text-center font-semibold text-pink-100">
+      4. Compute Gradients
+    </div>
+    <div className="text-xl text-slate-500">↓</div>
+    <div className="w-full rounded-xl border border-cyan-400/25 bg-cyan-400/[0.06] px-5 py-4 text-center font-semibold text-cyan-100">
+      5. Update w and b via Learning Rate
+    </div>
+    <div className="my-1 rounded-xl border border-yellow-400/30 bg-yellow-400/[0.06] px-5 py-4 text-center font-semibold text-yellow-100">
+      Loss Converged?
+    </div>
+    <div className="grid w-full gap-3 sm:grid-cols-2">
+      <div className="rounded-xl border border-red-400/20 bg-red-400/[0.05] px-4 py-3 text-center text-sm text-red-100">
+        No → back to Compute Predictions y_hat
+      </div>
+      <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-4 py-3 text-center text-sm text-emerald-100">
+        Yes → Optimal Parameters Found
+      </div>
+    </div>
+  </div>
+</div>
+        </div>
+
+        <div>
+          The standard optimization metric used is <strong className="font-semibold text-white">Mean Squared Error (MSE)</strong>:
+        </div>
+
+        <div className="my-8 rounded-2xl border border-orange-400/15 bg-orange-400/[0.04] px-6 py-8 text-center text-xl">
+          $$
+          MSE = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2
+          $$
+        </div>
+
+        <div>Squaring the errors achieves two critical objectives:</div>
+
+        <ol className="list-decimal space-y-3 pl-6">
+          <li>It eliminates negative signs so errors in opposite directions do not cancel out.</li>
+          <li>It penalizes large deviations much more severely than small ones.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        5. What Do Weight and Bias Mean Visually?
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          In the equation:
+        </div>
+
+        <div className="my-8 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.04] px-6 py-8 text-center text-xl">
+          $$
+          \hat{y} = wx + b
+          $$
+        </div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+<div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+  <div className="grid gap-4 md:grid-cols-2">
+    <div className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.06] p-5">
+      <div className="mb-3 text-center font-semibold text-cyan-100">Weight (w): Slope</div>
+      <div className="text-center text-sm leading-6 text-slate-300">
+        Controls tilt, steepness, and direction
+      </div>
+    </div>
+    <div className="rounded-xl border border-amber-400/25 bg-amber-400/[0.06] p-5">
+      <div className="mb-3 text-center font-semibold text-amber-100">Bias (b): Y-Intercept</div>
+      <div className="text-center text-sm leading-6 text-slate-300">
+        Shifts line vertically along Y-axis
+      </div>
+    </div>
+  </div>
+</div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <div><strong className="text-white">Weight ($w$):</strong> Controls the angle/slope of the line. If $w = 900$, each additional unit of $x$ increases $\hat{y}$ by $900$. A negative $w$ indicates that $\hat{y}$ drops as $x$ rises.</div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <div><strong className="text-white">Bias ($b$):</strong> The point where the line crosses the vertical axis when $x = 0$. Without a bias term, the model would be constrained to always pass through $(0, 0)$.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        6. Ordinary Least Squares vs. Gradient Descent
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          There are two primary mathematical approaches for finding the optimal weights:
+        </div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+<div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+  <div className="mx-auto mb-5 max-w-md rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-5 py-4 text-center font-semibold text-violet-100">
+    Optimization Choice
+  </div>
+  <div className="grid gap-5 md:grid-cols-2">
+    <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5">
+      <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-blue-300">
+        Small to Medium Datasets
+      </div>
+      <div className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-white">
+        Ordinary Least Squares (Analytical)
+      </div>
+      <div className="text-center font-mono text-xs leading-6 text-slate-400">
+        Solves directly via Normal Equation:<br />
+        beta = (X^T X)^(-1) X^T y
+      </div>
+    </div>
+    <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5">
+      <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-emerald-300">
+        Large / Streaming Datasets
+      </div>
+      <div className="mb-4 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-white">
+        Gradient Descent (Iterative)
+      </div>
+      <div className="text-center font-mono text-xs leading-6 text-slate-400">
+        Updates weights step-by-step:<br />
+        w = w - alpha * dLoss/dw
+      </div>
+    </div>
+  </div>
+</div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
+            <div><strong className="text-white">1. Normal Equation (Closed-form):</strong> Computes the exact minimum directly in one matrix operation. Very fast for smaller datasets, but matrix inversion scales with $\mathcal{O}(p^3)$ complexity as features grow.</div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
+            <div><strong className="text-white">2. Gradient Descent (Iterative):</strong> Takes gradual downhill steps along the convex error surface. Scales effectively to millions of samples and dimensions.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-yellow-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        7. Key Assumptions &amp; Boundary Conditions
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          Linear regression produces reliable estimates when the following core assumptions are satisfied:
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Assumption</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Description</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">What Happens If Violated?</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Linearity</td>
+                <td className="px-5 py-4">The link between $X$ and $Y$ is straight and additive</td>
+                <td className="px-5 py-4">Model underfits nonlinear curves</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Homoscedasticity</td>
+                <td className="px-5 py-4">Residual variance is uniform across all values of $X$</td>
+                <td className="px-5 py-4">Confidence intervals and p-values become invalid</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Independence</td>
+                <td className="px-5 py-4">Errors are uncorrelated across observations</td>
+                <td className="px-5 py-4">High false-positive rates on time-series data</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Normality</td>
+                <td className="px-5 py-4">Residuals follow a standard normal distribution</td>
+                <td className="px-5 py-4">Hypothesis testing results become inaccurate</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">No Multicollinearity</td>
+                <td className="px-5 py-4">Input features are not highly correlated with each other</td>
+                <td className="px-5 py-4">Parameter weights fluctuate wildly</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        8. Regression vs. Classification
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          The key distinction lies in the nature of the target variable:
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Dimension</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Linear Regression</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Classification (e.g., Logistic Regression)</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Target Type</td>
+                <td className="px-5 py-4">Continuous numerical</td>
+                <td className="px-5 py-4">Discrete categories / classes</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Example Outputs</td>
+                <td className="px-5 py-4">House price, battery life, salary</td>
+                <td className="px-5 py-4">Spam / Not Spam, Benign / Malignant</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Output Range</td>
+                <td className="px-5 py-4">$(-\infty, +\infty)$</td>
+                <td className="px-5 py-4">Probabilities bounded in $[0, 1]$</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Function Shape</td>
+                <td className="px-5 py-4">Straight line ($\hat{y} = wx + b$)</td>
+                <td className="px-5 py-4">S-shaped curve ($\sigma(wx + b)$)</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Loss Function</td>
+                <td className="px-5 py-4">Mean Squared Error (MSE)</td>
+                <td className="px-5 py-4">Binary Cross-Entropy (Log Loss)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        9. Simple vs. Multiple Linear Regression
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <h3 className="mt-8 text-xl font-bold text-white">
+          Simple Linear Regression (One input variable):
+        </h3>
+
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-7 text-center">
+          $$
+          \hat{y} = wx + b
+          $$
+        </div>
+
+        <h3 className="mt-10 text-xl font-bold text-white">
+          Multiple Linear Regression (Multiple input variables):
+        </h3>
+
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-7 text-center">
+          $$
+          \hat{y} = w_1 x_1 + w_2 x_2 + \dots + w_n x_n + b
+          $$
+        </div>
+
+        <div>In vector dot-product notation:</div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-7 text-center">
+          $$
+          \hat{y} = \mathbf{w}^T \mathbf{x} + b
+          $$
+        </div>
+
+        <div className="rounded-xl border border-teal-400/15 bg-teal-400/[0.04] p-6">
+          <div>
+            For instance, estimating a house price rarely depends on square footage alone; it also depends on number of bedrooms, distance to schools, and property age. Each feature receives its own distinct weight $w_i$.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        10. Key Takeaways
+      </h2>
+
+      <div className="space-y-7 text-[16px] leading-8 text-slate-300">
+        <blockquote className="rounded-2xl border border-rose-400/20 bg-rose-400/[0.05] p-6 text-lg font-medium leading-8 text-slate-100">
+          <strong>Linear Regression models the straight-line relationship between inputs and a continuous target by finding parameters that minimize the sum of squared prediction errors.</strong>
+        </blockquote>
+
+        <div className="font-semibold text-white">The fundamental equation:</div>
+
+        <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-6 py-8 text-center text-xl">
+          $$
+          \boxed{\hat{y} = wx + b}
+          $$
+        </div>
+
+        <div className="font-semibold text-white">The learning loop:</div>
+
+        <div className="overflow-x-auto rounded-2xl border border-white/10 bg-slate-950/60 px-6 py-8 text-center">
+          $$
+          \text{Data} \longrightarrow \text{Prediction} \longrightarrow \text{Loss (MSE)} \longrightarrow \text{Update Parameters} \longrightarrow \text{Trained Model}
+          $$
+        </div>
+      </div>
+    </section>
+
+    <section className="pb-8">
+      <h2 className="mb-6 border-l-4 border-sky-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        11. What to Learn Next
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+<div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+  <div className="flex flex-col items-stretch justify-center gap-3 md:flex-row md:items-center">
+    <div className="rounded-xl border border-blue-400/25 bg-blue-400/[0.06] px-4 py-4 text-center font-semibold text-blue-100">
+      Linear Regression
+    </div>
+    <div className="text-center text-xl text-slate-500">→</div>
+    <div className="rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-4 py-4 text-center font-semibold text-violet-100">
+      Cost Functions
+    </div>
+    <div className="text-center text-xl text-slate-500">→</div>
+    <div className="rounded-xl border border-orange-400/25 bg-orange-400/[0.06] px-4 py-4 text-center font-semibold text-orange-100">
+      Gradient Descent
+    </div>
+    <div className="text-center text-xl text-slate-500">→</div>
+    <div className="rounded-xl border border-pink-400/25 bg-pink-400/[0.06] px-4 py-4 text-center font-semibold text-pink-100">
+      Regularization (Ridge/Lasso)
+    </div>
+    <div className="text-center text-xl text-slate-500">→</div>
+    <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-4 py-4 text-center font-semibold text-emerald-100">
+      Logistic Regression
+    </div>
+  </div>
+</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
