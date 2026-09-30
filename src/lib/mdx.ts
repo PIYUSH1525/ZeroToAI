@@ -5,27 +5,58 @@ import { ConceptMeta } from "./types";
 
 const CONCEPTS_PATH = path.join(process.cwd(), "content/concepts");
 
+// Helper function to recursively search through all folders and sub-folders
+function getMDXFiles(dir: string, fileList: string[] = []) {
+  const files = fs.readdirSync(dir);
+  
+  for (const file of files) {
+    const filePath = path.join(dir, file);
+    // If it's a folder, open it and search inside
+    if (fs.statSync(filePath).isDirectory()) {
+      getMDXFiles(filePath, fileList);
+    } 
+    // If it's an MDX file, add it to our list
+    else if (file.endsWith(".mdx")) {
+      fileList.push(filePath);
+    }
+  }
+  
+  return fileList;
+}
+
 export function getAllConcepts(): ConceptMeta[] {
   if (!fs.existsSync(CONCEPTS_PATH)) return [];
-  const files = fs.readdirSync(CONCEPTS_PATH);
 
-  return files
-    .filter((file) => file.endsWith(".mdx"))
-    .map((file) => {
-      const source = fs.readFileSync(path.join(CONCEPTS_PATH, file), "utf-8");
-      const { data } = matter(source);
-      return {
-        ...(data as Omit<ConceptMeta, "slug">),
-        slug: file.replace(/\.mdx$/, ""),
-      };
-    })
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const files = getMDXFiles(CONCEPTS_PATH);
+
+  return files.map((filePath) => {
+    const source = fs.readFileSync(filePath, "utf-8");
+    const { data } = matter(source);
+
+    // Prioritize a custom slug from frontmatter; fallback to filename
+    const slug = data.slug || path.basename(filePath).replace(/\.mdx$/, "");
+
+    return {
+      ...(data as Omit<ConceptMeta, "slug">),
+      slug,
+    };
+  }).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 export function getConceptBySlug(slug: string) {
-  const filePath = path.join(CONCEPTS_PATH, `${slug}.mdx`);
-  if (!fs.existsSync(filePath)) return null;
-  const source = fs.readFileSync(filePath, "utf-8");
-  const { content, data } = matter(source);
-  return { content, meta: { ...(data as Omit<ConceptMeta, "slug">), slug } };
+  const files = getMDXFiles(CONCEPTS_PATH);
+  
+  for (const filePath of files) {
+    const source = fs.readFileSync(filePath, "utf-8");
+    const { content, data } = matter(source);
+    
+    // Check if the frontmatter slug OR the filename matches the requested URL
+    const fileSlug = data.slug || path.basename(filePath).replace(/\.mdx$/, "");
+    
+    if (fileSlug === slug) {
+      return { content, meta: { ...(data as Omit<ConceptMeta, "slug">), slug: fileSlug } };
+    }
+  }
+
+  return null;
 }

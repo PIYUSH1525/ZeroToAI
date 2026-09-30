@@ -1,0 +1,420 @@
+---
+title: "Reinforcement Learning"
+slug: "reinforcement-learning"
+category: "ML Fundamentals"
+difficulty: "Beginner"
+description: "The AI paradigm of trial, error, and optimization. How agents learn by interacting with environments."
+---
+
+<div className="mx-auto w-full max-w-4xl">
+
+  <main className="pt-2 space-y-16">
+    <section>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+          <strong className="text-cyan-400">The Core Thesis:</strong> Reinforcement Learning (RL) is learning through interaction. An agent observes a situation, chooses an action, receives feedback as a reward or penalty, and gradually learns which actions lead to better long-term outcomes.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        1. What is Reinforcement Learning?
+      </h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>Reinforcement Learning is a machine learning paradigm in which an <strong>agent</strong> learns what to do by interacting with an <strong>environment</strong>. Unlike supervised learning, the agent is not simply handed a correct answer for every situation. It has to choose actions, observe their consequences, and learn from the feedback it receives.</div>
+        <div>The important idea is that learning happens over a sequence of decisions. An action that looks good immediately may be bad later, while an action with a small short-term reward may lead to a much better future outcome.</div>
+        <div>Think of a game-playing agent. At each moment it sees the current game state, chooses a move, receives feedback, and reaches a new state. After many interactions, it can learn a strategy that produces better results.</div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+          <div className="my-4 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+            <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">The Reinforcement Learning Loop</div>
+            <div className="flex flex-col items-center gap-5 md:flex-row md:justify-center">
+              <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.06] p-5 text-center font-bold text-blue-100 md:w-36">AGENT<div className="mt-1 text-xs font-normal text-blue-300">chooses an action</div></div>
+              <div className="text-center text-emerald-300 md:px-2">→</div>
+              <div className="rounded-xl border border-orange-400/20 bg-orange-400/[0.06] p-5 text-center font-bold text-orange-100 md:w-36">ENVIRONMENT<div className="mt-1 text-xs font-normal text-orange-300">changes after the action</div></div>
+              <div className="text-center text-pink-300 md:px-2">→</div>
+              <div className="rounded-xl border border-pink-400/20 bg-pink-400/[0.06] p-5 text-center font-bold text-pink-100 md:w-44">NEW STATE + REWARD<div className="mt-1 text-xs font-normal text-pink-300">feedback returns to agent</div></div>
+            </div>
+            <div className="mt-6 text-center text-sm text-slate-500">The loop repeats so the agent can improve its future decisions.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-pink-500/20 bg-pink-500/[0.04] p-6">
+        <div className="mb-2 text-sm font-bold uppercase tracking-[0.15em] text-pink-400">Quick Check 1</div>
+        <div className="mb-5 text-lg font-semibold text-white">Which situation best represents Reinforcement Learning?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="rl-q1-a" name="rl-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="rl-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-400/[0.08] peer-checked:text-emerald-200">Learning through actions and rewards</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> RL learns from interaction: the agent acts, receives feedback, and uses that experience to improve future decisions.</div>
+          </div>
+          <div>
+            <input id="rl-q1-b" name="rl-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="rl-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-400/[0.08] peer-checked:text-rose-200">Learning only from a fixed set of labeled answers</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That describes the basic setup of supervised learning. RL learns through interaction and reward feedback instead of receiving a correct label for every action.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. The Core Terminology</h2>
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>Most RL problems can be understood by mapping the situation to a small set of core terms. Once these terms are clear, many RL diagrams and algorithms become much easier to follow.</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5"><div className="mb-2 font-bold text-emerald-300">Agent</div><div className="text-sm leading-relaxed text-slate-400">The learner or decision-maker. It observes the environment and chooses actions.</div></div>
+          <div className="rounded-xl border border-orange-400/20 bg-orange-400/[0.05] p-5"><div className="mb-2 font-bold text-orange-300">Environment</div><div className="text-sm leading-relaxed text-slate-400">The world in which the agent operates. It responds to actions and produces new situations and feedback.</div></div>
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5"><div className="mb-2 font-bold text-blue-300">State ($s$)</div><div className="text-sm leading-relaxed text-slate-400">The information describing the agent's current situation, such as a robot's location or a game's board position.</div></div>
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5"><div className="mb-2 font-bold text-violet-300">Action ($a$)</div><div className="text-sm leading-relaxed text-slate-400">A choice the agent can make in a state, such as move left, move right, accelerate, or wait.</div></div>
+          <div className="rounded-xl border border-pink-400/20 bg-pink-400/[0.05] p-5"><div className="mb-2 font-bold text-pink-300">Reward ($r$)</div><div className="text-sm leading-relaxed text-slate-400">A numerical feedback signal indicating how desirable the outcome was from the environment's point of view.</div></div>
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] p-5"><div className="mb-2 font-bold text-cyan-300">Policy ($\pi$)</div><div className="text-sm leading-relaxed text-slate-400">The strategy that determines which action the agent chooses for a given state.</div></div>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40">
+          <table className="min-w-[640px] w-full text-left text-sm">
+            <thead className="border-b border-white/10 text-slate-400"><tr><th className="px-5 py-4">Term</th><th className="px-5 py-4">Simple meaning</th><th className="px-5 py-4">Example: Robot</th></tr></thead>
+            <tbody className="divide-y divide-white/10 text-slate-300">
+              <tr><td className="px-5 py-4 font-semibold text-white">State</td><td className="px-5 py-4">What is happening now</td><td className="px-5 py-4">Robot is near the charging station</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-white">Action</td><td className="px-5 py-4">What the agent can do</td><td className="px-5 py-4">Move forward</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-white">Reward</td><td className="px-5 py-4">Feedback after an action</td><td className="px-5 py-4">+10 for reaching the station</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-white">Policy</td><td className="px-5 py-4">How the agent chooses actions</td><td className="px-5 py-4">Choose the direction that appears most useful</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. How an RL Agent Learns</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>The basic learning process is a repeated cycle. The exact algorithm can differ, but the interaction pattern stays useful as a mental model.</div>
+        <div className="grid gap-4 md:grid-cols-5">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center"><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-300">01</div><div className="font-semibold text-white">Observe</div><div className="mt-2 text-sm text-slate-400">Read the current state.</div></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center"><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-violet-300">02</div><div className="font-semibold text-white">Choose</div><div className="mt-2 text-sm text-slate-400">Select an action.</div></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center"><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-orange-300">03</div><div className="font-semibold text-white">Act</div><div className="mt-2 text-sm text-slate-400">Send the action to the environment.</div></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center"><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-pink-300">04</div><div className="font-semibold text-white">Receive</div><div className="mt-2 text-sm text-slate-400">Get reward and next state.</div></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center"><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-300">05</div><div className="font-semibold text-white">Improve</div><div className="mt-2 text-sm text-slate-400">Update the decision strategy.</div></div>
+        </div>
+        <div>Over many steps, the agent accumulates experience. The learning algorithm uses that experience to make better future decisions rather than simply repeating the exact same behavior.</div>
+      </div>
+    </section>
+
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Reward, Return, and Long-Term Decisions</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>A reward is usually associated with a particular step, but RL often cares about the outcome of a sequence of steps. The total accumulated reward across a sequence is commonly called the <strong>return</strong>.</div>
+        <div>This distinction matters because the best action is not always the one with the largest immediate reward. An agent may accept a small penalty now if that choice leads to a much larger reward later.</div>
+        <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5"><strong className="text-violet-300">Example:</strong> Imagine a navigation agent. Taking a shortcut might give a small immediate reward for reducing distance, but if the shortcut leads to a dead end, the long-term result can be poor. A useful RL strategy considers future consequences.</div>
+        <div className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40">
+          <table className="min-w-[620px] w-full text-left text-sm">
+            <thead className="border-b border-white/10 text-slate-400"><tr><th className="px-5 py-4">Concept</th><th className="px-5 py-4">Meaning</th><th className="px-5 py-4">Why it matters</th></tr></thead>
+            <tbody className="divide-y divide-white/10 text-slate-300">
+              <tr><td className="px-5 py-4 font-semibold text-white">Reward</td><td className="px-5 py-4">Feedback for an outcome</td><td className="px-5 py-4">Tells the agent how an action affected its objective</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-white">Return</td><td className="px-5 py-4">Accumulated reward across time</td><td className="px-5 py-4">Connects current decisions to future outcomes</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-white">Discount factor</td><td className="px-5 py-4">Controls how strongly future rewards are valued</td><td className="px-5 py-4">Helps balance immediate and future outcomes</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Exploration vs. Exploitation</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>One of the central challenges in RL is deciding whether to use an action that is already known to work or try something new that might work even better.</div>
+        <div><strong className="text-cyan-300">Exploitation</strong> means using knowledge the agent already has to choose a promising action. <strong className="text-emerald-300">Exploration</strong> means trying less-known actions to gather new information.</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5"><div className="mb-2 font-bold text-blue-300">Too much exploitation</div><div className="text-sm leading-relaxed text-slate-400">The agent may keep using a safe strategy and never discover a better one.</div></div>
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5"><div className="mb-2 font-bold text-emerald-300">Too much exploration</div><div className="text-sm leading-relaxed text-slate-400">The agent may keep trying random actions instead of taking advantage of what it has already learned.</div></div>
+        </div>
+        <div>Practical RL methods use different strategies to balance these two behaviors. The exact strategy depends on the environment and algorithm.</div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-pink-500/20 bg-pink-500/[0.04] p-6">
+        <div className="mb-2 text-sm font-bold uppercase tracking-[0.15em] text-pink-400">Quick Check 2</div>
+        <div className="mb-5 text-lg font-semibold text-white">An agent always chooses the action it currently believes is best and never tries unfamiliar actions. What problem can this cause?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="rl-q2-a" name="rl-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="rl-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-400/[0.08] peer-checked:text-emerald-200">It may miss a better strategy</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Without exploration, the agent may never discover actions that lead to better long-term rewards.</div>
+          </div>
+          <div>
+            <input id="rl-q2-b" name="rl-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="rl-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-400/[0.08] peer-checked:text-rose-200">It automatically explores every possible action</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Always choosing the current best-known action is exploitation. Exploration requires deliberately trying less-known possibilities.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Value and Q-Value: A Beginner Overview</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>RL systems often need a way to estimate how useful a situation or action is. This is where the idea of <strong>value</strong> becomes important.</div>
+        <div>A <strong>state value</strong> asks a question like: <em>“If I am in this state, how much future reward should I expect if I continue following my strategy?”</em></div>
+        <div>A <strong>Q-value</strong> goes one step further: <em>“If I am in this state and take this particular action, how useful is that choice in terms of future reward?”</em></div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5"><div className="mb-2 font-bold text-blue-300">Value</div><div className="text-sm leading-relaxed text-slate-400">Estimates how desirable a state is when considering future outcomes.</div></div>
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5"><div className="mb-2 font-bold text-violet-300">Q-Value</div><div className="text-sm leading-relaxed text-slate-400">Estimates the usefulness of taking a particular action in a particular state.</div></div>
+        </div>
+        <div>You do not need the full mathematics at this stage. The key intuition is that RL can learn estimates of future usefulness and use those estimates when choosing actions.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Episodes and Experience</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>An <strong>episode</strong> is one complete run of an RL task, from its starting condition until a terminal condition is reached. In a game, one episode might be one complete match. In navigation, it might be one attempt to reach a destination.</div>
+        <div>A sequence of states, actions, and rewards generated during an episode forms the agent's experience. Repeating episodes gives the learning algorithm more opportunities to discover useful behavior.</div>
+        <div className="rounded-xl border border-orange-400/20 bg-orange-400/[0.05] p-5"><strong className="text-orange-300">Simple example:</strong> A maze-solving agent starts at the entrance, moves through the maze, receives small penalties for wasted moves, and receives a positive reward when it reaches the exit. Reaching the exit ends the episode.</div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-pink-500/20 bg-pink-500/[0.04] p-6">
+        <div className="mb-2 text-sm font-bold uppercase tracking-[0.15em] text-pink-400">Quick Check 3</div>
+        <div className="mb-5 text-lg font-semibold text-white">In a maze-solving task, what would most naturally represent the end of an episode?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="rl-q3-a" name="rl-q3" type="radio" className="peer sr-only" />
+            <label htmlFor="rl-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-400/[0.08] peer-checked:text-emerald-200">The agent reaches the goal</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Reaching the terminal goal can end the current run, after which a new episode can begin.</div>
+          </div>
+          <div>
+            <input id="rl-q3-b" name="rl-q3" type="radio" className="peer sr-only" />
+            <label htmlFor="rl-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-400/[0.08] peer-checked:text-rose-200">Every single movement automatically ends the episode</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A movement is normally one step within an episode. The episode continues until a terminal condition is reached.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">8. Major RL Approaches — Overview Only</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>There are many RL algorithms, but a beginner does not need to learn every algorithm inside this introductory module. The important thing is to recognize the major families and understand what problem they are trying to solve.</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5"><div className="mb-2 font-bold text-blue-300">Value-Based Methods</div><div className="text-sm leading-relaxed text-slate-400">Learn estimates of how valuable states or state-action pairs are. <strong>Q-learning</strong> is a classic example.</div></div>
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5"><div className="mb-2 font-bold text-violet-300">Policy-Based Methods</div><div className="text-sm leading-relaxed text-slate-400">Learn a policy directly so the agent can choose actions from states.</div></div>
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5"><div className="mb-2 font-bold text-emerald-300">Model-Free Methods</div><div className="text-sm leading-relaxed text-slate-400">Learn useful behavior from interaction without first building an explicit model of the environment.</div></div>
+          <div className="rounded-xl border border-orange-400/20 bg-orange-400/[0.05] p-5"><div className="mb-2 font-bold text-orange-300">Model-Based Methods</div><div className="text-sm leading-relaxed text-slate-400">Use or learn a model of how the environment changes, then use that model to help plan actions.</div></div>
+        </div>
+        <div className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40">
+          <table className="min-w-[650px] w-full text-left text-sm">
+            <thead className="border-b border-white/10 text-slate-400"><tr><th className="px-5 py-4">Name</th><th className="px-5 py-4">Beginner idea</th><th className="px-5 py-4">Examples</th></tr></thead>
+            <tbody className="divide-y divide-white/10 text-slate-300">
+              <tr><td className="px-5 py-4 font-semibold text-white">Q-learning</td><td className="px-5 py-4">Learn useful state-action values</td><td className="px-5 py-4">Classic tabular RL</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-white">Deep Q-Networks</td><td className="px-5 py-4">Use a neural network to estimate Q-values</td><td className="px-5 py-4">Large or complex state spaces</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-white">Policy Gradient</td><td className="px-5 py-4">Improve the policy directly</td><td className="px-5 py-4">Continuous or complex actions</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-white">Actor-Critic</td><td className="px-5 py-4">Combine policy and value ideas</td><td className="px-5 py-4">Modern RL systems</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">9. Designing Rewards</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>The reward function tells an RL system what outcomes are desirable. Because the agent optimizes what the reward system measures, reward design is an important part of an RL problem.</div>
+        <div>A poorly designed reward can encourage behavior that technically maximizes the score while missing the real objective. This is sometimes described as a <strong>reward hacking</strong> problem.</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5"><div className="mb-2 font-bold text-emerald-300">Useful reward</div><div className="text-sm leading-relaxed text-slate-400">Encourages behavior that is closely aligned with the actual goal.</div></div>
+          <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.05] p-5"><div className="mb-2 font-bold text-rose-300">Misleading reward</div><div className="text-sm leading-relaxed text-slate-400">Can make the agent optimize an easy-to-measure signal while ignoring the intended outcome.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">10. Real-World Applications</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>Reinforcement Learning is useful when decisions happen over time and an action can change what happens next. The following examples show where the RL setup can naturally appear.</div>
+
+        <div className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40">
+          <table className="min-w-[760px] w-full text-left text-sm">
+            <thead className="border-b border-white/10 text-slate-400">
+              <tr>
+                <th className="px-5 py-4">Application</th>
+                <th className="px-5 py-4">What RL does</th>
+                <th className="px-5 py-4">Simple example</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/10 text-slate-300">
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Games</td>
+                <td className="px-5 py-4">Learns strategies by repeatedly taking actions and receiving outcomes as feedback.</td>
+                <td className="px-5 py-4">Learn a winning strategy in a board or video game.</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Robotics</td>
+                <td className="px-5 py-4">Learns movement or control policies through simulation or physical interaction.</td>
+                <td className="px-5 py-4">Learn how a robot should move its arm to reach a target.</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Resource Optimization</td>
+                <td className="px-5 py-4">Learns sequential decisions when current choices affect future states and rewards.</td>
+                <td className="px-5 py-4">Improve scheduling, routing, or resource allocation.</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Recommendation and Ranking</td>
+                <td className="px-5 py-4">Can model user interactions as sequential feedback when future choices depend on earlier recommendations.</td>
+                <td className="px-5 py-4">Choose which content to recommend over a sequence of interactions.</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Human Feedback</td>
+                <td className="px-5 py-4">Human preferences can provide feedback signals used in RL-based optimization pipelines.</td>
+                <td className="px-5 py-4">Use preference feedback to improve an AI system's behavior.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">11. RL vs. Supervised and Unsupervised Learning</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>Reinforcement Learning is easier to understand when contrasted with the other two major ML learning setups.</div>
+        <div className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40">
+          <table className="min-w-[720px] w-full text-left text-sm">
+            <thead className="border-b border-white/10 text-slate-400"><tr><th className="px-5 py-4">Learning type</th><th className="px-5 py-4">Main signal</th><th className="px-5 py-4">Typical question</th><th className="px-5 py-4">Example</th></tr></thead>
+            <tbody className="divide-y divide-white/10 text-slate-300">
+              <tr><td className="px-5 py-4 font-semibold text-blue-300">Supervised</td><td className="px-5 py-4">Correct labels</td><td className="px-5 py-4">What output matches this input?</td><td className="px-5 py-4">Predict whether an image is a cat</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-violet-300">Unsupervised</td><td className="px-5 py-4">Structure in data</td><td className="px-5 py-4">What patterns or groups exist?</td><td className="px-5 py-4">Group similar customers</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-emerald-300">Reinforcement</td><td className="px-5 py-4">Rewards from interaction</td><td className="px-5 py-4">What action should I take over time?</td><td className="px-5 py-4">Learn a strategy for a game</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+
+    <section>
+      <div className="rounded-xl border border-pink-500/20 bg-pink-500/[0.04] p-6">
+        <div className="mb-2 text-sm font-bold uppercase tracking-[0.15em] text-pink-400">Quick Check 4</div>
+        <div className="mb-5 text-lg font-semibold text-white">What is the best beginner-level description of a policy in Reinforcement Learning?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="rl-q4-a" name="rl-q4" type="radio" className="peer sr-only" />
+            <label htmlFor="rl-q4-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-400/[0.08] peer-checked:text-emerald-200">A strategy for choosing actions from states</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The policy describes how the agent maps its current situation to an action choice.</div>
+          </div>
+          <div>
+            <input id="rl-q4-b" name="rl-q4" type="radio" className="peer sr-only" />
+            <label htmlFor="rl-q4-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-400/[0.08] peer-checked:text-rose-200">A numerical reward returned by the environment</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The reward is feedback from the environment. The policy is the strategy the agent uses to choose actions.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">12. Strengths and Limitations</h2>
+      <div className="grid gap-5 md:grid-cols-2 text-[16px] leading-8 text-slate-300">
+        <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-6">
+          <div className="mb-4 text-lg font-bold text-emerald-300">Why RL is useful</div>
+          <ul className="list-none space-y-3">
+            <li>• Handles sequential decision-making.</li>
+            <li>• Can discover strategies that were not explicitly programmed.</li>
+            <li>• Naturally incorporates long-term consequences.</li>
+            <li>• Can learn through simulation when real-world experimentation is expensive.</li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.05] p-6">
+          <div className="mb-4 text-lg font-bold text-rose-300">Why RL can be difficult</div>
+          <ul className="list-none space-y-3">
+            <li>• Training can require many interactions.</li>
+            <li>• Rewards can be sparse or difficult to design.</li>
+            <li>• Exploration can be expensive or unsafe in real environments.</li>
+            <li>• Training can be sensitive to the environment and algorithm choices.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">13. Key Terms to Remember</h2>
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40">
+        <table className="min-w-[720px] w-full text-left text-sm">
+          <thead className="border-b border-white/10 text-slate-400"><tr><th className="px-5 py-4">Term</th><th className="px-5 py-4">Meaning</th></tr></thead>
+          <tbody className="divide-y divide-white/10 text-slate-300">
+            <tr><td className="px-5 py-4 font-semibold text-white">Agent</td><td className="px-5 py-4">The learner that makes decisions.</td></tr>
+            <tr><td className="px-5 py-4 font-semibold text-white">Environment</td><td className="px-5 py-4">The world the agent interacts with.</td></tr>
+            <tr><td className="px-5 py-4 font-semibold text-white">State</td><td className="px-5 py-4">The current situation observed by the agent.</td></tr>
+            <tr><td className="px-5 py-4 font-semibold text-white">Action</td><td className="px-5 py-4">A decision available to the agent.</td></tr>
+            <tr><td className="px-5 py-4 font-semibold text-white">Reward</td><td className="px-5 py-4">Numerical feedback from the environment.</td></tr>
+            <tr><td className="px-5 py-4 font-semibold text-white">Policy</td><td className="px-5 py-4">The strategy used to select actions.</td></tr>
+            <tr><td className="px-5 py-4 font-semibold text-white">Return</td><td className="px-5 py-4">Accumulated reward considered across time.</td></tr>
+            <tr><td className="px-5 py-4 font-semibold text-white">Episode</td><td className="px-5 py-4">One complete run of an RL task.</td></tr>
+            <tr><td className="px-5 py-4 font-semibold text-white">Exploration</td><td className="px-5 py-4">Trying actions to gain new information.</td></tr>
+            <tr><td className="px-5 py-4 font-semibold text-white">Exploitation</td><td className="px-5 py-4">Using current knowledge to choose promising actions.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-yellow-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">14. Key Points</h2>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 text-[16px] leading-8 text-slate-300">
+        <ul className="space-y-3">
+          <li><strong className="text-emerald-400">✓</strong> Reinforcement Learning learns through interaction between an agent and an environment.</li>
+          <li><strong className="text-emerald-400">✓</strong> The core loop is state → action → reward → next state.</li>
+          <li><strong className="text-emerald-400">✓</strong> The agent aims to improve long-term return, not simply immediate reward.</li>
+          <li><strong className="text-emerald-400">✓</strong> A policy describes how the agent chooses actions from states.</li>
+          <li><strong className="text-emerald-400">✓</strong> Exploration tries less-known actions, while exploitation uses current knowledge.</li>
+          <li><strong className="text-emerald-400">✓</strong> Reward design strongly affects what behavior the agent learns.</li>
+          <li><strong className="text-emerald-400">✓</strong> Value and Q-value concepts help estimate future usefulness.</li>
+          <li><strong className="text-emerald-400">✓</strong> Algorithms such as Q-learning and policy-gradient methods are deeper topics that can be learned separately.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-red-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">15. Common Mistakes</h2>
+      <div className="space-y-4 text-[16px] leading-8 text-slate-300">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-5">
+          <ul className="space-y-4">
+            <li><strong className="text-red-400">✕ Confusing reward with the goal itself.</strong><div className="mt-1 text-sm text-slate-400">The reward is the signal used to represent the objective. A badly designed reward can produce unwanted behavior.</div></li>
+            <li><strong className="text-red-400">✕ Thinking RL only means games.</strong><div className="mt-1 text-sm text-slate-400">Games are useful examples, but RL is fundamentally about sequential decision-making under feedback.</div></li>
+            <li><strong className="text-red-400">✕ Ignoring future rewards.</strong><div className="mt-1 text-sm text-slate-400">RL often evaluates actions by their expected long-term consequences, not only their immediate reward.</div></li>
+            <li><strong className="text-red-400">✕ Assuming every action should be random.</strong><div className="mt-1 text-sm text-slate-400">Exploration is useful, but the agent must also exploit what it has already learned.</div></li>
+            <li><strong className="text-red-400">✕ Assuming an RL algorithm automatically knows the real objective.</strong><div className="mt-1 text-sm text-slate-400">The agent optimizes the reward signal it receives, so the reward must represent the intended objective carefully.</div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">16. The Big Picture</h2>
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-center">
+          <div className="mb-3 text-lg font-bold text-cyan-300">Reinforcement Learning</div>
+          <div className="text-white font-semibold">State → Action → Reward → New State → Improved Policy</div>
+        </div>
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-6 text-center">
+          <div className="mb-3 text-lg font-bold text-blue-300">The Agent's Question</div>
+          <div className="text-white font-semibold">"What should I do now so that my long-term outcome becomes better?"</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-6 text-center">
+          <div className="mb-3 text-lg font-bold text-violet-300">The Learning Signal</div>
+          <div className="text-white font-semibold">Actions → Consequences → Rewards → Experience → Better Decisions</div>
+        </div>
+        <div>
+          Reinforcement Learning is fundamentally a decision-making setup. The important beginner concepts are the relationships between the agent, environment, state, action, reward, return, and policy—not memorizing a long list of algorithms.
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+          <strong className="text-white">Remember:</strong> supervised learning learns from known answers, unsupervised learning searches for structure without supplied targets, while reinforcement learning learns better actions through interaction and feedback over time.
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>

@@ -1,0 +1,793 @@
+---
+title: "Unsupervised Machine Learning"
+slug: "unsupervised-learning"
+category: "ML Fundamentals"
+difficulty: "Beginner"
+description: "How models discover hidden patterns, groupings, and structures in raw, unlabeled data."
+---
+
+<div className="mx-auto w-full max-w-4xl">
+
+  <main className="pt-2 space-y-16">
+
+    <section>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+          <strong className="text-cyan-400">The Core Thesis:</strong> When you don't know what you are looking for, Unsupervised Learning helps you find structure that is already present in the data. Instead of giving a model a correct answer for every example, you give it raw, unlabeled data and ask it to discover useful patterns, groupings, or unusual observations.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        1. What is Unsupervised Learning?
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Unlike supervised learning, unsupervised algorithms receive datasets <strong>without labels or "correct answers."</strong> The model is not told which category each example belongs to. Instead, it examines the relationships inside the data and tries to discover structure on its own.
+        </div>
+
+        <div>
+          Imagine being handed a massive basket of mixed, unlabeled laundry and being told to "organize it." Nobody tells you which clothes belong together. You might naturally group them by color, size, fabric, or some combination of those properties. Unsupervised learning works in a similar way: the grouping rule is not supplied beforehand.
+        </div>
+
+        <div>
+          The important point is that the model is <strong>not simply guessing random groups</strong>. It uses mathematical relationships between data points, such as distance, similarity, density, or variation, to find structure that can be useful for analysis.
+        </div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+          <div className="my-2 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+            <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Unsupervised Learning
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-full max-w-sm rounded-xl border border-slate-600/20 bg-slate-600/[0.06] px-5 py-4 text-center text-sm font-semibold text-slate-300">
+                Raw Dataset<br />
+                <span className="text-xs font-normal text-slate-500">No target labels provided</span>
+              </div>
+
+              <div className="text-xl text-slate-500">↓</div>
+
+              <div className="w-full max-w-sm rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-5 py-4 text-center text-sm font-semibold text-violet-100">
+                Discover Relationships
+              </div>
+
+              <div className="text-xl text-slate-500">↓</div>
+
+              <div className="grid w-full max-w-lg gap-2 sm:grid-cols-3">
+                <div className="rounded border border-blue-500/30 bg-blue-500/20 p-3 text-center text-xs text-blue-200">
+                  Group A
+                </div>
+                <div className="rounded border border-emerald-500/30 bg-emerald-500/20 p-3 text-center text-xs text-emerald-200">
+                  Group B
+                </div>
+                <div className="rounded border border-pink-500/30 bg-pink-500/20 p-3 text-center text-xs text-pink-200">
+                  Group C
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-5">
+          <strong className="text-blue-300">Key idea:</strong> supervised learning starts with a known target and learns how to predict it; unsupervised learning starts without that target and searches for structure in the inputs themselves.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        2. What Makes It "Unsupervised"?
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          The defining difference is the absence of a supplied target label. Suppose a dataset contains customer information such as age, number of purchases, and average spending. In supervised learning, you might also have a label such as <em>will cancel subscription</em>. In unsupervised learning, that answer is not provided.
+        </div>
+
+        <div>
+          Without the target, the model cannot be trained in the usual "prediction versus correct answer" way. Instead, it looks for relationships within the available features.
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[700px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Aspect</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Supervised</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Unsupervised</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Target label</td>
+                <td className="px-5 py-4">Provided during training</td>
+                <td className="px-5 py-4">Not provided</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Main goal</td>
+                <td className="px-5 py-4">Learn to predict a known target</td>
+                <td className="px-5 py-4">Discover structure or unusual patterns</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Typical question</td>
+                <td className="px-5 py-4">"What will this example be?"</td>
+                <td className="px-5 py-4">"What structure exists in these examples?"</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Example task</td>
+                <td className="px-5 py-4">Predict whether a customer will leave</td>
+                <td className="px-5 py-4">Find groups of similar customers</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        3. How Does Unsupervised Learning Find Patterns?
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Most beginner examples of unsupervised learning rely on one basic idea: <strong>similar data points should have a measurable relationship</strong>. The exact relationship depends on the algorithm and the data.
+        </div>
+
+        <div>
+          For numerical data, an algorithm may compare distances between points. If two customers have very similar purchase behavior, they may be considered close to each other in the feature space. If another customer behaves very differently, that customer may be farther away.
+        </div>
+
+        <div>
+          Similarity does not always mean physical similarity. In machine learning, it usually means similarity according to the selected features and mathematical representation. This is why choosing useful features and preparing the data properly still matters in unsupervised learning.
+        </div>
+
+        <div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+          <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Pattern Discovery Intuition
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-center">
+              <div className="font-semibold text-blue-200">Similarity</div>
+              <div className="mt-2 text-xs leading-5 text-slate-400">Which examples behave alike?</div>
+            </div>
+
+            <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center">
+              <div className="font-semibold text-violet-200">Structure</div>
+              <div className="mt-2 text-xs leading-5 text-slate-400">What groups or shapes exist?</div>
+            </div>
+
+            <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center">
+              <div className="font-semibold text-orange-200">Outliers</div>
+              <div className="mt-2 text-xs leading-5 text-slate-400">Which examples look unusual?</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-pink-500/20 bg-pink-500/[0.04] p-6">
+        <div className="mb-4 font-bold text-pink-400">Quick Check</div>
+        <div className="mb-6 text-[16px] leading-7 text-white">
+          A company has customer age and spending data, but no labels describing customer types. Which task best fits unsupervised learning?
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06]">
+              <span>A) Predict whether each customer will cancel</span>
+              <span className="text-pink-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-2 block text-rose-400">Incorrect.</strong>
+              Cancellation is a target that must be known for ordinary supervised training.
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06]">
+              <span>B) Discover groups of similar customers</span>
+              <span className="text-pink-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-2 block text-emerald-400">Correct!</strong>
+              The algorithm can search for natural groups using the customers' available features without requiring predefined customer labels.
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        4. The Core Techniques
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          Unsupervised learning covers several kinds of pattern-discovery problems. For a beginner, the three most important categories to recognize are <strong>clustering, dimensionality reduction, and anomaly detection</strong>.
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Technique</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Main question</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Beginner example</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Common examples</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Clustering</td>
+                <td className="px-5 py-4">Which data points naturally belong together?</td>
+                <td className="px-5 py-4">Group similar customers</td>
+                <td className="px-5 py-4 font-mono text-xs text-emerald-300">K-Means, DBSCAN</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Dimensionality Reduction</td>
+                <td className="px-5 py-4">Can the data be represented with fewer dimensions?</td>
+                <td className="px-5 py-4">Compress many features for visualization</td>
+                <td className="px-5 py-4 font-mono text-xs text-emerald-300">PCA, t-SNE</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Anomaly Detection</td>
+                <td className="px-5 py-4">Which observations look unusually different?</td>
+                <td className="px-5 py-4">Flag unusual network activity</td>
+                <td className="px-5 py-4 font-mono text-xs text-emerald-300">Isolation Forest</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5">
+          <strong className="text-emerald-300">Important:</strong> these are categories of problems, not three steps that every unsupervised model must perform. A clustering problem does not automatically require dimensionality reduction or anomaly detection.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        5. Clustering
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          <strong>Clustering</strong> groups data points that are similar according to the information given to the algorithm. The groups are not supplied beforehand as labels; the algorithm creates the grouping based on its mathematical objective.
+        </div>
+
+        <div>
+          Consider customer data containing purchase frequency and average order value. If some customers behave similarly, a clustering algorithm may place them into the same cluster. Another cluster may contain customers with very different behavior.
+        </div>
+
+        <div>
+          A cluster is therefore not automatically a meaningful human category. After clustering, a person still needs to inspect the groups and decide what they represent. For example, a discovered group might later be described as "frequent low-value shoppers" after examining its characteristics.
+        </div>
+
+        <div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+          <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Clustering Intuition
+          </div>
+
+          <div className="flex flex-col items-center gap-4">
+            <div className="rounded-xl border border-slate-600/20 bg-slate-600/[0.06] px-5 py-4 text-center text-sm font-semibold text-slate-300">
+              Unlabeled Data Points
+            </div>
+            <div className="text-xl text-slate-500">↓</div>
+            <div className="rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-5 py-4 text-center text-sm font-semibold text-violet-100">
+              Compare Similarity / Distance
+            </div>
+            <div className="text-xl text-slate-500">↓</div>
+            <div className="grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="rounded bg-blue-500/20 p-3 text-center text-xs text-blue-200 border border-blue-500/30">Cluster A</div>
+              <div className="rounded bg-emerald-500/20 p-3 text-center text-xs text-emerald-200 border border-emerald-500/30">Cluster B</div>
+              <div className="rounded bg-pink-500/20 p-3 text-center text-xs text-pink-200 border border-pink-500/30">Cluster C</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <strong>K-Means</strong> is one common clustering algorithm. At a high level, it tries to divide observations into a chosen number of clusters by assigning points to nearby cluster centers and repeatedly updating those centers.
+        </div>
+
+        <div>
+          <strong>DBSCAN</strong> takes a different approach. It focuses on dense regions of points and can identify isolated points as noise. You do not need to learn the algorithm's full mathematics in this module; the important beginner distinction is that different clustering algorithms define "group" in different ways.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-6">
+        <div className="mb-4 font-bold text-blue-400">Quick Check</div>
+        <div className="mb-6 text-[16px] leading-7 text-white">
+          A retailer has no predefined customer categories and wants an algorithm to discover naturally similar groups. Which technique is the most direct fit?
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06]">
+              <span>A) Clustering</span>
+              <span className="text-blue-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-2 block text-emerald-400">Correct!</strong>
+              Clustering is specifically designed to discover groups of similar observations without requiring predefined group labels.
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06]">
+              <span>B) Classification</span>
+              <span className="text-blue-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-2 block text-rose-400">Incorrect.</strong>
+              Classification is a supervised-learning task in which the model learns to predict predefined classes from labeled examples.
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        6. Dimensionality Reduction
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Real datasets can contain hundreds or thousands of features. Working with so many dimensions can make data harder to visualize, analyze, store, or process. <strong>Dimensionality reduction</strong> transforms the data into a smaller representation while attempting to preserve important information or structure.
+        </div>
+
+        <div>
+          Imagine a dataset describing products using hundreds of measurements. Some measurements may contain overlapping information. A dimensionality-reduction method can combine information into fewer dimensions so the dataset has a more compact representation.
+        </div>
+
+        <div>
+          <strong>PCA (Principal Component Analysis)</strong> is a common technique for this purpose. At a high level, PCA finds directions in the data that capture large amounts of variation and represents the data using a smaller number of those directions.
+        </div>
+
+        <div>
+          <strong>t-SNE</strong> is another technique frequently used for visualization of high-dimensional data. It attempts to place similar observations near one another in a lower-dimensional representation. It is especially useful for exploring structure visually, but its visualization should not automatically be interpreted as a complete or exact representation of the original data.
+        </div>
+
+        <div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+          <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Dimensionality Reduction
+          </div>
+          <div className="flex flex-col items-center gap-4">
+            <div className="rounded-xl border border-slate-600/20 bg-slate-600/[0.06] px-5 py-4 text-center text-sm font-semibold text-slate-300">
+              High-Dimensional Data
+            </div>
+            <div className="text-xl text-slate-500">↓</div>
+            <div className="rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-5 py-4 text-center text-sm font-semibold text-violet-100">
+              Find a Compact Representation
+            </div>
+            <div className="text-xl text-slate-500">↓</div>
+            <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-5 py-4 text-center text-sm font-semibold text-emerald-100">
+              Fewer Dimensions
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        7. Anomaly Detection
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          <strong>Anomaly detection</strong> focuses on finding observations that are unusually different from the normal pattern in a dataset. These unusual observations may be errors, rare events, or important cases that deserve investigation.
+        </div>
+
+        <div>
+          For example, a cybersecurity system can examine network activity and learn the general shape of normal traffic. A highly unusual pattern may then receive an anomaly score or be flagged for further investigation.
+        </div>
+
+        <div>
+          An anomaly is not automatically a malicious event. A rare transaction could be fraud, but it could also be a legitimate unusual purchase. The model identifies something unusual; a human or another system may still need to determine what that unusual event means.
+        </div>
+
+        <div>
+          <strong>Isolation Forest</strong> is a common algorithm used for anomaly detection. The beginner-level idea is simple: unusual observations can often be isolated more easily than observations that belong to dense normal regions.
+        </div>
+
+        <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-5">
+          <strong className="text-orange-300">Remember:</strong> "unusual" and "wrong" are not synonyms. Anomaly detection finds unusual patterns; it does not automatically prove that an observation is incorrect.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-6">
+        <div className="mb-4 font-bold text-orange-400">Quick Check</div>
+        <div className="mb-6 text-[16px] leading-7 text-white">
+          A network-monitoring system wants to flag traffic patterns that are very different from normal activity. Which technique is most appropriate?
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06]">
+              <span>A) Anomaly Detection</span>
+              <span className="text-orange-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-2 block text-emerald-400">Correct!</strong>
+              Anomaly detection is designed to identify observations that differ substantially from the normal structure of the data.
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06]">
+              <span>B) Regression</span>
+              <span className="text-orange-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-2 block text-rose-400">Incorrect.</strong>
+              Regression is a supervised-learning task used to predict numerical target values from labeled training data.
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        8. Real-World Applications
+      </h2>
+
+      <div className="space-y-4 text-[16px] leading-8 text-slate-300">
+        <div>
+          Unsupervised learning is especially useful when useful categories or patterns are not known in advance. It can turn large collections of raw observations into a structure that people can investigate.
+        </div>
+
+        <ul className="list-none space-y-4 pl-2">
+          <li className="flex items-start">
+            <span className="mr-3 text-cyan-400">1.</span>
+            <span><strong>Customer Segmentation:</strong> A marketing team can analyze purchase behavior and discover customer groups without first defining the groups manually.</span>
+          </li>
+
+          <li className="flex items-start">
+            <span className="mr-3 text-cyan-400">2.</span>
+            <span><strong>Cybersecurity:</strong> Anomaly detection can identify network behavior that differs from patterns considered normal.</span>
+          </li>
+
+          <li className="flex items-start">
+            <span className="mr-3 text-cyan-400">3.</span>
+            <span><strong>Genomic and Biological Data:</strong> Dimensionality reduction can provide compact representations of very high-dimensional biological datasets and help researchers explore structure.</span>
+          </li>
+
+          <li className="flex items-start">
+            <span className="mr-3 text-cyan-400">4.</span>
+            <span><strong>Document and Content Analysis:</strong> Similar documents can be grouped by their representations, helping reveal themes or collections that were not manually defined.</span>
+          </li>
+
+          <li className="flex items-start">
+            <span className="mr-3 text-cyan-400">5.</span>
+            <span><strong>Exploratory Data Analysis:</strong> Analysts can use unsupervised methods to investigate a new dataset before deciding what questions or categories deserve deeper study.</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        9. A Simple End-to-End Example
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Imagine an online store has millions of customer records containing age, purchase frequency, average order value, and product preferences. The business does not have predefined customer segments.
+        </div>
+
+        <div>
+          First, the data is prepared so that the features are represented consistently. The analyst then chooses an appropriate unsupervised technique. If the goal is to discover groups, clustering is a natural starting point.
+        </div>
+
+        <div>
+          The algorithm examines relationships among customers and produces groups. The groups are then inspected: one might contain customers who purchase frequently but spend little per order, while another might contain customers who purchase less often but make larger purchases.
+        </div>
+
+        <div>
+          The important part is that the algorithm did not receive labels saying "frequent shopper" or "high-value shopper." Those descriptions were assigned afterward by interpreting the discovered structure.
+        </div>
+
+        <div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+          <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Example Workflow
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-5">
+            <div className="rounded-xl border border-slate-600/30 bg-slate-600/[0.06] p-4 text-center text-xs text-slate-300">
+              Raw Customer Data
+            </div>
+            <div className="flex items-center justify-center text-slate-500">→</div>
+            <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-xs text-violet-200">
+              Discover Structure
+            </div>
+            <div className="flex items-center justify-center text-slate-500">→</div>
+            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center text-xs text-emerald-200">
+              Interpret Groups
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-6">
+        <div className="mb-4 font-bold text-violet-400">Quick Check</div>
+        <div className="mb-6 text-[16px] leading-7 text-white">
+          After a clustering algorithm creates several customer groups, what should a human analyst do next?
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06]">
+              <span>A) Inspect and interpret the characteristics of the groups</span>
+              <span className="text-violet-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-2 block text-emerald-400">Correct!</strong>
+              Clustering creates mathematical groups. People still need to inspect those groups and determine what their characteristics mean in the real-world context.
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06]">
+              <span>B) Assume every group already has a known business meaning</span>
+              <span className="text-violet-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-2 block text-rose-400">Incorrect.</strong>
+              A cluster is a mathematical grouping, not automatically a human-defined category. Its meaning must be interpreted from the data.
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        10. Common Algorithms: Just the Overview
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          You will study these algorithms in their own dedicated topics. For this module, you only need to understand which problem each one is associated with.
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[700px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Algorithm</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Usually associated with</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Beginner takeaway</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">K-Means</td>
+                <td className="px-5 py-4">Clustering</td>
+                <td className="px-5 py-4">Groups points around cluster centers.</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">DBSCAN</td>
+                <td className="px-5 py-4">Clustering</td>
+                <td className="px-5 py-4">Finds dense regions and can identify noise points.</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">PCA</td>
+                <td className="px-5 py-4">Dimensionality reduction</td>
+                <td className="px-5 py-4">Creates a lower-dimensional representation that captures important variation.</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">t-SNE</td>
+                <td className="px-5 py-4">Visualization / dimensionality reduction</td>
+                <td className="px-5 py-4">Helps visualize high-dimensional relationships in fewer dimensions.</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Isolation Forest</td>
+                <td className="px-5 py-4">Anomaly detection</td>
+                <td className="px-5 py-4">Helps identify observations that are easier to isolate from the rest.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-red-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        11. What Unsupervised Learning Does Not Mean
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          It is easy to misunderstand the word "unsupervised." It does not mean the algorithm works without any human decisions.
+        </div>
+
+        <ul className="list-none space-y-4 pl-2">
+          <li className="flex items-start">
+            <span className="mr-3 text-red-400">✕</span>
+            <span><strong>It does not mean "no preparation."</strong> Data may still need cleaning, transformation, feature selection, or scaling depending on the method.</span>
+          </li>
+
+          <li className="flex items-start">
+            <span className="mr-3 text-red-400">✕</span>
+            <span><strong>It does not mean "no human involvement."</strong> People choose the problem, features, algorithm, and interpretation of the resulting patterns.</span>
+          </li>
+
+          <li className="flex items-start">
+            <span className="mr-3 text-red-400">✕</span>
+            <span><strong>It does not guarantee meaningful groups.</strong> An algorithm can find mathematical structure that is not useful for the real-world question.</span>
+          </li>
+
+          <li className="flex items-start">
+            <span className="mr-3 text-red-400">✕</span>
+            <span><strong>It does not automatically discover "truth."</strong> The discovered structure depends on the data representation, features, algorithm, and assumptions involved.</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        12. Strengths and Limitations
+      </h2>
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5">
+          <div className="mb-4 font-bold text-emerald-400">Strengths</div>
+          <ul className="space-y-3 text-sm leading-7 text-slate-300">
+            <li>• Can work without manually labeled targets.</li>
+            <li>• Useful for exploring large datasets.</li>
+            <li>• Can reveal groups or patterns that were not defined beforehand.</li>
+            <li>• Useful for exploratory analysis and discovering unusual observations.</li>
+            <li>• Can help create compact representations of complex data.</li>
+          </ul>
+        </div>
+
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-5">
+          <div className="mb-4 font-bold text-rose-400">Limitations</div>
+          <ul className="space-y-3 text-sm leading-7 text-slate-300">
+            <li>• Discovered patterns may not have useful real-world meaning.</li>
+            <li>• Results can depend strongly on feature representation and preprocessing.</li>
+            <li>• Different algorithms can produce different structures.</li>
+            <li>• Evaluation can be less straightforward because there may be no known answer key.</li>
+            <li>• Human interpretation is often necessary after the algorithm produces its result.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        13. When Should You Think About Unsupervised Learning?
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          A useful beginner question is: <strong>"Do I have a target answer that I want the model to learn to predict?"</strong>
+        </div>
+
+        <div>
+          If the answer is yes and you have appropriate labeled examples, supervised learning may fit the problem. If there is no target and your goal is to discover natural structure, groups, compact representations, or unusual observations, unsupervised learning becomes a candidate.
+        </div>
+
+        <div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+          <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Beginner Decision Guide
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-center text-sm text-blue-100">
+              Do you have a known target to predict?
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center text-sm text-emerald-100">
+                Yes → Consider supervised learning
+              </div>
+              <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm text-violet-100">
+                No → Ask whether you want to discover structure
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        14. Key Terms
+      </h2>
+
+      <div className="space-y-4">
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+          <strong className="text-white">Unlabeled Data</strong>
+          <div className="mt-2 text-sm leading-7 text-slate-400">Data that does not come with a supplied target or correct answer for each example.</div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+          <strong className="text-white">Clustering</strong>
+          <div className="mt-2 text-sm leading-7 text-slate-400">The process of grouping observations according to similarities or other relationships.</div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+          <strong className="text-white">Cluster</strong>
+          <div className="mt-2 text-sm leading-7 text-slate-400">A group of observations created by a clustering method.</div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+          <strong className="text-white">Dimensionality Reduction</strong>
+          <div className="mt-2 text-sm leading-7 text-slate-400">Transforming data into fewer dimensions while attempting to preserve useful information or structure.</div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+          <strong className="text-white">Anomaly</strong>
+          <div className="mt-2 text-sm leading-7 text-slate-400">An observation that appears unusually different from the normal pattern in the data.</div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
+          <strong className="text-white">Similarity / Distance</strong>
+          <div className="mt-2 text-sm leading-7 text-slate-400">Mathematical ways of describing how alike or different data points are according to their representation.</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        15. Common Beginner Mistakes
+      </h2>
+
+      <div className="space-y-4 text-[16px] leading-8 text-slate-300">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-5">
+          <strong className="text-red-400">✕ Assuming unsupervised means the algorithm needs no human choices.</strong>
+          <div className="mt-2 text-sm text-slate-400">Feature selection, preprocessing, algorithm choice, and interpretation can all require human decisions.</div>
+        </div>
+
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-5">
+          <strong className="text-red-400">✕ Treating every cluster as a meaningful real-world category.</strong>
+          <div className="mt-2 text-sm text-slate-400">A mathematical cluster still needs to be examined and interpreted.</div>
+        </div>
+
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-5">
+          <strong className="text-red-400">✕ Thinking anomaly means error or fraud.</strong>
+          <div className="mt-2 text-sm text-slate-400">An anomaly is simply unusual according to the model. It may be legitimate.</div>
+        </div>
+
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-5">
+          <strong className="text-red-400">✕ Thinking one algorithm is always the correct choice.</strong>
+          <div className="mt-2 text-sm text-slate-400">Different algorithms make different assumptions about what a useful structure looks like.</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        16. Key Points
+      </h2>
+
+      <div className="space-y-4 text-[16px] leading-8 text-slate-300">
+        <div>✓ Unsupervised learning works with data where a target label is not supplied.</div>
+        <div>✓ Its goal is often to discover structure, groups, compact representations, or unusual observations.</div>
+        <div>✓ Clustering groups similar observations.</div>
+        <div>✓ Dimensionality reduction creates a smaller representation of high-dimensional data.</div>
+        <div>✓ Anomaly detection identifies observations that differ from normal patterns.</div>
+        <div>✓ K-Means, DBSCAN, PCA, t-SNE, and Isolation Forest are important examples, but each belongs to a more specific topic.</div>
+        <div>✓ The model discovers mathematical structure, but humans still need to decide whether that structure is useful.</div>
+        <div>✓ An unsupervised result is not automatically a correct real-world explanation.</div>
+      </div>
+    </section>
+
+  </main>
+</div>

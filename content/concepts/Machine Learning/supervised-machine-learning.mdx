@@ -1,0 +1,1439 @@
+---
+title: "Supervised Machine Learning"
+slug: "supervised-learning"
+category: "ML Fundamentals"
+difficulty: "Beginner"
+description: "The most common form of ML, where models learn by mapping input features to known output labels."
+---
+
+<div className="mx-auto w-full max-w-4xl">
+
+  <main className="pt-2 space-y-16">
+    <section>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+          <strong className="text-cyan-400">The Core Thesis:</strong> Supervised Learning acts exactly like a student studying with a deck of flashcards. The student looks at the front of the card (the Data), makes a guess, and then flips the card over to check the correct answer (the Label). Over thousands of repetitions, the student learns to stop making mistakes.
+        </div>
+
+        <div>
+          In technical terms, supervised learning learns a relationship between an input $X$ and a known target $y$. The trained model then uses that learned relationship to produce a prediction for a new input where the target is unknown.
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+          <strong className="text-white">The central idea:</strong> the examples provide both the question and the answer during training. The model's job is to learn a useful mapping from the questions to their answers rather than simply memorizing the training examples.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        1. What is Supervised Learning?
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Supervised learning is an approach to machine learning where the algorithm is trained on a <strong className="text-white">strictly labeled dataset</strong>. This means every training input data point, denoted mathematically as $X$, is paired with a known correct output, denoted as $y$.
+        </div>
+
+        <div>
+          The objective is to learn a mathematical mapping function that approximates the relationship between the input and target:
+        </div>
+
+        <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5 text-center">
+          <div className="text-lg font-bold text-blue-200">$f(X) \approx y$</div>
+          <div className="mt-2 text-sm text-slate-400">Learn a function that produces useful predictions from previously unseen inputs.</div>
+        </div>
+
+        <div>
+          During training, the model sees the input, produces a prediction $\hat{y}$, compares that prediction with the known target $y$, measures the error, and adjusts its parameters. Once training is complete, the model can receive new inputs for which the correct answer is not yet known.
+        </div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+          <div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+            <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              The Training Loop (The Flashcard Method)
+            </div>
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex w-full items-center justify-center gap-4">
+                <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.06] px-5 py-4 text-center text-sm font-semibold text-blue-100">
+                  Input Data ($X$)
+                </div>
+                <div className="text-xl text-slate-500">+</div>
+                <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-5 py-4 text-center text-sm font-semibold text-emerald-100">
+                  True Label ($y$)
+                </div>
+              </div>
+              <div className="text-xl text-slate-500">↓</div>
+              <div className="w-full max-w-sm rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-5 py-4 text-center text-sm font-semibold text-violet-100">
+                Model Makes a Prediction ($\hat{y}$)
+              </div>
+              <div className="text-xl text-slate-500">↓</div>
+              <div className="w-full max-w-sm rounded-xl border border-orange-400/25 bg-orange-400/[0.06] px-5 py-4 text-center text-sm font-semibold text-orange-100">
+                Calculate Loss (Error between $y$ and $\hat{y}$)
+              </div>
+              <div className="text-xl text-slate-500">↺</div>
+              <div className="text-center text-xs text-slate-400">Update model's internal weights to reduce the error</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+          <strong className="text-white">Why is it called "Supervised"?</strong> Because the dataset acts as a supervisor or teacher. The model is not left to discover arbitrary structure without feedback; the known target provides a reference against which predictions can be compared.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        2. The Anatomy of a Supervised Dataset
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          A supervised dataset is easier to understand when you separate the <strong className="text-white">inputs</strong> from the <strong className="text-white">target</strong>. The inputs are represented by features, while the target is the answer the model is being trained to predict.
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Term</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Meaning</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">House Price Example</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Feature ($X$)</td>
+                <td className="px-5 py-4">An input variable used by the model to make a prediction.</td>
+                <td className="px-5 py-4">Area, bedrooms, location, age</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Target ($y$)</td>
+                <td className="px-5 py-4">The known answer the model is trained to predict.</td>
+                <td className="px-5 py-4">Final sale price</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Sample</td>
+                <td className="px-5 py-4">One complete example in the dataset.</td>
+                <td className="px-5 py-4">One particular house and its sale price</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Label</td>
+                <td className="px-5 py-4">The known output attached to an example in supervised learning.</td>
+                <td className="px-5 py-4">The house's observed sale price</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          If a dataset contains 10,000 houses and four features per house, the model can be viewed as receiving a matrix of inputs $X$ and a corresponding collection of targets $y$. The exact shape depends on the problem, but the fundamental idea is always the same: <strong className="text-white">each training example has an input and a known answer.</strong>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-pink-500/20 bg-pink-500/[0.04] p-6">
+        <div className="mb-2 text-sm font-bold uppercase tracking-[0.15em] text-pink-400">Quick Check 1</div>
+        <div className="mb-5 text-lg font-semibold text-white">In supervised learning, does the training data include the correct target for each example?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="sl-q1-true" name="sl-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="sl-q1-true" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-400/[0.08] peer-checked:text-emerald-200">Labeled data</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Supervised learning uses known targets or labels during training.</div>
+          </div>
+          <div>
+            <input id="sl-q1-false" name="sl-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="sl-q1-false" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-400/[0.08] peer-checked:text-rose-200">Unlabeled data</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Known answers are what make the training examples supervised.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        3. Regression vs. Classification
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          Supervised learning is commonly divided into two major task types. The key question is not which algorithm sounds more advanced; it is <em>what kind of answer are you trying to predict?</em>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-6">
+            <div className="mb-3 text-lg font-bold text-emerald-300">Regression</div>
+            <div className="mb-4 text-sm leading-relaxed text-slate-400">Used when the target is a <strong className="text-white">continuous numerical value</strong>.</div>
+            <ul className="space-y-3 text-sm text-slate-300">
+              <li>● Predicting a house price ($452,100)</li>
+              <li>● Forecasting temperature (72.4°F)</li>
+              <li>● Estimating delivery time (34.7 minutes)</li>
+              <li>● Predicting energy consumption (kWh)</li>
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-6">
+            <div className="mb-3 text-lg font-bold text-violet-300">Classification</div>
+            <div className="mb-4 text-sm leading-relaxed text-slate-400">Used when the target is a <strong className="text-white">discrete category or class</strong>.</div>
+            <ul className="space-y-3 text-sm text-slate-300">
+              <li>● Email: Spam vs. Not Spam</li>
+              <li>● Image: Cat vs. Dog vs. Bird</li>
+              <li>● Medical scan: Benign vs. Malignant</li>
+              <li>● Customer: Churn vs. Not Churn</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[700px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Question</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Regression</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Classification</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Output</td>
+                <td className="px-5 py-4">Numerical value</td>
+                <td className="px-5 py-4">Category / class</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Example</td>
+                <td className="px-5 py-4">Predict house price</td>
+                <td className="px-5 py-4">Predict spam or not spam</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Typical question</td>
+                <td className="px-5 py-4">"How much?" or "How many?"</td>
+                <td className="px-5 py-4">"Which class?"</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          Classification itself can be binary, multiclass, or multilabel. These distinctions become important when the number and structure of possible labels changes.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-pink-500/20 bg-pink-500/[0.04] p-6">
+        <div className="mb-2 text-sm font-bold uppercase tracking-[0.15em] text-pink-400">Quick Check 2</div>
+        <div className="mb-5 text-lg font-semibold text-white">Which type of supervised learning predicts a house price such as $450,000?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="sl-q2-true" name="sl-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="sl-q2-true" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-400/[0.08] peer-checked:text-emerald-200">Regression</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A numerical quantity such as house price is a continuous target, so predicting it is regression.</div>
+          </div>
+          <div>
+            <input id="sl-q2-false" name="sl-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="sl-q2-false" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-400/[0.08] peer-checked:text-rose-200">Classification</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> House-price prediction is not a classification task because the output is a numerical value rather than a class.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        4. Types of Classification
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-blue-200">Binary</div>
+            <div className="text-sm leading-relaxed text-slate-400">Exactly two possible classes, such as spam/not spam or fraud/not fraud.</div>
+          </div>
+
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-violet-200">Multiclass</div>
+            <div className="text-sm leading-relaxed text-slate-400">More than two possible classes, such as classifying an image as cat, dog, bird, or horse.</div>
+          </div>
+
+          <div className="rounded-xl border border-pink-400/20 bg-pink-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-pink-200">Multilabel</div>
+            <div className="text-sm leading-relaxed text-slate-400">One example can receive multiple labels at the same time, such as an image tagged with beach, sunset, and ocean.</div>
+          </div>
+        </div>
+
+        <div>
+          Binary classification does not mean the model can only output a probability of exactly 0 or 1 internally. Many classifiers first produce a score or probability and then apply a decision rule to convert it into a class prediction.
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+          <strong className="text-white">Important:</strong> a class label and a probability are different outputs. A model may estimate that an example has a 0.87 probability of belonging to one class, while the final class decision depends on the selected decision threshold.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        5. Real-World Applications & Origins
+      </h2>
+
+      <div className="space-y-4 text-[16px] leading-8 text-slate-300">
+        <div>
+          The mathematical roots of supervised learning include classical statistical methods such as regression. Modern supervised systems extend these ideas with decision trees, support vector machines, ensembles, and neural networks.
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="mb-2 flex items-center gap-3">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-400/20 text-xs font-bold text-orange-400">1</span>
+              <strong className="text-white">Computer Vision</strong>
+            </div>
+            <div className="text-sm leading-relaxed text-slate-400">Labeled images can be used to train models to classify objects, detect categories, or predict numerical properties from visual inputs.</div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="mb-2 flex items-center gap-3">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-400/20 text-xs font-bold text-orange-400">2</span>
+              <strong className="text-white">Financial Modeling</strong>
+            </div>
+            <div className="text-sm leading-relaxed text-slate-400">Historical observations can be used for tasks such as credit-risk classification, demand prediction, and other numerical or categorical predictions.</div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="mb-2 flex items-center gap-3">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-400/20 text-xs font-bold text-orange-400">3</span>
+              <strong className="text-white">Customer Churn</strong>
+            </div>
+            <div className="text-sm leading-relaxed text-slate-400">A business can use historical customer records labeled with whether a customer later churned to train a classifier for future churn-risk predictions.</div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="mb-2 flex items-center gap-3">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-400/20 text-xs font-bold text-orange-400">4</span>
+              <strong className="text-white">Natural Language Processing</strong>
+            </div>
+            <div className="text-sm leading-relaxed text-slate-400">Text can be paired with labels for tasks such as sentiment classification, intent detection, topic classification, and other language prediction problems.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        6. The Complete Supervised Learning Pipeline
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          A real supervised learning project is much larger than "choose an algorithm and train it." A typical workflow includes problem definition, data collection, cleaning, feature preparation, splitting, training, validation, evaluation, and deployment.
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-cyan-200">1. Define the target</div>
+            <div className="text-sm text-slate-400">Decide exactly what the model should predict and what constitutes a useful prediction.</div>
+          </div>
+
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-blue-200">2. Collect labeled data</div>
+            <div className="text-sm text-slate-400">Gather examples containing the input information and reliable target values.</div>
+          </div>
+
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-violet-200">3. Prepare the data</div>
+            <div className="text-sm text-slate-400">Handle missing values, encode categories, scale where appropriate, and construct useful features.</div>
+          </div>
+
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-emerald-200">4. Split the dataset</div>
+            <div className="text-sm text-slate-400">Keep evaluation data separate from the examples used to fit the model.</div>
+          </div>
+
+          <div className="rounded-xl border border-orange-400/20 bg-orange-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-orange-200">5. Train</div>
+            <div className="text-sm text-slate-400">Fit the model's parameters using the training portion of the data.</div>
+          </div>
+
+          <div className="rounded-xl border border-pink-400/20 bg-pink-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-pink-200">6. Evaluate</div>
+            <div className="text-sm text-slate-400">Measure performance on data that was not used to fit the final parameters.</div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-slate-950/50 p-6 text-center">
+          <div className="text-sm font-semibold uppercase tracking-wider text-slate-500">Pipeline</div>
+          <div className="mt-4 text-sm font-bold text-white sm:text-base">
+            Problem → Data → Features → Split → Train → Validate → Test → Deploy → Monitor
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        7. Training, Validation, and Test Data
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          One of the most important rules in supervised learning is to avoid judging a model only on the same examples used to train it. A model can memorize its training examples and still perform badly on unseen data.
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5">
+            <div className="mb-3 font-bold text-blue-200">Training Set</div>
+            <div className="text-sm leading-relaxed text-slate-400">Used to learn model parameters.</div>
+          </div>
+
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5">
+            <div className="mb-3 font-bold text-violet-200">Validation Set</div>
+            <div className="text-sm leading-relaxed text-slate-400">Used during model selection or hyperparameter tuning.</div>
+          </div>
+
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5">
+            <div className="mb-3 font-bold text-emerald-200">Test Set</div>
+            <div className="text-sm leading-relaxed text-slate-400">Reserved for a final estimate of performance on unseen data.</div>
+          </div>
+        </div>
+
+        <div>
+          A validation set is not always required as a permanently separate portion. Cross-validation can repeatedly create training and validation folds while keeping a final test set untouched for final evaluation.
+        </div>
+
+        <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-5">
+          <strong className="text-amber-200">Critical rule:</strong> do not repeatedly tune your model against the final test set. If the test set influences many modeling decisions, it stops behaving like an independent final evaluation.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-pink-500/20 bg-pink-500/[0.04] p-6">
+        <div className="mb-2 text-sm font-bold uppercase tracking-[0.15em] text-pink-400">Quick Check 3</div>
+        <div className="mb-5 text-lg font-semibold text-white">Which data is most useful for checking whether a model generalizes to unseen examples?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="sl-q3-true" name="sl-q3" type="radio" className="peer sr-only" />
+            <label htmlFor="sl-q3-true" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-400/[0.08] peer-checked:text-rose-200">Training data only</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Training data can make a model look good even when it has overfit, so unseen data is needed.</div>
+          </div>
+          <div>
+            <input id="sl-q3-false" name="sl-q3" type="radio" className="peer sr-only" />
+            <label htmlFor="sl-q3-false" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-400/[0.08] peer-checked:text-rose-200">Unseen validation or test data</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Training data can make a model look good even when it has overfit, so unseen data is needed.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        8. Cross-Validation
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Cross-validation is a model evaluation technique that repeatedly divides the training data into different training and validation portions. In <strong className="text-white">k-fold cross-validation</strong>, the training data is divided into $k$ folds.
+        </div>
+
+        <div>
+          The model is trained on $k-1$ folds and validated on the remaining fold. This process is repeated so each fold gets a turn as the validation portion. The resulting scores can then be summarized, often by their mean.
+        </div>
+
+        <div className="rounded-xl border border-indigo-400/20 bg-indigo-400/[0.05] p-5">
+          <div className="mb-3 font-semibold text-indigo-200">Example: 5-fold cross-validation</div>
+          <div className="text-sm leading-relaxed text-slate-400">
+            The data is divided into five parts. Train on four parts and validate on the fifth, then rotate the validation part until all five folds have been used for validation.
+          </div>
+        </div>
+
+        <div>
+          Cross-validation is especially useful when the dataset is not large enough to comfortably dedicate a large fixed portion to validation. A separate final test set can still be kept untouched until the end.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        9. Loss Functions: Measuring Error
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          A model needs a mathematical way to know how far its prediction is from the target. A <strong className="text-white">loss function</strong> converts prediction error into a numerical value that the learning procedure can minimize.
+        </div>
+
+        <div>
+          The exact loss depends on the task. Regression and classification commonly use different loss functions because their outputs have different meanings.
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Task</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Common Loss</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Basic Idea</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Regression</td>
+                <td className="px-5 py-4">Mean Squared Error</td>
+                <td className="px-5 py-4">Penalizes squared differences between predictions and targets.</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">Regression</td>
+                <td className="px-5 py-4">Mean Absolute Error</td>
+                <td className="px-5 py-4">Uses the absolute difference between prediction and target.</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">Classification</td>
+                <td className="px-5 py-4">Log Loss / Cross-Entropy</td>
+                <td className="px-5 py-4">Penalizes incorrect probabilistic predictions and strongly penalizes confident wrong predictions.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          Loss is primarily a training signal. Evaluation metrics can be different from the loss because the business or scientific question may require a more interpretable measure of performance.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        10. Regression in More Detail
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Regression predicts a numerical target. The model learns how input variables are associated with a numerical outcome.
+        </div>
+
+        <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5">
+          <div className="mb-2 font-semibold text-emerald-200">Example</div>
+          <div className="text-sm leading-relaxed text-slate-400">
+            Given house area, number of rooms, location, and age, predict a sale price. The output might be $425,000 rather than a category such as "cheap" or "expensive."
+          </div>
+        </div>
+
+        <div>
+          A simple linear regression model can represent a prediction as a weighted combination of input features:
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-slate-950/50 p-5 text-center text-lg font-bold text-white">
+          $\hat{y} = w_1x_1 + w_2x_2 + \cdots + w_nx_n + b$
+        </div>
+
+        <div>
+          Here, the $w$ values are learned weights, $x$ values are input features, and $b$ is an intercept or bias term. More complex regression models can represent nonlinear relationships.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        11. Classification in More Detail
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Classification predicts a discrete class. Many classification models first calculate a score or probability-like quantity and then use a decision rule to determine the predicted class.
+        </div>
+
+        <div>
+          In binary classification, a model may estimate the probability of one class. For example, a spam classifier could estimate the probability that a message is spam.
+        </div>
+
+        <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5">
+          <div className="mb-2 font-semibold text-violet-200">Example</div>
+          <div className="text-sm leading-relaxed text-slate-400">
+            If a classifier estimates $P(\text{spam}|X)=0.93$, a decision threshold can convert that score into the final class "spam." Changing the threshold changes the balance between different types of classification errors.
+          </div>
+        </div>
+
+        <div>
+          This distinction becomes important for applications where false positives and false negatives have different consequences.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        12. Linear Models
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Linear models predict using a weighted combination of features. They are among the simplest supervised learning models and are important because they provide a strong conceptual foundation for more complex methods.
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-blue-200">Linear Regression</div>
+            <div className="text-sm leading-relaxed text-slate-400">Commonly used for continuous numerical targets.</div>
+          </div>
+
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-violet-200">Logistic Regression</div>
+            <div className="text-sm leading-relaxed text-slate-400">Despite its name, it is commonly used for classification and models class probabilities through a logistic function.</div>
+          </div>
+        </div>
+
+        <div>
+          Linear models can be fast, interpretable, and effective when the relationship between inputs and target is reasonably represented by a linear decision or prediction function.
+        </div>
+
+        <div>
+          Regularized variants such as Ridge and Lasso add penalties that constrain the learned coefficients. Regularization can help control model complexity and reduce overfitting.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        13. Decision Trees
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          A decision tree learns a sequence of decision rules that split the data into smaller groups. A simple tree might first ask whether a customer's monthly usage is above a threshold, then use another feature to make another split.
+        </div>
+
+        <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-5">
+          <div className="mb-3 font-semibold text-amber-200">Conceptual structure</div>
+          <div className="text-center text-sm font-semibold text-slate-300">
+            Feature test → Branch → Feature test → Branch → Prediction
+          </div>
+        </div>
+
+        <div>
+          Trees can naturally represent nonlinear relationships and interactions between features. They are also relatively easy to visualize compared with many other models.
+        </div>
+
+        <div>
+          A major risk is excessive depth. A tree that becomes extremely detailed can fit noise and peculiarities of the training examples, hurting performance on unseen data. Limiting depth and other complexity controls can help.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-red-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        14. Random Forests and Ensemble Learning
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          An ensemble combines multiple models instead of relying on one model. Random forests are a well-known example: they combine many decision trees and aggregate their predictions.
+        </div>
+
+        <div className="rounded-xl border border-red-400/20 bg-red-400/[0.05] p-5">
+          <strong className="text-red-200">Core intuition:</strong> instead of trusting one decision tree, build many trees using variation in the training process and combine their outputs.
+        </div>
+
+        <div>
+          Ensemble methods can improve predictive performance by combining models that make different errors. Random forests and gradient boosting are both important families, but they use different strategies for building and combining models.
+        </div>
+
+        <div>
+          Gradient boosting builds models sequentially, with later models focusing on errors or residual structure left by earlier models. Modern boosting implementations are widely used for structured tabular data.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        15. Support Vector Machines
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Support Vector Machines, or SVMs, learn decision boundaries that separate classes while controlling the margin around the boundary. The examples closest to the boundary are especially important in defining the solution.
+        </div>
+
+        <div>
+          SVMs can use kernels to represent nonlinear decision boundaries in the original feature space. They can work well in high-dimensional settings, although their computational characteristics and practical usefulness depend strongly on the dataset.
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-pink-400/20 bg-pink-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-pink-200">Classification</div>
+            <div className="text-sm text-slate-400">Find a useful separating boundary between classes.</div>
+          </div>
+
+          <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-rose-200">Regression</div>
+            <div className="text-sm text-slate-400">Support Vector Regression applies the same general family of ideas to numerical targets.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        16. k-Nearest Neighbors
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          k-Nearest Neighbors, or k-NN, makes predictions using nearby training examples. For a classification task, the model can look at the nearest examples and use their classes to determine the predicted class.
+        </div>
+
+        <div>
+          The idea is simple: <strong className="text-white">similar inputs should often have similar outputs.</strong> The choice of distance measure and the scale of the features can therefore strongly affect the result.
+        </div>
+
+        <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] p-5">
+          <div className="text-center text-sm font-semibold text-cyan-200">
+            New point → Find nearest training examples → Aggregate their labels → Prediction
+          </div>
+        </div>
+
+        <div>
+          Unlike many parametric models, k-NN does not learn a small fixed set of weights in the same way linear models do. Instead, much of the training data is retained and used during prediction.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        17. Naive Bayes
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Naive Bayes classifiers apply Bayes' theorem while making a simplifying conditional-independence assumption about features. Despite this strong assumption, these models can be useful for several classification problems, especially certain text classification tasks.
+        </div>
+
+        <div>
+          The "naive" part refers to the simplifying assumption, not to the usefulness of the algorithm. Different Naive Bayes variants are suited to different feature distributions.
+        </div>
+
+        <div className="rounded-xl border border-indigo-400/20 bg-indigo-400/[0.05] p-5">
+          <strong className="text-indigo-200">Remember:</strong> an algorithm can make unrealistic simplifying assumptions and still be useful when those assumptions provide a good practical approximation for the task.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-fuchsia-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        18. Neural Networks as Supervised Models
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Neural networks can also be trained in a supervised setting. The network receives inputs, produces predictions, calculates a loss against known targets, and uses optimization methods such as gradient descent to adjust its weights.
+        </div>
+
+        <div>
+          This makes neural networks part of supervised learning when they are trained using labeled examples. The architecture can range from a small multilayer perceptron to large convolutional, recurrent, or transformer-based systems depending on the data and task.
+        </div>
+
+        <div className="rounded-xl border border-fuchsia-400/20 bg-fuchsia-400/[0.05] p-5">
+          <div className="text-center text-sm font-semibold text-fuchsia-200">
+            Input → Neural Network → Prediction → Loss → Backpropagation → Weight Update
+          </div>
+        </div>
+
+        <div>
+          The important distinction is between the <strong className="text-white">model architecture</strong> and the <strong className="text-white">learning setup</strong>. A neural network is an architecture; supervised learning describes a training setup where known targets provide the learning signal.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-sky-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        19. Evaluation Metrics for Regression
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          Regression models are commonly evaluated using metrics that quantify the difference between predicted numerical values and observed target values.
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Metric</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Idea</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Useful Interpretation</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">MAE</td>
+                <td className="px-5 py-4">Average absolute prediction error.</td>
+                <td className="px-5 py-4">Easy to interpret in the same units as the target.</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-white">MSE</td>
+                <td className="px-5 py-4">Average squared prediction error.</td>
+                <td className="px-5 py-4">Penalizes large errors more strongly.</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-white">RMSE</td>
+                <td className="px-5 py-4">Square root of MSE.</td>
+                <td className="px-5 py-4">Returns to the target's original units while retaining stronger sensitivity to large errors.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          No single regression metric is universally best. The appropriate metric depends on what kinds of errors matter for the application.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        20. Evaluation Metrics for Classification
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          Classification evaluation begins with the relationship between predicted classes and true classes. A <strong className="text-white">confusion matrix</strong> summarizes these outcomes.
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Term</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Meaning</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-emerald-300">True Positive</td>
+                <td className="px-5 py-4">The model predicts positive and the true class is positive.</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-red-300">False Positive</td>
+                <td className="px-5 py-4">The model predicts positive but the true class is negative.</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-orange-300">False Negative</td>
+                <td className="px-5 py-4">The model predicts negative but the true class is positive.</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-blue-300">True Negative</td>
+                <td className="px-5 py-4">The model predicts negative and the true class is negative.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          Common classification metrics include accuracy, precision, recall, F1 score, log loss, and ROC AUC. The metric should match the actual objective and error costs of the application.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-red-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        21. Accuracy, Precision, Recall, and F1
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-blue-200">Accuracy</div>
+            <div className="text-sm text-slate-400">Fraction of predictions that are correct overall.</div>
+          </div>
+
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-emerald-200">Precision</div>
+            <div className="text-sm text-slate-400">Among examples predicted positive, how many were actually positive?</div>
+          </div>
+
+          <div className="rounded-xl border border-orange-400/20 bg-orange-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-orange-200">Recall</div>
+            <div className="text-sm text-slate-400">Among truly positive examples, how many did the model identify?</div>
+          </div>
+
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-violet-200">F1 Score</div>
+            <div className="text-sm text-slate-400">The harmonic mean of precision and recall, useful when both matter.</div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-5">
+          <strong className="text-amber-200">Why accuracy can mislead:</strong> if only 1% of transactions are fraudulent, a model that predicts "not fraud" for every transaction can have very high accuracy while completely failing to detect fraud.
+        </div>
+
+        <div>
+          In imbalanced problems, metrics such as precision, recall, F1, PR AUC, or class-specific measures may provide more useful information than accuracy alone.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        22. Overfitting and Underfitting
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          A supervised model should learn patterns that generalize. If it is too simple, it may fail to capture useful structure. If it is too flexible, it may fit noise or peculiarities in the training data.
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-orange-400/20 bg-orange-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-orange-200">Underfitting</div>
+            <div className="text-sm leading-relaxed text-slate-400">The model is too limited to capture important patterns. Training performance and validation performance can both be poor.</div>
+          </div>
+
+          <div className="rounded-xl border border-red-400/20 bg-red-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-red-200">Overfitting</div>
+            <div className="text-sm leading-relaxed text-slate-400">The model fits the training data very closely but performs substantially worse on unseen data.</div>
+          </div>
+        </div>
+
+        <div>
+          Model complexity, training data size, regularization, feature selection, and algorithm choice can all affect the balance between underfitting and overfitting.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div className="rounded-xl border border-pink-500/20 bg-pink-500/[0.04] p-6">
+        <div className="mb-2 text-sm font-bold uppercase tracking-[0.15em] text-pink-400">Quick Check 4</div>
+        <div className="mb-5 text-lg font-semibold text-white">A model performs extremely well on training data but poorly on unseen data. What does this most likely indicate?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="sl-q4-true" name="sl-q4" type="radio" className="peer sr-only" />
+            <label htmlFor="sl-q4-true" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-400/[0.08] peer-checked:text-emerald-200">Overfitting</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A large gap between training and unseen-data performance is a common sign of overfitting.</div>
+          </div>
+          <div>
+            <input id="sl-q4-false" name="sl-q4" type="radio" className="peer sr-only" />
+            <label htmlFor="sl-q4-false" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-400/[0.08] peer-checked:text-rose-200">Good generalization</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Good generalization means performance should remain reasonably strong on new, unseen examples.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        23. Bias and Variance
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          The bias-variance idea provides another way to think about generalization. A model with high bias is systematically too restrictive, while a model with high variance is highly sensitive to the particular training data it receives.
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-blue-200">High Bias</div>
+            <div className="text-sm text-slate-400">Often associated with models that are too simple for the underlying pattern.</div>
+          </div>
+
+          <div className="rounded-xl border border-pink-400/20 bg-pink-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-pink-200">High Variance</div>
+            <div className="text-sm text-slate-400">Often associated with models that are too sensitive to the specific training examples.</div>
+          </div>
+        </div>
+
+        <div>
+          The goal is not to eliminate one concept in isolation. Model selection attempts to achieve good generalization while balancing model flexibility, data quantity, noise, and regularization.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        24. Regularization
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Regularization adds a constraint or penalty that discourages overly complex model solutions. The exact form depends on the algorithm.
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-blue-200">L2 / Ridge-style regularization</div>
+            <div className="text-sm text-slate-400">Penalizes large coefficients using squared parameter values.</div>
+          </div>
+
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-violet-200">L1 / Lasso-style regularization</div>
+            <div className="text-sm text-slate-400">Uses absolute parameter values and can encourage some coefficients to become exactly zero.</div>
+          </div>
+        </div>
+
+        <div>
+          Regularization is not a guarantee of better performance. Its strength is a hyperparameter that should be selected using appropriate validation procedures rather than by repeatedly optimizing on the final test set.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-red-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        25. Data Leakage
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Data leakage happens when information that should not be available at prediction time accidentally influences training or evaluation. Leakage can make a model appear much better than it really is.
+        </div>
+
+        <div className="rounded-xl border border-red-400/20 bg-red-400/[0.05] p-5">
+          <div className="mb-2 font-semibold text-red-200">Example</div>
+          <div className="text-sm leading-relaxed text-slate-400">
+            Suppose you are predicting whether a customer will cancel next month, but one feature is created using information recorded only after the cancellation. The model can exploit information that would not exist when the real prediction must be made.
+          </div>
+        </div>
+
+        <div>
+          Preprocessing can also cause leakage. For example, a transformation that calculates statistics from the entire dataset before the train/test split can allow information from the evaluation data to influence training.
+        </div>
+
+        <div>
+          A safer workflow is to fit data-dependent preprocessing steps only on the training data and then apply the learned transformation to validation and test data.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-yellow-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        26. Feature Engineering
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Feature engineering means transforming raw information into input variables that can help a model learn the target relationship.
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-yellow-400/20 bg-yellow-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-yellow-200">Numerical features</div>
+            <div className="text-sm text-slate-400">Examples include age, income, distance, count, temperature, or area.</div>
+          </div>
+
+          <div className="rounded-xl border border-orange-400/20 bg-orange-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-orange-200">Categorical features</div>
+            <div className="text-sm text-slate-400">Examples include city, product type, device type, or membership level.</div>
+          </div>
+
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-cyan-200">Derived features</div>
+            <div className="text-sm text-slate-400">A new variable created from existing information, such as total spending divided by number of purchases.</div>
+          </div>
+
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-violet-200">Text / image representations</div>
+            <div className="text-sm text-slate-400">Raw unstructured data must be represented numerically before most classical supervised algorithms can use it.</div>
+          </div>
+        </div>
+
+        <div>
+          Feature engineering should always respect the prediction-time information available to the model. Creating a feature from future information can turn feature engineering into data leakage.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        27. Feature Scaling
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Feature scaling changes numerical variables so that their scales are more comparable. This can be particularly important for algorithms that depend on distances or the magnitude of feature values.
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-indigo-400/20 bg-indigo-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-indigo-200">Standardization</div>
+            <div className="text-sm text-slate-400">Transforms values using the mean and standard deviation so the transformed feature has approximately zero mean and unit variance on the fitting data.</div>
+          </div>
+
+          <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.05] p-5">
+            <div className="mb-2 font-semibold text-sky-200">Min-Max Scaling</div>
+            <div className="text-sm text-slate-400">Maps values into a chosen range, often between 0 and 1, based on the observed minimum and maximum of the fitting data.</div>
+          </div>
+        </div>
+
+        <div>
+          Tree-based models are generally less sensitive to feature scale than distance-based models such as k-NN and optimization-based linear models. Scaling requirements therefore depend on the algorithm.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        28. Hyperparameters vs. Parameters
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          A common beginner confusion is treating every number associated with a model as a learned parameter. Machine Learning distinguishes between <strong className="text-white">parameters</strong> learned from training and <strong className="text-white">hyperparameters</strong> chosen outside the fitting process.
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[700px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Type</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">How obtained</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Example</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-blue-300">Parameter</td>
+                <td className="px-5 py-4">Learned from training data</td>
+                <td className="px-5 py-4">Weights of a linear model</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-violet-300">Hyperparameter</td>
+                <td className="px-5 py-4">Selected before or around training</td>
+                <td className="px-5 py-4">Tree depth, regularization strength, number of neighbors</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          Hyperparameters are commonly selected using a validation set or cross-validation. This is called <strong className="text-white">hyperparameter tuning</strong>.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        29. Choosing an Algorithm
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          There is no single supervised learning algorithm that is best for every dataset. Algorithm selection depends on the target, data size, feature types, computational constraints, interpretability requirements, and the behavior observed during validation.
+        </div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Algorithm Family</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Useful For</th>
+                <th className="border-b border-white/10 px-5 py-4 font-semibold">Important Idea</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-blue-300">Linear Models</td>
+                <td className="px-5 py-4">Numerical prediction and classification</td>
+                <td className="px-5 py-4">Weighted combination of features</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-amber-300">Decision Trees</td>
+                <td className="px-5 py-4">Structured/tabular data</td>
+                <td className="px-5 py-4">Learn branching decision rules</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-red-300">Random Forests</td>
+                <td className="px-5 py-4">Classification and regression</td>
+                <td className="px-5 py-4">Combine many randomized trees</td>
+              </tr>
+              <tr className="border-b border-white/10">
+                <td className="px-5 py-4 font-semibold text-pink-300">SVM</td>
+                <td className="px-5 py-4">Classification and regression</td>
+                <td className="px-5 py-4">Margin-based decision boundaries</td>
+              </tr>
+              <tr>
+                <td className="px-5 py-4 font-semibold text-fuchsia-300">Neural Networks</td>
+                <td className="px-5 py-4">Complex high-dimensional data</td>
+                <td className="px-5 py-4">Learn layered nonlinear representations</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          A sensible workflow is to establish a simple baseline first, then compare increasingly suitable models using the same evaluation protocol.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        30. Imbalanced Classification
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          A classification dataset is imbalanced when some classes occur much more frequently than others. This can make overall accuracy misleading because a model can perform well on the majority class while missing the minority class.
+        </div>
+
+        <div className="rounded-xl border border-orange-400/20 bg-orange-400/[0.05] p-5">
+          <div className="mb-2 font-semibold text-orange-200">Example</div>
+          <div className="text-sm text-slate-400">
+            Imagine 99,000 normal transactions and 1,000 fraudulent transactions. A model that predicts "normal" for every transaction gets 99% accuracy but detects zero fraudulent transactions.
+          </div>
+        </div>
+
+        <div>
+          Depending on the application, you may need to examine precision, recall, F1, class-specific performance, probability thresholds, class weighting, resampling, or other strategies.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        31. Probability and Decision Thresholds
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Many classifiers produce a score or estimated probability before producing a final class label. The decision threshold determines when that score is converted into the positive class.
+        </div>
+
+        <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] p-5 text-center">
+          <div className="text-sm font-semibold text-cyan-200">
+            Model score / probability → Threshold → Final class
+          </div>
+        </div>
+
+        <div>
+          A threshold of 0.5 is common in simple binary classification examples, but it is not a universal rule. If missing a positive case is especially costly, the application may use a different threshold.
+        </div>
+
+        <div>
+          This is why evaluating only the final class labels can hide useful information contained in the model's scores or probabilities.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        32. The Confusion Matrix
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          A confusion matrix organizes classification predictions by their actual and predicted classes. For binary classification, it contains four fundamental outcomes.
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5 text-center">
+            <div className="font-bold text-emerald-300">True Positive</div>
+            <div className="mt-2 text-sm text-slate-400">Predicted positive, actually positive.</div>
+          </div>
+
+          <div className="rounded-xl border border-red-400/20 bg-red-400/[0.05] p-5 text-center">
+            <div className="font-bold text-red-300">False Positive</div>
+            <div className="mt-2 text-sm text-slate-400">Predicted positive, actually negative.</div>
+          </div>
+
+          <div className="rounded-xl border border-orange-400/20 bg-orange-400/[0.05] p-5 text-center">
+            <div className="font-bold text-orange-300">False Negative</div>
+            <div className="mt-2 text-sm text-slate-400">Predicted negative, actually positive.</div>
+          </div>
+
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5 text-center">
+            <div className="font-bold text-blue-300">True Negative</div>
+            <div className="mt-2 text-sm text-slate-400">Predicted negative, actually negative.</div>
+          </div>
+        </div>
+
+        <div>
+          From these four quantities, several common metrics can be calculated. Understanding the matrix is therefore more useful than memorizing metric names without understanding the underlying errors.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-sky-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        33. Practical Model Evaluation
+      </h2>
+
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>
+          Evaluation should reflect how the model will actually be used. If future data is time-dependent, a random split may not represent the real deployment situation. If examples come from different users, locations, or devices, the split strategy should also consider whether the same entities appear across partitions.
+        </div>
+
+        <div>
+          The evaluation design should answer the question: <strong className="text-white">"How well will this model work when it receives the kind of new data it will encounter in practice?"</strong>
+        </div>
+
+        <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.05] p-5">
+          <strong className="text-sky-200">Good evaluation is part of model design.</strong> It is not merely the final score displayed after training.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        34. From Training to Prediction
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>
+          Once a supervised model has been trained and evaluated, inference becomes conceptually simple: provide a new input $X_{new}$ and ask the trained model to produce $\hat{y}_{new}$.
+        </div>
+
+        <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-6 text-center">
+          <div className="text-sm font-semibold uppercase tracking-wider text-slate-500">Inference</div>
+          <div className="mt-4 text-lg font-bold text-white">
+            New Input $X_{new}$ → Trained Model → Prediction $\hat{y}_{new}$
+          </div>
+        </div>
+
+        <div>
+          Training is therefore different from inference. Training changes the model's learned parameters. Inference uses the resulting model to produce predictions for new inputs.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        35. Training vs. Inference
+      </h2>
+
+      <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Aspect</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Training</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Inference</th>
+            </tr>
+          </thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-white">Purpose</td>
+              <td className="px-5 py-4">Learn parameters from examples</td>
+              <td className="px-5 py-4">Generate predictions</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-white">Known target</td>
+              <td className="px-5 py-4">Available in supervised training</td>
+              <td className="px-5 py-4">Usually unknown</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-white">Parameter updates</td>
+              <td className="px-5 py-4">Yes</td>
+              <td className="px-5 py-4">No during ordinary prediction</td>
+            </tr>
+            <tr>
+              <td className="px-5 py-4 font-semibold text-white">Output</td>
+              <td className="px-5 py-4">Trained model</td>
+              <td className="px-5 py-4">Prediction / score / probability</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-yellow-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        37. Key Points
+      </h2>
+
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 text-[16px] leading-8 text-slate-300">
+        <ul className="space-y-3">
+          <li><strong className="text-emerald-400">✓</strong> Supervised learning learns from input examples paired with known target answers.</li>
+          <li><strong className="text-emerald-400">✓</strong> Features describe the input; the target or label is the output to predict.</li>
+          <li><strong className="text-emerald-400">✓</strong> Regression predicts continuous numerical values.</li>
+          <li><strong className="text-emerald-400">✓</strong> Classification predicts discrete classes.</li>
+          <li><strong className="text-emerald-400">✓</strong> Classification can be binary, multiclass, or multilabel.</li>
+          <li><strong className="text-emerald-400">✓</strong> Loss functions provide mathematical signals for training.</li>
+          <li><strong className="text-emerald-400">✓</strong> Training, validation, and test data serve different purposes.</li>
+          <li><strong className="text-emerald-400">✓</strong> Cross-validation can provide a more robust validation procedure.</li>
+          <li><strong className="text-emerald-400">✓</strong> Overfitting means strong training performance but weaker generalization to unseen data.</li>
+          <li><strong className="text-emerald-400">✓</strong> Data leakage can produce unrealistically strong evaluation results.</li>
+          <li><strong className="text-emerald-400">✓</strong> Accuracy is not always sufficient, especially with imbalanced classes.</li>
+          <li><strong className="text-emerald-400">✓</strong> Model selection should be based on the task, data, evaluation design, and practical requirements.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-red-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        38. Common Mistakes
+      </h2>
+
+      <div className="space-y-4 text-[16px] leading-8 text-slate-300">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-5">
+          <ul className="space-y-4">
+            <li>
+              <strong className="text-red-400">✕ Calling every numerical prediction regression.</strong>
+              <div className="mt-1 text-sm text-slate-400">The task depends on the meaning of the target. A class encoded as a number is still a classification target.</div>
+            </li>
+            <li>
+              <strong className="text-red-400">✕ Training without labels and calling it ordinary supervised learning.</strong>
+              <div className="mt-1 text-sm text-slate-400">Supervised learning requires known target information during training.</div>
+            </li>
+            <li>
+              <strong className="text-red-400">✕ Evaluating only on training data.</strong>
+              <div className="mt-1 text-sm text-slate-400">A model can memorize training examples. Evaluation should measure performance on appropriately held-out data.</div>
+            </li>
+            <li>
+              <strong className="text-red-400">✕ Repeatedly tuning on the final test set.</strong>
+              <div className="mt-1 text-sm text-slate-400">The test set should remain independent so it can provide a meaningful final estimate.</div>
+            </li>
+            <li>
+              <strong className="text-red-400">✕ Using accuracy alone for severely imbalanced data.</strong>
+              <div className="mt-1 text-sm text-slate-400">Majority-class predictions can produce high accuracy while failing the minority class.</div>
+            </li>
+            <li>
+              <strong className="text-red-400">✕ Allowing future information into features.</strong>
+              <div className="mt-1 text-sm text-slate-400">A feature that would not exist at prediction time can create data leakage.</div>
+            </li>
+            <li>
+              <strong className="text-red-400">✕ Assuming the most complex algorithm is automatically the best.</strong>
+              <div className="mt-1 text-sm text-slate-400">A simpler model can be easier to validate, interpret, deploy, and maintain while performing adequately.</div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        39. The Big Picture
+      </h2>
+
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-center">
+          <div className="mb-3 text-lg font-bold text-cyan-300">Supervised Learning</div>
+          <div className="text-white font-semibold">Labeled Data → Learning Algorithm → Trained Model → Predictions</div>
+        </div>
+
+        <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-6 text-center">
+          <div className="mb-3 text-lg font-bold text-blue-300">Regression</div>
+          <div className="text-white font-semibold">Features → Model → Continuous Numerical Prediction</div>
+        </div>
+
+        <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-6 text-center">
+          <div className="mb-3 text-lg font-bold text-violet-300">Classification</div>
+          <div className="text-white font-semibold">Features → Model → Discrete Class Prediction</div>
+        </div>
+
+        <div>
+          The most important idea to carry forward is that supervised learning is a complete learning setup, not the name of one particular algorithm. Linear models, trees, ensembles, support vector machines, nearest-neighbor methods, and neural networks can all be used in supervised settings.
+        </div>
+
+        <div>
+          The quality of a supervised system depends on more than the model. The labels, features, data split, loss, evaluation metrics, hyperparameters, and deployment conditions all influence whether the learned relationship will generalize to the real world.
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+          <strong className="text-white">Remember:</strong> supervised learning is fundamentally about learning from examples where the desired answer is known during training, then using the learned relationship to make predictions for new examples.
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
