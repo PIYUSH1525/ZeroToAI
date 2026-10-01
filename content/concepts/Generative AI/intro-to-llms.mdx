@@ -1,0 +1,420 @@
+---
+title: "Introduction to Large Language Models"
+slug: "intro-to-llms"
+category: "Generative AI"
+difficulty: "Beginner"
+description: "A beginner-friendly introduction to Large Language Models: what they are, why they are called large, what they learn, and where they fit in modern Generative AI."
+---
+
+<div className="mx-auto w-full max-w-4xl">
+
+  <main className="pt-2 space-y-16">
+
+    <section>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+          <strong className="text-cyan-400">The Core Thesis:</strong> A Large Language Model (LLM) is a large neural network trained on enormous amounts of text so that it can model patterns in language. For an autoregressive language model, the central training objective is to predict the next token from the tokens that came before it.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. What is a Large Language Model?</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>A <strong>Large Language Model (LLM)</strong> is a machine learning model designed to process and generate human language. Modern LLMs are predominantly built with the <strong>Transformer</strong> architecture and contain a very large number of learned parameters.</div>
+        <div>The word <em>"large"</em> does not describe only one thing. It usually refers to the scale of the model and the scale of the data and computation used to train it.</div>
+
+        <div className="my-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-slate-700/50 bg-slate-800/20 p-5">
+            <div className="mb-3 font-semibold text-white">Large Model</div>
+            <div className="text-sm leading-relaxed text-slate-400">An LLM can contain millions, billions, or even more learned parameters. These numerical values are adjusted during training and collectively determine how the model responds to its input.</div>
+          </div>
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.06] p-5">
+            <div className="mb-3 font-semibold text-blue-200">Large Dataset</div>
+            <div className="text-sm leading-relaxed text-slate-300">LLMs are trained on very large collections of text and other training data. Depending on the model, this can include books, websites, code, documents, and other sources.</div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+          <strong className="text-white">Important:</strong> An LLM is not a traditional database that stores a sentence for every possible question. Its learned behavior is represented mainly through numerical parameters learned during training.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Why Do We Need LLMs?</h2>
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>Human language is extremely flexible. The same idea can be expressed in many different ways, and users can ask questions or give instructions that were never explicitly written as rules by a programmer.</div>
+        <div>Traditional software normally follows rules written by people. LLMs instead learn statistical patterns from large datasets and use those learned patterns to process new language inputs.</div>
+
+        <div className="my-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-slate-700/50 bg-slate-800/20 p-5">
+            <div className="mb-3 font-semibold text-white">Traditional Rule-Based Approach</div>
+            <div className="text-sm leading-relaxed text-slate-400">A programmer explicitly defines how different inputs should be handled. This works well when the rules are clear and manageable.</div>
+          </div>
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.06] p-5">
+            <div className="mb-3 font-semibold text-violet-200">LLM Approach</div>
+            <div className="text-sm leading-relaxed text-slate-300">The model learns patterns from examples and large-scale training data, allowing one model to handle many language tasks without a separate hand-written rule for every possible sentence.</div>
+          </div>
+        </div>
+        <div>This is why one LLM can support many language tasks: answering questions, summarizing text, rewriting content, translating languages, generating code, and more.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Quick Check 1</h2>
+      <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
+        <div className="font-bold text-pink-400 mb-4">What does the "large" in Large Language Model mainly refer to?</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) The scale of the model, data, and training computation</span><span className="text-pink-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300"><strong className="mb-2 block text-emerald-400">Correct!</strong>"Large" mainly refers to the scale involved in building and training the model, including its parameters and training data.</div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) The physical size of the computer running the model</span><span className="text-pink-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300"><strong className="mb-2 block text-rose-400">Incorrect.</strong>"Large" describes model and training scale, not the physical dimensions of the computer.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. LLMs and the Transformer Architecture</h2>
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>Most modern LLMs are built using the <strong>Transformer</strong> architecture. Transformers provide the neural-network structure that allows the model to process relationships between tokens in a sequence.</div>
+        <div>This creates an important distinction in your learning path:</div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr><th className="border-b border-white/10 px-5 py-4 font-semibold">Concept</th><th className="border-b border-white/10 px-5 py-4 font-semibold">What it represents</th><th className="border-b border-white/10 px-5 py-4 font-semibold">Role in the learning path</th></tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10"><td className="px-5 py-4 font-semibold text-white">Transformer</td><td className="px-5 py-4">A neural-network architecture</td><td className="px-5 py-4">Explains the underlying architecture and attention mechanism</td></tr>
+              <tr className="border-b border-white/10"><td className="px-5 py-4 font-semibold text-white">LLM</td><td className="px-5 py-4">A large language model trained to model language</td><td className="px-5 py-4">Explains what large language models are and how they are trained and used</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-white">Generative AI</td><td className="px-5 py-4">A broader family of systems that generate content</td><td className="px-5 py-4">Covers applications such as text, image, audio, video, and multimodal generation</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5"><strong className="text-blue-200">Learning boundary:</strong> The detailed Transformer architecture belongs in the separate Transformers module. The detailed mechanics of how an LLM processes tokens and generates text belong in the separate How LLMs Work module.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. What Does an LLM Actually Learn?</h2>
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>During training, the model adjusts its parameters so that its predictions become better on the training objective. For an autoregressive language model, that objective is generally based on predicting the next token from the preceding context.</div>
+        <div>A useful way to think about the learned information is not as a collection of readable rules, but as patterns distributed across a very large set of numerical parameters.</div>
+
+        <div className="my-6 grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-700/50 bg-slate-800/20 p-5"><div className="mb-3 font-semibold text-white">Language Patterns</div><div className="text-sm leading-relaxed text-slate-400">Relationships between words, phrases, syntax, and common forms of expression.</div></div>
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.06] p-5"><div className="mb-3 font-semibold text-violet-200">Associations</div><div className="text-sm leading-relaxed text-slate-300">Statistical relationships between concepts, entities, styles, and contexts found in training data.</div></div>
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5"><div className="mb-3 font-semibold text-emerald-200">Task Patterns</div><div className="text-sm leading-relaxed text-slate-300">Patterns that can support activities such as summarization, translation, question answering, and code generation.</div></div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><strong className="text-white">Important distinction:</strong> The model's parameters are not a set of human-readable if-then rules. They are numerical values learned through optimization.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. From Text to Tokens</h2>
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>LLMs do not normally receive raw human sentences as one indivisible object. Text is converted into smaller units called <strong>tokens</strong>.</div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+          <div className="my-6 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+            <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">A Simplified View</div>
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-full rounded-xl border border-blue-400/20 bg-blue-400/[0.06] px-5 py-4 text-center font-semibold text-blue-100">Human text: "Machine learning is useful"</div>
+              <div className="text-xl text-slate-500">↓</div>
+              <div className="w-full rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-5 py-4 text-center font-semibold text-violet-100">Token sequence</div>
+              <div className="text-xl text-slate-500">↓</div>
+              <div className="grid w-full gap-3 sm:grid-cols-4">
+                <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-3 text-center text-sm text-emerald-100">Machine</div>
+                <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-3 text-center text-sm text-emerald-100">learning</div>
+                <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-3 text-center text-sm text-emerald-100">is</div>
+                <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-3 text-center text-sm text-emerald-100">useful</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>Tokenization is a separate topic that deserves deeper treatment because different tokenizers can split the same text differently, and token counts affect context length and computation.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><strong className="text-white">For this module:</strong> remember the basic pipeline only. The detailed mechanics of tokenization and embeddings will be covered separately.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Quick Check 2</h2>
+      <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
+        <div className="font-bold text-pink-400 mb-4">What is a token in the context of an LLM?</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] marker:content-['']"><span>A) A unit of text processed by the language model</span><span className="text-pink-400 transition group-open:rotate-180">▼</span></summary>
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300"><strong className="mb-2 block text-emerald-400">Correct!</strong>Tokens are the units into which text is represented for processing by the language model.</div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] marker:content-['']"><span>B) A physical GPU used to train the model</span><span className="text-pink-400 transition group-open:rotate-180">▼</span></summary>
+            <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300"><strong className="mb-2 block text-rose-400">Incorrect.</strong>A token is a text representation used by the model, not a piece of hardware.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. How LLM Training Is Organized</h2>
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>Turning a randomly initialized neural network into a useful language model requires large-scale training. Modern LLM development commonly involves multiple stages rather than one single training step.</div>
+
+        <div className="grid gap-5 md:grid-cols-3">
+          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5"><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-300">Stage 1</div><div className="mb-3 text-lg font-bold text-white">Pre-training</div><div className="text-sm leading-6 text-slate-400">The model learns broad language patterns from very large datasets. For an autoregressive model, next-token prediction is the central objective.</div></div>
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5"><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-violet-300">Stage 2</div><div className="mb-3 text-lg font-bold text-white">Instruction / Supervised Tuning</div><div className="text-sm leading-6 text-slate-400">Curated instruction-response examples can teach a model to follow requests and behave more like an assistant.</div></div>
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5"><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-300">Stage 3</div><div className="mb-3 text-lg font-bold text-white">Alignment</div><div className="text-sm leading-6 text-slate-400">Additional optimization can shape model behavior toward desired preferences, safety requirements, and response styles.</div></div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><strong className="text-white">Scope note:</strong> Fine-tuning and alignment methods will be covered in greater detail in their dedicated lessons. Here, the important idea is that an LLM can go through multiple stages between raw pre-training and a user-facing assistant.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Quick Check 3</h2>
+      <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
+        <div className="font-bold text-pink-400 mb-4">Which stage primarily gives a language model broad language knowledge and patterns?</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] marker:content-['']"><span>A) Large-scale pre-training</span><span className="text-pink-400 transition group-open:rotate-180">▼</span></summary>
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300"><strong className="mb-2 block text-emerald-400">Correct!</strong>Pre-training exposes the model to enormous amounts of data and teaches broad statistical patterns in language.</div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] marker:content-['']"><span>B) Writing a few manual rules for each question</span><span className="text-pink-400 transition group-open:rotate-180">▼</span></summary>
+            <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300"><strong className="mb-2 block text-rose-400">Incorrect.</strong>LLMs do not learn language by receiving a hand-written rule for every possible question. Large-scale training adjusts the model's parameters from data.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Training vs. Inference</h2>
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>Two words appear constantly when discussing LLMs: <strong>training</strong> and <strong>inference</strong>. They describe different stages of the model's lifecycle.</div>
+
+        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+            <thead className="bg-white/[0.06] text-white">
+              <tr><th className="border-b border-white/10 px-5 py-4 font-semibold">Stage</th><th className="border-b border-white/10 px-5 py-4 font-semibold">What happens?</th><th className="border-b border-white/10 px-5 py-4 font-semibold">Main goal</th></tr>
+            </thead>
+            <tbody className="text-slate-300">
+              <tr className="border-b border-white/10"><td className="px-5 py-4 font-semibold text-white">Training</td><td className="px-5 py-4">Model parameters are repeatedly adjusted using training data.</td><td className="px-5 py-4">Learn useful patterns and reduce training error.</td></tr>
+              <tr><td className="px-5 py-4 font-semibold text-white">Inference</td><td className="px-5 py-4">The trained model receives an input and produces an output without updating its learned parameters.</td><td className="px-5 py-4">Generate a prediction or response for a user request.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>When you send a prompt to an already-trained LLM, you are normally performing <strong>inference</strong>, not training the model.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Quick Check 4</h2>
+      <div className="rounded-xl border border-white/10 bg-slate-900/50 p-6">
+        <div className="font-bold text-pink-400 mb-4">What normally happens when you send a prompt to an already-trained LLM?</div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] marker:content-['']"><span>A) The model performs inference using its learned parameters</span><span className="text-pink-400 transition group-open:rotate-180">▼</span></summary>
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300"><strong className="mb-2 block text-emerald-400">Correct!</strong>During normal inference, the model uses its existing parameters to produce an output. The parameters are not updated simply because you asked a question.</div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] marker:content-['']"><span>B) The model permanently retrains all of its parameters after every prompt</span><span className="text-pink-400 transition group-open:rotate-180">▼</span></summary>
+            <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300"><strong className="mb-2 block text-rose-400">Incorrect.</strong>Normal inference does not update the model's learned parameters after every prompt. Training is a separate process.</div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">8. What LLMs Can Do</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div>Once trained and appropriately adapted, an LLM can support many language-based tasks using the same underlying model.</div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><div className="mb-2 font-semibold text-white">Text Generation</div><div className="text-sm leading-relaxed text-slate-400">Continue text, draft content, or produce structured responses.</div></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><div className="mb-2 font-semibold text-white">Summarization</div><div className="text-sm leading-relaxed text-slate-400">Compress longer passages into shorter descriptions.</div></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><div className="mb-2 font-semibold text-white">Translation</div><div className="text-sm leading-relaxed text-slate-400">Transform text from one language into another.</div></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><div className="mb-2 font-semibold text-white">Code Generation</div><div className="text-sm leading-relaxed text-slate-400">Generate, explain, transform, or complete programming code.</div></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><div className="mb-2 font-semibold text-white">Question Answering</div><div className="text-sm leading-relaxed text-slate-400">Produce answers based on learned patterns and supplied context.</div></div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><div className="mb-2 font-semibold text-white">Text Transformation</div><div className="text-sm leading-relaxed text-slate-400">Rewrite, classify, extract, or change the style and format of text.</div></div>
+        </div>
+
+        <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-5"><strong className="text-amber-200">Capability is not the same as reliability:</strong> An LLM can produce fluent and useful output while still making factual or reasoning errors.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        9. Strengths and Limitations
+      </h2>
+
+      <div className="grid gap-5 md:grid-cols-2 text-[16px] leading-8">
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.04] p-5">
+          <div className="mb-4 font-semibold text-emerald-400">Strengths</div>
+
+          <ul className="space-y-3 text-slate-300">
+            <li className="flex items-start">
+              <span className="mr-2 text-emerald-400">•</span>
+              <span>Can handle many different language tasks with the same underlying model.</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-emerald-400">•</span>
+              <span>Can generate, summarize, translate, rewrite, classify, and transform text.</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-emerald-400">•</span>
+              <span>Can work with natural-language instructions instead of requiring a separate hand-written rule for every request.</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-emerald-400">•</span>
+              <span>Can learn broad language patterns from very large datasets.</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-emerald-400">•</span>
+              <span>Can be adapted for specialized tasks using additional training techniques.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-xl border border-rose-500/30 bg-rose-500/[0.04] p-5">
+          <div className="mb-4 font-semibold text-rose-400">Limitations</div>
+
+          <ul className="space-y-3 text-slate-300">
+            <li className="flex items-start">
+              <span className="mr-2 text-rose-400">•</span>
+              <span>Can produce fluent answers that are factually incorrect.</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-rose-400">•</span>
+              <span>Its knowledge is influenced by the data used during training and does not automatically include new information.</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-rose-400">•</span>
+              <span>Can only process a limited amount of context in a single interaction.</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-rose-400">•</span>
+              <span>Training data can contain biases, gaps, or incorrect information that affect learned behavior.</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-rose-400">•</span>
+              <span>Large-scale training and inference can require substantial computing resources.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">10. Common LLM Terminology</h2>
+      <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr><th className="border-b border-white/10 px-5 py-4 font-semibold">Term</th><th className="border-b border-white/10 px-5 py-4 font-semibold">Simple meaning</th></tr>
+          </thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10"><td className="px-5 py-4 font-semibold text-white">LLM</td><td className="px-5 py-4">A large language model trained to model and generate language.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-4 font-semibold text-white">Parameter</td><td className="px-5 py-4">A learned numerical value inside the model that is adjusted during training.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-4 font-semibold text-white">Token</td><td className="px-5 py-4">A unit of text representation processed by a language model.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-4 font-semibold text-white">Pre-training</td><td className="px-5 py-4">Large-scale initial training that teaches broad patterns from data.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-4 font-semibold text-white">Inference</td><td className="px-5 py-4">Using a trained model to produce an output from an input.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-4 font-semibold text-white">Context Window</td><td className="px-5 py-4">The amount of tokenized context the model can consider in one interaction.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-4 font-semibold text-white">Instruction Tuning</td><td className="px-5 py-4">Training that adapts a model to follow human-written instructions.</td></tr>
+            <tr><td className="px-5 py-4 font-semibold text-white">Alignment</td><td className="px-5 py-4">Methods used to shape model behavior toward desired preferences or requirements.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-sky-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">11. The Big Picture</h2>
+      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+        <div className="my-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5"><div className="mb-3 font-semibold text-cyan-300">Training</div><div className="text-sm leading-relaxed text-slate-300">Large datasets → token sequences → optimization → learned parameters</div></div>
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.06] p-5"><div className="mb-3 font-semibold text-violet-200">Inference</div><div className="text-sm leading-relaxed text-slate-300">User input → tokenized context → trained model → generated output</div></div>
+        </div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+          <div className="my-6 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+            <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Where LLMs Fit</div>
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-full max-w-md rounded-xl border border-blue-400/20 bg-blue-400/[0.06] px-5 py-4 text-center font-semibold text-blue-100">Transformer Architecture</div>
+              <div className="text-xl text-slate-500">↓</div>
+              <div className="w-full max-w-md rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-5 py-4 text-center font-semibold text-violet-100">Large Language Model</div>
+              <div className="text-xl text-slate-500">↓</div>
+              <div className="w-full max-w-md rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-5 py-4 text-center font-semibold text-emerald-100">Generative AI Applications</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><strong className="text-white">Remember:</strong> A Transformer is an architecture, an LLM is a large language model built and trained using such architectures, and Generative AI is the broader application space that includes systems built around generative models.</div>
+      </div>
+    </section>
+<section>
+      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">12. Key Points</h2>
+      <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+        <div className="flex items-start"><span className="mr-3 text-emerald-400">✓</span><div>An LLM is a large neural-network model trained to work with and generate language.</div></div>
+        <div className="flex items-start"><span className="mr-3 text-emerald-400">✓</span><div>"Large" refers to the scale of the model and the data and computation involved in training it.</div></div>
+        <div className="flex items-start"><span className="mr-3 text-emerald-400">✓</span><div>Modern LLMs are predominantly based on the Transformer architecture.</div></div>
+        <div className="flex items-start"><span className="mr-3 text-emerald-400">✓</span><div>Autoregressive LLMs are trained around the task of predicting the next token from previous context.</div></div>
+        <div className="flex items-start"><span className="mr-3 text-emerald-400">✓</span><div>Training changes model parameters; normal inference uses the learned parameters to produce outputs.</div></div>
+        <div className="flex items-start"><span className="mr-3 text-emerald-400">✓</span><div>LLMs can support many language tasks, but fluent output does not guarantee factual correctness.</div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">13. Common Mistakes</h2>
+      <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+        <div className="flex items-start"><span className="mr-3 text-rose-400">✕</span><div><strong>Thinking an LLM is a database:</strong> Its learned behavior is represented mainly through numerical parameters rather than a searchable table of stored answers.</div></div>
+        <div className="flex items-start"><span className="mr-3 text-rose-400">✕</span><div><strong>Assuming fluent text means truth:</strong> A model can produce a confident-sounding answer that is incorrect.</div></div>
+        <div className="flex items-start"><span className="mr-3 text-rose-400">✕</span><div><strong>Confusing training with inference:</strong> Asking a trained model a question normally does not retrain its parameters.</div></div>
+        <div className="flex items-start"><span className="mr-3 text-rose-400">✕</span><div><strong>Trying to learn everything in one page:</strong> Transformers, tokenization, embeddings, prompting, fine-tuning, RAG, and multimodal AI are connected to LLMs but deserve their own focused lessons.</div></div>
+      </div>
+    </section>
+
+    <section className="pb-8">
+      <h2 className="mb-6 border-l-4 border-sky-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">14. Your LLM Learning Path</h2>
+      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+        <div>This page gives you the foundation. The deeper mechanics should now be learned separately rather than mixing every LLM topic into one introduction.</div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+          <div className="my-6 rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+            <div className="flex flex-col items-stretch justify-center gap-3 md:flex-row md:items-center">
+              <div className="rounded-xl border border-blue-400/25 bg-blue-400/[0.06] px-4 py-4 text-center font-semibold text-blue-100">LLM Introduction</div>
+              <div className="text-center text-xl text-slate-500">→</div>
+              <div className="rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-4 py-4 text-center font-semibold text-violet-100">How LLMs Work</div>
+              <div className="text-center text-xl text-slate-500">→</div>
+              <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-4 py-4 text-center font-semibold text-emerald-100">Prompt Engineering</div>
+              <div className="text-center text-xl text-slate-500">→</div>
+              <div className="rounded-xl border border-orange-400/25 bg-orange-400/[0.06] px-4 py-4 text-center font-semibold text-orange-100">Embeddings</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
+          <div className="flex flex-col items-stretch justify-center gap-3 md:flex-row md:items-center">
+            <div className="rounded-xl border border-pink-400/25 bg-pink-400/[0.06] px-4 py-4 text-center font-semibold text-pink-100">Fine-tuning</div>
+            <div className="text-center text-xl text-slate-500">→</div>
+            <div className="rounded-xl border border-cyan-400/25 bg-cyan-400/[0.06] px-4 py-4 text-center font-semibold text-cyan-100">Multimodal AI</div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5"><strong className="text-white">Curriculum boundary:</strong> RAG, agents, and other Generative AI application techniques should be learned as separate modules after the learner understands the LLM foundation.</div>
+      </div>
+    </section>
+
+  </main>
+</div>
