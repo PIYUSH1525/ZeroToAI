@@ -8,37 +8,51 @@ export default function Navbar() {
     title: c.title,
     slug: c.slug,
     category: c.category,
+    subcategory: c.subcategory,
     description: c.description,
+    readTime: c.readTime,
+    difficulty: c.difficulty,
   }));
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#040508]/80 backdrop-blur-md">
-      {/* Changed to w-full and px-8 to push elements to the extreme left and right corners */}
-      <div className="w-full px-8 sm:px-12 h-16 flex items-center justify-between gap-4">
-        
-        {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
-          {/* Ensure your logo image is inside the 'public' folder and update the src below */}
-          <Image 
-            src="/brand-logo.png" 
-            alt="NeuralPath Logo" 
-            width={32} 
-            height={32}
-            style={{ width: "auto", height: "32px" }}
-            className="rounded-lg object-contain"
-            priority
-          />
-          <span className="font-mono font-bold text-white hidden sm:block tracking-widest group-hover:text-[var(--color-cyber-cyan)] transition-colors">
-            NEURAL<span className="text-gray-500">PATH</span>
-          </span>
-        </Link>
+    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#05070E]/85 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
+        {/* Left: Brand Logo & Navigation Links */}
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2.5">
+            <Image
+              src="/brand-logo.png"
+              alt="NeuralPath Logo"
+              width={32}
+              height={32}
+              style={{ width: "auto", height: "32px" }}
+              className="rounded-lg object-contain"
+              priority
+            />
+            <span className="text-base font-bold tracking-tight text-white">
+              NeuralPath
+            </span>
+          </Link>
 
-        {/* Search Integration pushed to the right */}
-        <div className="w-full max-w-md flex justify-end">
-          <SearchBar concepts={concepts} />
+          <nav className="hidden items-center gap-6 text-sm font-medium md:flex">
+            <Link
+              href="/#categories"
+              className="text-slate-300 transition-colors hover:text-white"
+            >
+              Categories
+            </Link>
+            <Link
+              href="/roadmap"
+              className="text-slate-300 transition-colors hover:text-white"
+            >
+              Roadmap
+            </Link>
+          </nav>
         </div>
-        
+
+        {/* Right: Search Button + Search Popup Modal + Working Avatar Dropdown */}
+        <SearchBar concepts={concepts} />
       </div>
-    </nav>
+    </header>
   );
 }
