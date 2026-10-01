@@ -1,62 +1,211 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
-import { ConceptMeta } from "./types";
+import { Concept, ConceptMeta, TocItem } from "./types";
+import {
+  CURRICULUM_CATEGORIES,
+  TOPIC_PEDAGOGICAL_ORDER,
+  resolveCategoryConfig,
+  CategoryConfig,
+} from "./curriculum";
 
-const CONCEPTS_PATH = path.join(process.cwd(), "content/concepts");
+const contentDirectory = path.join(process.cwd(), "content/concepts");
 
-// Helper function to recursively search through all folders and sub-folders
-function getMDXFiles(dir: string, fileList: string[] = []) {
-  const files = fs.readdirSync(dir);
-  
-  for (const file of files) {
-    const filePath = path.join(dir, file);
-    // If it's a folder, open it and search inside
-    if (fs.statSync(filePath).isDirectory()) {
-      getMDXFiles(filePath, fileList);
-    } 
-    // If it's an MDX file, add it to our list
-    else if (file.endsWith(".mdx")) {
-      fileList.push(filePath);
+const DIFFICULTY_WEIGHT: Record<string, number> = {
+  Beginner: 1,
+  Intermediate: 2,
+  Advanced: 3,
+};
+
+function getMDXFiles(dirPath: string, filesList: string[] = []): string[] {
+  if (!fs.existsSync(dirPath)) return [];
+  const entries = fs.readdirSync(dirPath);
+
+  for (const file of entries) {
+    const fullPath = path.join(dirPath, file);
+    if (fs.statSync(fullPath).isDirectory()) {
+      getMDXFiles(fullPath, filesList);
+    } else if (file.endsWith(".mdx")) {
+      filesList.push(fullPath);
     }
   }
-  
-  return fileList;
+
+  return filesList;
+}
+
+function stripTags(input: string): string {
+  return input.replace(/<\/?[^>]+(>|$)/g, "");
+}
+
+function slugify(text: string, index: number): string {
+  const clean = stripTags(text)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-");
+  return clean || `section-${index + 1}`;
+}
+
+function extractTocAndInjectIds(raw: string): { content: string; toc: TocItem[] } {
+  const toc: TocItem[] = [];
+  let idx = 0;
+
+  const h2Regex = new RegExp("<h2([^>]*)>([\\s\\S]*?)<\\/h2>", "gi");
+
+  const content = raw.replace(h2Regex, (match, attrs, inner) => {
+    const title = stripTags(inner).replace(/\s+/g, " ").trim();
+    if (!title) return match;
+
+    const existingId = String(attrs).match(/\bid=["']([^"']+)["']/i);
+    const id = existingId ? existingId[1] : slugify(title, idx++);
+    toc.push({ id, title });
+
+    if (existingId) return match;
+    return `<h2 id="${id}"${attrs}>${inner}</h2>`;
+  });
+
+  return { content, toc };
 }
 
 export function getAllConcepts(): ConceptMeta[] {
-  if (!fs.existsSync(CONCEPTS_PATH)) return [];
+  const filePaths = getMDXFiles(contentDirectory);
 
-  const files = getMDXFiles(CONCEPTS_PATH);
+  const concepts: ConceptMeta[] = filePaths.map((filePath) => {
+    const slug = path.basename(filePath, ".mdx");
+    const relDir = path.relative(contentDirectory, path.dirname(filePath));
+    const folder = relDir && relDir !== "." ? relDir.split(path.sep)[0] : "";
 
-  return files.map((filePath) => {
-    const source = fs.readFileSync(filePath, "utf-8");
-    const { data } = matter(source);
+    const rawFile = fs.readFileSync(filePath, "utf8");
+    const { data, content } = matter(rawFile);
 
-    // Prioritize a custom slug from frontmatter; fallback to filename
-    const slug = data.slug || path.basename(filePath).replace(/\.mdx$/, "");
+    const catConfig = resolveCategoryConfig(data.category || "", folder);
+    const preset = TOPIC_PEDAGOGICAL_ORDER[slug];
+
+    const words = stripTags(content).trim().split(/\s+/).length;
+    const readMinutes = Math.max(8, Math.min(45, Math.round(words / 130)));
+
+    const difficulty: "Beginner" | "Intermediate" | "Advanced" =
+      data.difficulty === "Intermediate" || data.difficulty === "Advanced"
+        ? data.difficulty
+        : "Beginner";
+
+    const order =
+      typeof data.order === "number"
+        ? data.order
+        : preset?.order ?? DIFFICULTY_WEIGHT[difficulty] * 100;
+
+    const subcategory =
+      data.subcategory ||
+      preset?.subcategory ||
+      (catConfig.subcategories[1] ?? "Foundations");
+
+    const lowerContent = content.toLowerCase();
+    const hasCode =
+      content.includes("```") || lowerContent.includes("implementation");
+    const hasVisuals =
+      content.includes("Mermaid") ||
+      lowerContent.includes("diagram") ||
+      lowerContent.includes("figure");
 
     return {
-      ...(data as Omit<ConceptMeta, "slug">),
       slug,
+      title: data.title || slug,
+      order,
+      category: catConfig.title,
+      categorySlug: catConfig.slug,
+      subcategory,
+      difficulty,
+      description: data.description || "",
+      readTime: data.readTime || `${readMinutes} min`,
+      readMinutes,
+      hasCode,
+      hasVisuals,
     };
-  }).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  });
+
+  return concepts.sort((a, b) => {
+    const stageA =
+      CURRICULUM_CATEGORIES.find((c) => c.slug === a.categorySlug)?.stage ?? 99;
+    const stageB =
+      CURRICULUM_CATEGORIES.find((c) => c.slug === b.categorySlug)?.stage ?? 99;
+
+    if (stageA !== stageB) {
+      return stageA - stageB;
+    }
+
+    const orderA = a.order ?? 999;
+    const orderB = b.order ?? 999;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    return a.title.localeCompare(b.title);
+  });
 }
 
-export function getConceptBySlug(slug: string) {
-  const files = getMDXFiles(CONCEPTS_PATH);
-  
-  for (const filePath of files) {
-    const source = fs.readFileSync(filePath, "utf-8");
-    const { content, data } = matter(source);
-    
-    // Check if the frontmatter slug OR the filename matches the requested URL
-    const fileSlug = data.slug || path.basename(filePath).replace(/\.mdx$/, "");
-    
-    if (fileSlug === slug) {
-      return { content, meta: { ...(data as Omit<ConceptMeta, "slug">), slug: fileSlug } };
-    }
-  }
+export function getConceptBySlug(slug: string): Concept | null {
+  const filePaths = getMDXFiles(contentDirectory);
+  const targetPath = filePaths.find(
+    (filePath) => path.basename(filePath, ".mdx") === slug
+  );
 
-  return null;
+  if (!targetPath) return null;
+
+  const all = getAllConcepts();
+  const idx = all.findIndex((c) => c.slug === slug);
+  const meta = all[idx];
+  if (!meta) return null;
+
+  const rawFile = fs.readFileSync(targetPath, "utf8");
+  const { content: raw } = matter(rawFile);
+  const { content, toc } = extractTocAndInjectIds(raw);
+
+  const sameCat = all.filter((c) => c.categorySlug === meta.categorySlug);
+  const catIdx = sameCat.findIndex((c) => c.slug === slug);
+
+  const prevConcept =
+    catIdx > 0
+      ? sameCat[catIdx - 1]
+      : idx > 0
+      ? all[idx - 1]
+      : null;
+
+  const nextConcept =
+    catIdx >= 0 && catIdx < sameCat.length - 1
+      ? sameCat[catIdx + 1]
+      : idx < all.length - 1
+      ? all[idx + 1]
+      : null;
+
+  return {
+    meta,
+    content,
+    toc,
+    prevConcept,
+    nextConcept,
+  };
+}
+
+export function getCategoriesWithTopics(): Array<{
+  config: CategoryConfig;
+  concepts: ConceptMeta[];
+}> {
+  const all = getAllConcepts();
+  return CURRICULUM_CATEGORIES.map((config) => ({
+    config,
+    concepts: all.filter((c) => c.categorySlug === config.slug),
+  }));
+}
+
+export function getCategoryBySlug(slug: string): {
+  config: CategoryConfig;
+  concepts: ConceptMeta[];
+} | null {
+  const config = CURRICULUM_CATEGORIES.find((c) => c.slug === slug);
+  if (!config) return null;
+
+  return {
+    config,
+    concepts: getAllConcepts().filter((c) => c.categorySlug === slug),
+  };
 }
