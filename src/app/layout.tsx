@@ -6,7 +6,7 @@ import { Analytics } from "@vercel/analytics/next";
 
 export const metadata = {
   title: "NeuralPath // AI & ML Learning Hub",
-  description: "Learn AI from intuition to clean implementation.",
+  description: "ZeroToAI is a structured learning platform for AI and Machine Learning, covering fundamentals, ML, deep learning, NLP, transformers, LLMs, RAG, and Generative AI.",
 };
 
 export default function RootLayout({
