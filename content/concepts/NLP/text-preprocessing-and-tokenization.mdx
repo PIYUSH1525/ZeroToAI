@@ -1,0 +1,563 @@
+---
+title: "Text Preprocessing and Tokenization"
+slug: "text-preprocessing-and-tokenization"
+order: 1
+category: "NLP"
+subcategory: "Foundations"
+difficulty: "Beginner"
+readTime: "27 min"
+description: "How machines translate human language into numbers—from classical text cleaning to subword Byte-Pair Encoding (BPE) that powers GPT-4, Claude, and Llama-3."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Thesis:</strong> Neural networks cannot read letters, words, or sentences—they only understand matrices of numbers. Tokenization is the critical translation bridge at the very front of every NLP model and Large Language Model that chops raw human text into discrete pieces (Tokens) and maps each piece to a unique integer ID from a fixed Vocabulary.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner Foundations: Why Computers Cannot Read Raw Text
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Every neural network layer we have studied so far computes weighted sums and matrix multiplications ($\mathbf{y} = \mathbf{W}\mathbf{x} + \mathbf{b}$). You cannot multiply the English word <strong className="text-white">&quot;Apple&quot;</strong> by a weight matrix!
+      </div>
+      <div>
+        Before text ever touches a neural network, it must pass through a two-stage <strong className="text-blue-300">Text-to-Numbers Pipeline</strong>:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 text-lg font-bold text-cyan-300">Stage 1: Text Normalization &amp; Preprocessing</div>
+          <div className="mb-4 text-sm leading-relaxed text-slate-300">
+            Cleans up messy raw strings—standardizing Unicode characters (like smart quotes and accents), stripping broken HTML tags, and normalizing whitespace so the model sees consistent text.
+          </div>
+          <div className="rounded-lg border border-white/10 bg-slate-950 p-3 text-center font-mono text-xs text-cyan-300">
+            &quot;  AI   is AMAZING!! &quot; → &quot;AI is AMAZING!!&quot;
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-2 text-lg font-bold text-violet-300">Stage 2: Tokenization &amp; Vocabulary Lookup</div>
+          <div className="mb-4 text-sm leading-relaxed text-slate-300">
+            Splits the string into atomic units called <strong className="text-white">Tokens</strong> and looks up each token&apos;s unique integer ID in a fixed dictionary called the <strong className="text-white">Vocabulary ($\mathcal{V}$)</strong>.
+          </div>
+          <div className="rounded-lg border border-white/10 bg-slate-950 p-3 text-center font-mono text-xs text-violet-300">
+            [&quot;AI&quot;, &quot; is&quot;, &quot; amazing&quot;] → [15836, 374, 8056]
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">
+          Classical NLP Preprocessing vs. Modern LLM Preprocessing
+        </div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          In <strong className="text-amber-300">Classical NLP</strong> (like spam filters or search engines), engineers aggressively stripped punctuation, forced all text to lowercase, removed common <strong className="text-white">Stop Words</strong> (<em>&quot;the&quot;, &quot;is&quot;, &quot;not&quot;</em>), and chopped word endings via <strong className="text-white">Stemming / Lemmatization</strong> (turning <em>&quot;running&quot;</em> and <em>&quot;ran&quot;</em> into <em>&quot;run&quot;</em>). In <strong className="text-emerald-300">Modern LLMs</strong> (like GPT-4), we <strong className="text-white">DO NOT remove stop words or lowercase text</strong>—because capital letters, punctuation, and words like <em>&quot;not&quot;</em> carry crucial meaning and code syntax!
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner to Intermediate: The Three Levels of Tokenization Granularity
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        How should we chop a sentence into tokens? Should every whole word be a token, or every single letter, or something in between? Let us compare the three fundamental approaches:
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.05] p-5">
+          <div className="mb-2 text-base font-bold text-rose-300">1. Word-Level</div>
+          <div className="mb-2 font-mono text-xs text-slate-400">[&quot;unhappiness&quot;, &quot;is&quot;, &quot;bad&quot;]</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Splits on spaces. <strong className="text-white">Fatal Flaw:</strong> Huge vocabulary ($500\text{k}+$ words), treats <em>&quot;run&quot;</em> and <em>&quot;running&quot;</em> as unrelated, and crashes on any unseen typo with an <strong className="text-rose-300">Out-Of-Vocabulary (<code>&lt;UNK&gt;</code>)</strong> token!
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-5">
+          <div className="mb-2 text-base font-bold text-amber-300">2. Character-Level</div>
+          <div className="mb-2 font-mono text-xs text-slate-400">[&quot;u&quot;, &quot;n&quot;, &quot;h&quot;, &quot;a&quot;, &quot;p&quot;, ...]</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Every single letter is a token. <strong className="text-white">Fatal Flaw:</strong> Tiny vocabulary ($\approx 100$ chars) and zero <code>&lt;UNK&gt;</code> errors, but sequences become <strong className="text-amber-300">$5\times$ longer</strong> and individual letters carry no semantic meaning!
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5">
+          <div className="mb-2 text-base font-bold text-emerald-300">3. Subword-Level (Modern AI)</div>
+          <div className="mb-2 font-mono text-xs text-slate-400">[&quot;un&quot;, &quot;happi&quot;, &quot;ness&quot;]</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            <strong className="text-white">The Goldilocks Solution!</strong> Keeps common words whole (<em>&quot;apple&quot;</em>) while splitting rare or complex words into meaningful prefixes, roots, and suffixes!
+          </div>
+        </div>
+      </div>
+      <div className="my-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Tokenization Strategy</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Typical Vocab Size $|\mathcal{V}|$</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Sequence Length $T$</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Handles Typos &amp; New Words?</th>
+            </tr>
+          </thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-rose-300">Word-Level</td>
+              <td className="px-5 py-4 font-mono text-xs">$100{,}000\text{ -- }1{,}000{,}000+$</td>
+              <td className="px-5 py-4 text-emerald-300">Short ($1$ token/word)</td>
+              <td className="px-5 py-4 text-rose-300">No — replaces unseen words with <code>&lt;UNK&gt;</code></td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-amber-300">Character-Level</td>
+              <td className="px-5 py-4 font-mono text-xs">$100\text{ -- }500$</td>
+              <td className="px-5 py-4 text-rose-300">Very Long ($5\text{--}7$ tokens/word)</td>
+              <td className="px-5 py-4 text-emerald-300">Yes — can spell any word</td>
+            </tr>
+            <tr>
+              <td className="px-5 py-4 font-semibold text-emerald-300">Subword (BPE / WordPiece)</td>
+              <td className="px-5 py-4 font-mono text-xs">$32{,}000\text{ -- }128{,}000$</td>
+              <td className="px-5 py-4 text-emerald-300">Compact ($\approx 1.3$ tokens/word)</td>
+              <td className="px-5 py-4 text-emerald-300"><strong className="text-white">Yes — decomposes rare words into subwords!</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check </span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          Suppose a user types the newly invented medical term &quot;neuroplasticity&quot; into a chatbot. How does a Subword Tokenizer handle this word if it was never seen as a single whole word before?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) It splits it into known subword pieces like [&quot;neuro&quot;, &quot;plastic&quot;, &quot;ity&quot;]</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>Because the subword tokenizer knows common roots like &quot;neuro&quot;, &quot;plastic&quot;, and &quot;ity&quot;, the LLM immediately understands both the spelling and the combined meaning of the word without throwing an unknown-word error!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) It replaces the entire word with &lt;UNK&gt; and loses all meaning</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Replacing unseen words with <code>&lt;UNK&gt;</code> is the fatal flaw of old Word-Level tokenizers. Modern Byte-Level BPE tokenizers never produce <code>&lt;UNK&gt;</code>!</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Intermediate: How Byte-Pair Encoding (BPE) Learns Subwords
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        How does an AI decide which letter combinations should become subword tokens? It uses an elegant data-compression algorithm called <strong className="text-emerald-300">Byte-Pair Encoding (BPE)</strong> (used by GPT-2, GPT-3.5, GPT-4, and Llama-3)!
+      </div>
+      <div>
+        BPE starts with a tiny vocabulary of <strong className="text-white">individual characters (or 256 raw UTF-8 bytes)</strong> and repeatedly merges the <strong className="text-cyan-300">most frequent adjacent pair</strong> until the vocabulary reaches the target size $|\mathcal{V}|$:
+      </div>
+      <div className="my-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] px-6 py-8 text-center text-lg">
+        <div>$$\text{Best Merge Pair } (t_a, t_b) = \arg\max_{(t_i, t_j) \in \mathcal{V} \times \mathcal{V}} \text{Count}(t_i, t_j)$$</div>
+      </div>
+      <div className="rounded-2xl border border-blue-400/15 bg-blue-400/[0.05] p-6">
+        <h3 className="mb-4 text-lg font-bold text-white">Step-by-Step Worked Example: Training BPE on a Mini Corpus</h3>
+        <div className="space-y-4 text-sm">
+          <div>
+            Suppose our training text contains the words <code>&quot;low&quot;</code> ($5$ times), <code>&quot;lower&quot;</code> ($2$ times), and <code>&quot;newest&quot;</code> ($6$ times). Watch how BPE builds subwords in 3 iterations:
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-slate-950/80 p-4">
+              <div className="mb-2 font-bold text-cyan-300">Iteration 1: Merge (&apos;e&apos;, &apos;s&apos;)</div>
+              <div className="text-xs leading-relaxed text-slate-300">
+                In <code>n e w e s t</code> ($6\times$), the pair <code>(&apos;e&apos;, &apos;s&apos;)</code> appears $6$ times. BPE merges them into the new token <strong className="text-white"><code>&quot;es&quot;</code></strong>!
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/80 p-4">
+              <div className="mb-2 font-bold text-violet-300">Iteration 2: Merge (&apos;es&apos;, &apos;t&apos;)</div>
+              <div className="text-xs leading-relaxed text-slate-300">
+                Now <code>(&apos;es&apos;, &apos;t&apos;)</code> appears $6$ times in <code>n e w es t</code>. BPE merges them into the suffix token <strong className="text-white"><code>&quot;est&quot;</code></strong>!
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/80 p-4">
+              <div className="mb-2 font-bold text-emerald-300">Iteration 3: Merge (&apos;l&apos;, &apos;o&apos;)</div>
+              <div className="text-xs leading-relaxed text-slate-300">
+                Across <code>low</code> ($5$) and <code>lower</code> ($2$), the pair <code>(&apos;l&apos;, &apos;o&apos;)</code> appears $5 + 2 = 7$ times, merging into <strong className="text-white"><code>&quot;lo&quot;</code></strong>, and next into <strong className="text-white"><code>&quot;low&quot;</code></strong>!
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <h3 className="mt-8 text-xl font-bold text-white">Comparing Modern Subword Algorithms: BPE vs. WordPiece vs. Unigram</h3>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.05] p-5">
+          <div className="mb-1 font-bold text-cyan-300">1. Byte-Level BPE</div>
+          <div className="mb-2 font-mono text-xs text-slate-400">GPT-4, Llama-3, Claude</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Starts from $256$ raw UTF-8 bytes and merges the highest-frequency pairs bottom-up. Can encode any emoji or language with zero <code>&lt;UNK&gt;</code> tokens!
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.05] p-5">
+          <div className="mb-1 font-bold text-violet-300">2. WordPiece</div>
+          <div className="mb-2 font-mono text-xs text-slate-400">BERT, DistilBERT</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Marks subword continuations with <code>##</code> (e.g., <code>[&quot;play&quot;, &quot;##ing&quot;]</code>) and merges pairs that maximize corpus likelihood $\frac{\text{Count}(ab)}{\text{Count}(a)\text{Count}(b)}$.
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5">
+          <div className="mb-1 font-bold text-emerald-300">3. Unigram (SentencePiece)</div>
+          <div className="mb-2 font-mono text-xs text-slate-400">T5, Gemma, Multilingual</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Works top-down: starts with a huge vocabulary and iteratively prunes subwords that least reduce probabilistic model likelihood, treating spaces as <code>_</code> characters.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Intermediate: Special Control Tokens, Padding &amp; Attention Masks
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Beyond regular words, every tokenizer reserves a set of <strong className="text-orange-300">Special Control Tokens</strong> that tell the neural network where documents begin, where a user&apos;s chat turn ends, and which positions are empty padding:
+      </div>
+      <div className="my-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Special Token</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Full Name</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Exact Role Inside Transformers &amp; LLMs</th>
+            </tr>
+          </thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-mono text-xs font-bold text-cyan-300">&lt;BOS&gt; / &lt;|begin_of_text|&gt;</td>
+              <td className="px-5 py-4 font-semibold text-white">Beginning of Sequence</td>
+              <td className="px-5 py-4">Prepended to the start of a prompt to signal the start of a new document and anchor attention.</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-mono text-xs font-bold text-rose-300">&lt;EOS&gt; / &lt;|eot_id|&gt;</td>
+              <td className="px-5 py-4 font-semibold text-white">End of Sequence / Turn</td>
+              <td className="px-5 py-4">When an LLM samples this token ID during generation, the inference loop stops generating immediately!</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-mono text-xs font-bold text-amber-300">&lt;PAD&gt;</td>
+              <td className="px-5 py-4 font-semibold text-white">Padding Token</td>
+              <td className="px-5 py-4">Fills shorter sentences in a mini-batch so all rows share the same rectangular matrix length $T$.</td>
+            </tr>
+            <tr>
+              <td className="px-5 py-4 font-mono text-xs font-bold text-violet-300">[CLS] and [SEP]</td>
+              <td className="px-5 py-4 font-semibold text-white">Classification &amp; Separator</td>
+              <td className="px-5 py-4">Used in BERT encoders to pool sentence-level meaning (<code>[CLS]</code>) and separate sentence pairs (<code>[SEP]</code>).</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">
+          Why Padding Requires a Binary Attention Mask (1 for Real Tokens, 0 for Padding)
+        </div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          Suppose Sentence 1 has $5$ tokens and Sentence 2 has $3$ tokens. To batch them into a $(2, 5)$ tensor, we pad Sentence 2 with two <code>&lt;PAD&gt;</code> tokens: <code>[104, 892, 41, 0, 0]</code>. To prevent Self-Attention from paying attention to fake <code>&lt;PAD&gt;</code> tokens, the tokenizer outputs a matching <strong className="text-emerald-300"><code>attention_mask</code></strong> tensor: <code>[1, 1, 1, 0, 0]</code>!
+        </div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check </span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          When you ask ChatGPT a question, how does the server know the exact moment the model has finished its answer and should stop generating more words?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) The model predicts the special &lt;EOS&gt; (End-of-Sequence) token ID</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>During Supervised Fine-Tuning (SFT), every assistant response ends with a special End-of-Turn / <code>&lt;EOS&gt;</code> token. As soon as the model samples that token ID, the generation loop breaks and returns the response!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) It always stops as soon as it outputs a period (.)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>A period (<code>.</code>) is just a normal punctuation token used at the end of every sentence inside a multi-paragraph essay. Stopping on a period would limit the AI to 1-sentence answers!</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Pre-Tokenization Regex, Fertility, and Why LLMs Struggle to Count Letters
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        At the <strong className="text-white">Advanced / LLM Architecture</strong> level, tokenization explains many of the strangest behaviors, bugs, and cost differences in modern AI systems:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-cyan-300">1. Why LLMs Struggle with &quot;How Many R&apos;s in Strawberry?&quot;</div>
+          <div className="mb-3 text-sm text-slate-300">
+            An LLM <strong className="text-white">never sees individual letters</strong>! To the tokenizer, <code>&quot;strawberry&quot;</code> is immediately converted into integer IDs like <code>[&quot;str&quot;, &quot;aw&quot;, &quot;berry&quot;] = [496, 675, 15717]</code>. Because the model only sees those 3 numbers, it cannot see the individual <code>&apos;r&apos;</code> characters inside token <code>15717</code> unless it spells the word out letter-by-letter first!
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 font-mono text-xs text-cyan-300">
+            Tokenization Hides Character-Level Spelling!
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-violet-300">2. Leading Spaces, Pre-Tokenization Regex &amp; Numbers</div>
+          <div className="mb-3 text-sm text-slate-300">
+            Before BPE merges run, a <strong className="text-white">Pre-Tokenizer Regex</strong> prevents merges across punctuation and attaches leading spaces to words: <code>&quot;apple&quot;</code> at the start of a line is a <strong className="text-rose-300">different token ID</strong> than <code>&quot; apple&quot;</code> after a space! Furthermore, Llama-3 splits numbers into $1\text{--}3$ digit chunks so math is consistent.
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 font-mono text-xs text-violet-300">
+            &quot;apple&quot; (ID 18040) != &quot; apple&quot; (ID 24149)
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">
+          3. Vocabulary Size Trade-offs ($32\text{k}$ vs. $128\text{k}$) and Multilingual Token Fertility
+        </div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          <strong className="text-emerald-300">Token Fertility</strong> measures the average number of tokens required to encode one word. Llama-2 used a $32{,}000$-token vocabulary, whereas <strong className="text-cyan-300">GPT-4o ($200\text{k}$ vocab) and Llama-3 ($128{,}256$ vocab)</strong> expanded their vocabularies by $4\times$. Why? A larger vocabulary compresses English, Python code whitespace, and non-Latin languages (like Hindi, Arabic, and Japanese) into <strong className="text-white">fewer tokens</strong>—making inference faster and fitting more text into the context window, at the cost of a larger Embedding and Output Softmax matrix ($\mathbf{W}_{\text{vocab}} \in \mathbb{R}^{d \times |\mathcal{V}|}$)!
+        </div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check </span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          Why did Llama-3 increase its BPE vocabulary size from $32{,}000$ tokens (in Llama-2) to $128{,}256$ tokens, and what is the primary memory trade-off of making $|\mathcal{V}|$ too large?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) Compresses text &amp; code into ~15% fewer tokens; increases Embedding/LM-Head matrix VRAM</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>A $128\text{k}$ vocabulary encodes the same paragraph in fewer tokens (speeding up autoregressive generation and multilingual tasks), while increasing the parameter count of the input embedding table and final Softmax projection $(|\mathcal{V}| \times d_{\text{model}})$.</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) It makes sequences 4x longer so the model thinks harder</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>A larger vocabulary merges more frequent multi-character chunks and whitespace patterns, which <em>shortens</em> sequence length $T$ rather than lengthening it.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The End-to-End Tokenization Pipeline
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Look at how a raw user string passes through Unicode normalization, regex pre-tokenization, BPE subword merging, and special-token framing to produce the exact integer tensors fed into a Transformer:
+      </div>
+      <Mermaid chart="graph LR; Raw[Raw String: Unhappiness is bad!] -->|Unicode NFC & Regex Split| Pre[Pre-Tokens: Unhappiness, _is, _bad, !]; Pre -->|Apply Learned BPE Merges| Sub[Subwords: Un, happi, ness, _is, _bad, !]; Sub -->|Add Special Control Tokens| Frame[Framed: BOS, Un, happi, ness, _is, _bad, !, EOS]; Frame -->|Vocab Lookup + Pad Batch| Out[Tensors: input_ids & attention_mask];" />
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Training Byte-Pair Encoding (BPE) From Scratch
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Here is a complete, runnable Python implementation of the <strong className="text-white">Byte-Pair Encoding (BPE)</strong> algorithm from scratch—showing how a tokenizer automatically discovers subword units like <code>&quot;ing&quot;</code> and <code>&quot;train&quot;</code> by iteratively merging the most frequent adjacent pairs:
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">bpe_tokenizer_from_scratch.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.11+ · Subword BPE Engine</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-cyan-300">from collections import Counter</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Define a Training Corpus (Word -&gt; Frequency Count)</span>
+            <span className="block">rawCorpus = &#123;&quot;train&quot;: 5, &quot;training&quot;: 6, &quot;trained&quot;: 3, &quot;learning&quot;: 4&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Split each word into characters + end-of-word symbol &quot;&lt;/w&gt;&quot;</span>
+            <span className="block">splits = &#123;word: list(word) + [&quot;&lt;/w&gt;&quot;] for word in rawCorpus&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def getPairCounts(wordSplits, corpusFreqs):</span>
+            <span className="block">    pairCounts = Counter()</span>
+            <span className="block">    for word, freq in corpusFreqs.items():</span>
+            <span className="block">        symbols = wordSplits[word]</span>
+            <span className="block">        for i in range(len(symbols) - 1):</span>
+            <span className="block">            pairCounts[(symbols[i], symbols[i + 1])] += freq</span>
+            <span className="block">    return pairCounts</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def mergePair(bestPair, wordSplits):</span>
+            <span className="block">    a, b = bestPair</span>
+            <span className="block">    for word, symbols in wordSplits.items():</span>
+            <span className="block">        newSymbols = []</span>
+            <span className="block">        i = 0</span>
+            <span className="block">        while i &lt; len(symbols):</span>
+            <span className="block">            if i &lt; len(symbols) - 1 and symbols[i] == a and symbols[i + 1] == b:</span>
+            <span className="block">                newSymbols.append(a + b)</span>
+            <span className="block">                i += 2</span>
+            <span className="block">            else:</span>
+            <span className="block">                newSymbols.append(symbols[i])</span>
+            <span className="block">                i += 1</span>
+            <span className="block">        wordSplits[word] = newSymbols</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Run 6 BPE Merge Iterations to Discover Subwords Automatically!</span>
+            <span className="block">for step in range(1, 7):</span>
+            <span className="block">    counts = getPairCounts(splits, rawCorpus)</span>
+            <span className="block text-violet-300">    bestPair, maxFreq = counts.most_common(1)[0]</span>
+            <span className="block text-violet-300">    mergePair(bestPair, splits)</span>
+            <span className="block text-emerald-300">    print(&quot;Merge&quot;, step, &quot;:&quot;, bestPair, &quot;-&gt;&quot;, bestPair[0] + bestPair[1], &quot;(freq:&quot;, maxFreq, &quot;)&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-emerald-300">print(&quot;Final Subword Splits:&quot;, splits)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-teal-500/20 bg-teal-500/[0.05] p-5 text-sm leading-7 text-slate-300">
+        <div className="mb-2 font-bold text-teal-300">
+          Pro Tip (Production Libraries: tiktoken &amp; HuggingFace Tokenizers):
+        </div>
+        <div>
+          In production, you never run BPE loops in pure Python—you use OpenAI&apos;s Rust-powered <strong className="text-white"><code>tiktoken</code></strong> library (<code>enc = tiktoken.get_encoding(&quot;o200k_base&quot;)</code>) or HuggingFace&apos;s Rust-backed <strong className="text-white"><code>AutoTokenizer.from_pretrained()</code></strong>, which tokenize millions of words per second on CPU!
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Tokenization converts raw text strings into a sequence of discrete integer IDs from a fixed vocabulary $\mathcal{V}$ so neural networks can process language mathematically.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Classical NLP pipelines used lowercasing, stop-word removal, and stemming/lemmatization, whereas modern LLMs preserve exact casing, punctuation, and whitespace via lossless subword tokenization.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Subword tokenization (BPE, WordPiece, Unigram) combines the best of word-level and character-level approaches: keeping frequent words whole while splitting rare or unseen words into meaningful subwords.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Byte-Pair Encoding (BPE) builds its vocabulary bottom-up by starting with individual characters/bytes and iteratively merging the most frequent adjacent token pairs.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Special tokens (<code>&lt;BOS&gt;</code>, <code>&lt;EOS&gt;</code>, <code>&lt;PAD&gt;</code>) control document framing, stop generation, and pad variable-length sequences inside mini-batches alongside a binary <code>attention_mask</code>.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Many LLM quirks—such as difficulty counting characters inside a word or sensitivity to leading spaces—are direct consequences of subword tokenization rather than neural reasoning failures.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Common Mistakes
+    </h2>
+    <div className="rounded-2xl border border-rose-500/25 bg-rose-950/[0.15] p-6 sm:p-8">
+      <div className="space-y-6">
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Using Tokenizer A (e.g., BERT) with Model Weights B (e.g., Llama-3).
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Every pretrained model is permanently married to the exact vocabulary table it was trained with! In Tokenizer A, ID <code>2054</code> might mean <code>&quot;apple&quot;</code>, while in Model B, row <code>2054</code> of the embedding matrix means <code>&quot;database&quot;</code>. Always load the matching tokenizer via <code>AutoTokenizer.from_pretrained(model_id)</code>.
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Removing stop words (&quot;not&quot;, &quot;never&quot;, &quot;no&quot;) before feeding text into a Transformer or sentiment model.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Stripping stop words turns <em>&quot;This movie is not good&quot;</em> into <em>&quot;movie good&quot;</em>, completely inverting the true meaning! Never strip stop words when using contextual embeddings or Transformers.
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Padding sequences in a batch without passing the attention_mask into the Transformer.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            If you pad shorter sentences with <code>&lt;PAD&gt;</code> tokens but forget to pass <code>attention_mask</code> into <code>model(input_ids, attention_mask=mask)</code>, Self-Attention mixes the fake padding tokens into your real word representations!
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Right-padding instead of Left-padding when running batched autoregressive LLM generation.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Decoder-only LLMs generate the next token immediately after the very last token on the right. If you pad on the right during batched generation, the LLM tries to continue generating after the <code>&lt;PAD&gt;</code> tokens! Always set <code>padding_side=&quot;left&quot;</code> for batched LLM inference.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section className="pb-6">
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">
+          Rigid Word Dictionaries (Classical NLP)
+        </div>
+        <div className="text-center font-bold text-white">
+          Split on Spaces → Huge 500k Vocabulary → Breaks on Typos, Code &amp; New Words (&lt;UNK&gt;)
+        </div>
+      </div>
+      <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-6">
+        <div className="mb-4 text-lg font-bold text-blue-400">
+          Byte-Level Subword Tokenization (Modern LLMs)
+        </div>
+        <div className="text-center font-bold text-white">
+          Raw Text / Code / Emoji → BPE Subword Merges → Compact Integer IDs → Ready for Vector Embeddings!
+        </div>
+      </div>
+      <div>
+        The important conceptual shift is realizing that a tokenizer is the <strong className="text-white">eyes of a Language Model</strong>. Before a Transformer can apply Self-Attention or predict the next word, Byte-Pair Encoding translates messy human text, source code, and emojis into a clean, lossless stream of integer IDs with zero unknown-word failures.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Remember:</strong> Tokenization turns words into <strong className="text-cyan-300">arbitrary integer IDs</strong> (like ID <code>15836</code>), which have no mathematical meaning on their own—in the very next lesson, <strong className="text-emerald-300">Word Embeddings</strong> will turn each integer ID into a rich, multi-dimensional vector of meaning!
+      </div>
+    </div>
+  </section>
+</div>

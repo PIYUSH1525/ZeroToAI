@@ -1,0 +1,502 @@
+---
+title: "Plotting with Matplotlib"
+slug: "plotting-with-matplotlib"
+order: 4
+category: "Python Programming"
+subcategory: "Visualization"
+difficulty: "Beginner"
+readTime: "25 min"
+description: "Learn how to turn raw numbers, model predictions, and training logs into clear visual charts—from beginner line plots to advanced multi-panel AI dashboards."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Thesis:</strong> You cannot fix what you cannot see. In Machine Learning, staring at thousands of raw numbers in a terminal will hide broken data, extreme outliers, and models that are memorizing instead of learning. Matplotlib is the visual microscope of Python—turning raw arrays into scatter plots, loss curves, and image grids so you can see exactly what your data and your AI model are doing.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner Foundations: Figure vs. Axes (The Canvas and the Frame)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When beginners first use Matplotlib, they often get confused because there are two ways to write code: the quick way (<code>plt.plot()</code>) and the professional way (<code>fig, ax = plt.subplots()</code>). Understanding one simple picture makes everything click:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">1. The Figure (fig) — The Blank Page</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Outer Container</span>
+          </div>
+          <div className="mb-4 text-xs leading-relaxed text-slate-300">
+            Think of <code>fig</code> as the <strong className="text-white">entire picture frame or blank window</strong>. It controls the overall image size (e.g., <code>figsize=(10, 5)</code>), background color, and saving the final image to a file (<code>fig.savefig(&quot;chart.png&quot;)</code>).
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 font-mono text-xs text-slate-200">
+            Controls: Window size, DPI resolution, and saving files.
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-violet-300">2. The Axes (ax) — The Actual Chart</span>
+            <span className="rounded bg-violet-950/80 px-2 py-0.5 font-mono text-xs text-violet-300">Drawing Area</span>
+          </div>
+          <div className="mb-4 text-xs leading-relaxed text-slate-300">
+            Think of <code>ax</code> as an <strong className="text-white">individual chart drawn inside the frame</strong> (with its own X-axis, Y-axis, title, and lines). One Figure can hold $1$ chart or a grid of $6$ charts side by side!
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 font-mono text-xs text-slate-200">
+            Controls: ax.plot(), ax.scatter(), ax.set_title(), ax.legend()
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <strong className="text-white">Why You Should Always Use <code>fig, ax = plt.subplots()</code>:</strong> Calling <code>plt.plot()</code> guesses which chart you want to draw on, which gets messy as soon as you have two charts on the same screen. Starting every plot with <code>fig, ax = plt.subplots()</code> gives you direct, predictable control over every chart!
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: The Four Essential Charts in Machine Learning
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        You do not need to memorize $50$ chart types. In Machine Learning and Data Science, <strong className="text-white">four core plots</strong> handle $90\%$ of your daily work:
+      </div>
+      <div className="my-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Chart Type</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Matplotlib Command</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">What It Shows</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Primary AI Use Case</th>
+            </tr>
+          </thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-cyan-300">1. Line Plot</td>
+              <td className="px-5 py-4 font-mono text-xs">ax.plot(x, y)</td>
+              <td className="px-5 py-4">Continuous trends over time or steps</td>
+              <td className="px-5 py-4">Plotting <strong className="text-white">Training vs. Validation Loss</strong> across epochs</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-violet-300">2. Scatter Plot</td>
+              <td className="px-5 py-4 font-mono text-xs">ax.scatter(x, y, c=labels)</td>
+              <td className="px-5 py-4">Relationship between 2 variables as dots</td>
+              <td className="px-5 py-4">Visualizing <strong className="text-white">data clusters</strong>, outliers, and regression lines</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-emerald-300">3. Histogram</td>
+              <td className="px-5 py-4 font-mono text-xs">ax.hist(data, bins=30)</td>
+              <td className="px-5 py-4">Shape and spread of a single feature</td>
+              <td className="px-5 py-4">Checking if features follow a <strong className="text-white">Bell Curve</strong> or are skewed</td>
+            </tr>
+            <tr>
+              <td className="px-5 py-4 font-semibold text-amber-300">4. Bar Chart</td>
+              <td className="px-5 py-4 font-mono text-xs">ax.bar(names, scores)</td>
+              <td className="px-5 py-4">Comparing categories side by side</td>
+              <td className="px-5 py-4">Ranking <strong className="text-white">Feature Importance</strong> or comparing model accuracies</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check </span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          Before training a house-price model, you want to check if the <code>price</code> column has a normal bell-curve shape or if most houses are cheap with a few extreme multi-million-dollar outliers. Which Matplotlib plot should you use?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) A Histogram: ax.hist(prices, bins=30)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>A histogram groups a single continuous column into value buckets (bins) and counts how many rows fall into each bucket, immediately revealing skewness and outliers.</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) A Line Plot: ax.plot(prices)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>A line plot connects row $0$ to row $1$ to row $2$ in order, which creates a noisy, meaningless zigzag unless the rows are ordered over time.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Intermediate: Multi-Panel Subplots and Diagnosing Model Training
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When training a neural network, looking at a single chart is rarely enough. You want to see the <strong className="text-cyan-300">Loss Curve</strong> on the left and the <strong className="text-emerald-300">Accuracy Curve</strong> on the right at the same time. We create side-by-side grids using <code>plt.subplots(nrows, ncols)</code>:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-emerald-300">1. Side-by-Side Plots (1 Row, 2 Columns)</div>
+          <div className="mb-3 text-sm text-slate-300">
+            Returns <code>axes</code> as a 1D list of $2$ charts (<code>axes[0]</code> is the left chart, <code>axes[1]</code> is the right chart):
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 font-mono text-xs text-slate-200">
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+          </div>
+        </div>
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-cyan-300">2. 2D Grid of Plots (2 Rows, 2 Columns)</div>
+          <div className="mb-3 text-sm text-slate-300">
+            Returns <code>axes</code> as a 2D grid (like <code>axes[0, 1]</code> for top-right). Always add <code>plt.tight_layout()</code> so titles never overlap!
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 font-mono text-xs text-slate-200">
+            fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+          </div>
+        </div>
+      </div>
+      <h3 className="mt-8 text-xl font-bold text-white">How to Read a Training vs. Validation Loss Plot</h3>
+      <div>
+        Every AI engineer plots <strong className="text-cyan-300">Training Loss</strong> and <strong className="text-rose-300">Validation Loss</strong> on the same axes to spot three classic model behaviors:
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-5">
+          <div className="mb-1 font-bold text-amber-300">1. Underfitting</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Both Training Loss and Validation Loss stay <strong className="text-white">high and flat</strong>. The model is too simple or the learning rate is too small.
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5">
+          <div className="mb-1 font-bold text-emerald-300">2. Sweet Spot (Good Fit)</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Both Training Loss and Validation Loss decrease smoothly and <strong className="text-white">level off close together</strong> at a low error value.
+          </div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.05] p-5">
+          <div className="mb-1 font-bold text-rose-300">3. Overfitting</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Training Loss keeps dropping toward $0$, but <strong className="text-white">Validation Loss curves back UP</strong>! Stop training at the lowest validation point (<strong className="text-emerald-300">Early Stopping</strong>).
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Intermediate: Plotting Images, Heatmaps, and Colorbars (ax.imshow)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        How do we visualize a 2D matrix—such as a grayscale image in Computer Vision, a <strong className="text-orange-300">Confusion Matrix</strong> in Classification, or a <strong className="text-cyan-300">Transformer Attention Map</strong>? We use <code>ax.imshow(matrix)</code>, which paints every number in a 2D array as a colored pixel:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-orange-300">1. Heatmaps &amp; Confusion Matrices</div>
+          <div className="mb-4 text-sm text-slate-300">
+            Pass any 2D matrix and choose a perceptually uniform colormap like <code>cmap=&quot;viridis&quot;</code> or <code>cmap=&quot;Blues&quot;</code>, then attach <code>fig.colorbar(im)</code> to show the number scale.
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 font-mono text-xs text-slate-200">
+            im = ax.imshow(attn_matrix, cmap=&quot;viridis&quot;)
+          </div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-rose-300">2. The PyTorch Image Shape Rule!</div>
+          <div className="mb-4 text-sm text-slate-300">
+            PyTorch stores color images as <strong className="text-white">Channels-First</strong> <code>(3, H, W)</code>, but Matplotlib requires <strong className="text-emerald-300">Channels-Last</strong> <code>(H, W, 3)</code>! Always permute axes before plotting:
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 font-mono text-xs text-emerald-300">
+            img_hwc = tensor_chw.permute(1, 2, 0).cpu().numpy()
+          </div>
+        </div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check </span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          You have a single RGB image tensor in PyTorch on the GPU with shape <code>(3, 224, 224)</code>. If you pass it directly into <code>ax.imshow(img)</code>, Matplotlib crashes with <code>TypeError: Invalid shape (3, 224, 224) for image data</code>. How do you fix it?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) Move to CPU and reorder axes to (224, 224, 3) using .permute(1, 2, 0)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>Matplotlib operates on CPU NumPy arrays and expects Height and Width first, followed by the 3 RGB color channels: <code>(H, W, C) = (224, 224, 3)</code>.</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) Flatten the image into a 1D vector of length 150,528</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span><code>ax.imshow()</code> requires a 2D grayscale grid <code>(H, W)</code> or a 3D color grid <code>(H, W, 3)</code> so it knows the spatial height and width of the image.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Decision Boundaries, Confidence Bands, and Vector Contours
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        At the <strong className="text-white">Advanced ML</strong> level, we use Matplotlib not just to plot raw data, but to visualize the <strong className="text-cyan-300">internal geometry and uncertainty of trained models</strong>:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-cyan-300">1. Uncertainty Bands (ax.fill_between)</div>
+          <div className="mb-3 text-sm text-slate-300">
+            In Reinforcement Learning and deep learning experiments, we run $5$ random seeds and plot the mean curve $\mu$ with a shaded $\pm 1\sigma$ standard deviation band:
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 font-mono text-xs text-slate-200">
+            ax.fill_between(epochs, mean - std, mean + std, alpha=0.25)
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-violet-300">2. 2D Decision Boundaries (ax.contourf)</div>
+          <div className="mb-3 text-sm text-slate-300">
+            By generating a 2D coordinate grid with <code>np.meshgrid(x, y)</code> and predicting class probabilities across every grid point, <code>ax.contourf()</code> colors the exact regions where a neural network switches from Class 0 to Class 1!
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 font-mono text-xs text-slate-200">
+            ax.contourf(XX, YY, Z_probs, levels=20, cmap=&quot;coolwarm&quot;, alpha=0.3)
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <strong className="text-white">Production Memory Rule (Preventing RAM Leaks in Training Loops):</strong> If your training script saves a chart at the end of every epoch inside a 1,000-epoch loop, Matplotlib keeps every figure open in RAM by default until the server crashes! Always call <strong className="text-emerald-300"><code>plt.close(fig)</code></strong> immediately after <code>fig.savefig()</code> to free the memory.
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check </span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          You plot your neural network&apos;s Training Loss and Validation Loss across $50$ epochs. From Epoch $1$ to $15$, both curves drop smoothly. After Epoch $15$, Training Loss continues dropping toward $0.001$, while Validation Loss turns upward and climbs steeply. What is your chart telling you?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) The model started overfitting at Epoch 15; use the Epoch 15 checkpoint</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>Diverging loss curves—where training error falls while validation error rises—are the classic visual signature of overfitting. Marking Epoch $15$ with <code>ax.axvline(15)</code> highlights the exact Early Stopping point.</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) The model is underfitting and needs 100 more epochs</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Training for more epochs will only make the model memorize the training noise further and worsen validation performance.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Matplotlib Anatomy &amp; AI Plotting Workflow
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Look at how data flows from NumPy or PyTorch arrays into a structured <strong className="text-cyan-300">Figure</strong> containing multiple <strong className="text-violet-300">Axes</strong> subplots, gets annotated with titles and uncertainty bands, and is exported cleanly without leaking memory:
+      </div>
+      <Mermaid chart="graph LR; Data[NumPy / PyTorch Arrays] -->|Detach & Move to CPU| Fig[Create Figure & Axes Grid: fig, axes = plt.subplots]; Fig -->|ax1.plot + fill_between| P1[Subplot 1: Loss Curve & Std Band]; Fig -->|ax2.imshow + colorbar| P2[Subplot 2: Confusion / Attention Heatmap]; P1 -->|fig.tight_layout| Save[Save High-DPI PNG / SVG]; P2 -->|fig.tight_layout| Save; Save -->|plt.close fig| Free[Free RAM in Loop];" />
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Building a 2-Panel AI Training Dashboard
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Here is a complete, runnable script that builds a professional 2-panel Machine Learning dashboard: <strong className="text-cyan-300">Panel 1</strong> plots Training vs. Validation Loss with an uncertainty band (<code>fill_between</code>) and an Early Stopping marker, while <strong className="text-violet-300">Panel 2</strong> plots a labeled Confusion Matrix heatmap using <code>imshow</code>:
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">matplotlib_ai_dashboard.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.11+ · Matplotlib &amp; NumPy</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-cyan-300">import numpy as np</span>
+            <span className="block text-cyan-300">import matplotlib.pyplot as plt</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Simulate 20 Epochs of Training &amp; Validation Loss</span>
+            <span className="block">epochs = np.arange(1, 21)</span>
+            <span className="block">trainLoss = 1.2 * np.exp(-0.22 * epochs) + 0.05</span>
+            <span className="block">valLoss = 1.2 * np.exp(-0.18 * epochs) + 0.02 * ((epochs - 12) ** 2) * (epochs &gt; 12) + 0.12</span>
+            <span className="block">valStd = np.full_like(valLoss, 0.04)</span>
+            <span className="block">bestEpoch = int(epochs[np.argmin(valLoss)])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Create a 1x2 Multi-Panel Figure (Object-Oriented API)</span>
+            <span className="block text-violet-300">fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.8), dpi=120)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># PANEL 1: Loss Curves + Uncertainty Band + Early Stopping Line</span>
+            <span className="block">ax1.plot(epochs, trainLoss, label=&quot;Train Loss&quot;, color=&quot;#00F0FF&quot;, linewidth=2)</span>
+            <span className="block">ax1.plot(epochs, valLoss, label=&quot;Val Loss&quot;, color=&quot;#F43F5E&quot;, linewidth=2)</span>
+            <span className="block">ax1.fill_between(epochs, valLoss - valStd, valLoss + valStd, color=&quot;#F43F5E&quot;, alpha=0.18)</span>
+            <span className="block">ax1.axvline(bestEpoch, color=&quot;#10B981&quot;, linestyle=&quot;--&quot;, label=f&quot;Best Epoch ({bestEpoch})&quot;)</span>
+            <span className="block">ax1.set_title(&quot;Training vs. Validation Loss&quot;)</span>
+            <span className="block">ax1.set_xlabel(&quot;Epoch&quot;)</span>
+            <span className="block">ax1.set_ylabel(&quot;Cross-Entropy Loss&quot;)</span>
+            <span className="block">ax1.grid(True, alpha=0.25)</span>
+            <span className="block">ax1.legend()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># PANEL 2: Confusion Matrix Heatmap with Annotated Counts</span>
+            <span className="block">confMatrix = np.array([[92, 8], [11, 89]])</span>
+            <span className="block">im = ax2.imshow(confMatrix, cmap=&quot;Blues&quot;)</span>
+            <span className="block">fig.colorbar(im, ax=ax2, fraction=0.046, pad=0.04)</span>
+            <span className="block">ax2.set_title(&quot;Confusion Matrix&quot;)</span>
+            <span className="block">ax2.set_xticks([0, 1], labels=[&quot;Pred: Normal&quot;, &quot;Pred: Spam&quot;])</span>
+            <span className="block">ax2.set_yticks([0, 1], labels=[&quot;True: Normal&quot;, &quot;True: Spam&quot;])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Overlay exact numbers inside each heatmap cell</span>
+            <span className="block">for r in range(2):</span>
+            <span className="block">    for c in range(2):</span>
+            <span className="block">        ax2.text(c, r, str(confMatrix[r, c]), ha=&quot;center&quot;, va=&quot;center&quot;, fontweight=&quot;bold&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Clean Layout, Save High-Res Image, and Close to Free RAM</span>
+            <span className="block">fig.tight_layout()</span>
+            <span className="block text-emerald-300">print(f&quot;Dashboard ready! Best validation loss at Epoch {bestEpoch}.&quot;)</span>
+            <span className="block text-violet-300">plt.close(fig)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-teal-500/20 bg-teal-500/[0.05] p-5 text-sm leading-7 text-slate-300">
+        <strong className="text-teal-300">Pro Tip (Exporting Sharp Charts for Papers &amp; Dashboards):</strong> Always pass <code>dpi=300</code> and <code>bbox_inches=&quot;tight&quot;</code> inside <code>fig.savefig(&quot;plot.png&quot;, dpi=300, bbox_inches=&quot;tight&quot;)</code> so axis labels are never clipped off the edge of the image!
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A Matplotlib <code>Figure</code> (<code>fig</code>) is the outer window or page, while an <code>Axes</code> (<code>ax</code>) is an individual chart inside that window. Always prefer <code>fig, ax = plt.subplots()</code> over global <code>plt.plot()</code> calls.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use Line Plots (<code>ax.plot</code>) for training curves over time, Scatter Plots (<code>ax.scatter</code>) for 2D feature relationships, Histograms (<code>ax.hist</code>) for checking data distributions, and Bar Charts (<code>ax.bar</code>) for category comparisons.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Plotting Training Loss alongside Validation Loss immediately diagnoses Underfitting (both high) vs. Overfitting (validation loss curves upward while training loss drops).</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use <code>ax.imshow()</code> to visualize 2D matrices such as images, Confusion Matrices, and Transformer Attention weights, and convert PyTorch images from <code>(C, H, W)</code> to <code>(H, W, C)</code> first.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use <code>ax.fill_between()</code> to shade confidence/variance bands across multiple training runs and <code>ax.contourf()</code> to plot 2D model decision boundaries.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Always call <code>fig.tight_layout()</code> to prevent overlapping labels and <code>plt.close(fig)</code> inside training loops to prevent memory leaks.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Common Mistakes
+    </h2>
+    <div className="rounded-2xl border border-rose-500/25 bg-rose-950/[0.15] p-6 sm:p-8">
+      <div className="space-y-6">
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Passing a PyTorch GPU tensor with requires_grad=True directly into Matplotlib.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Matplotlib only understands CPU NumPy arrays. Passing a GPU or autograd tensor crashes with a <code>RuntimeError</code>. Always call <code>tensor.detach().cpu().numpy()</code> before plotting.
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Plotting RGB images with Channels-First shape (3, H, W) instead of (H, W, 3).
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            PyTorch stores color channels in axis $0$, whereas <code>ax.imshow()</code> requires color channels in the last axis. Reorder axes with <code>img.permute(1, 2, 0)</code> or <code>np.transpose(img, (1, 2, 0))</code>.
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Creating hundreds of figures inside a training loop without calling plt.close(fig).
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Matplotlib retains references to every created Figure in memory until explicitly closed, which will steadily eat gigabytes of RAM during long training runs.
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Calling fig.savefig() AFTER calling plt.show(), resulting in a blank white image file.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            <code>plt.show()</code> displays and then clears the active figure canvas. Always call <code>fig.savefig(&quot;chart.png&quot;)</code> <em>before</em> calling <code>plt.show()</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section className="pb-6">
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">
+          Training Blind (Terminal Numbers Only)
+        </div>
+        <div className="text-center font-bold text-white">
+          Print Raw Loss Numbers → Miss Outliers &amp; Overfitting → Deploy Broken Model
+        </div>
+      </div>
+      <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-6">
+        <div className="mb-4 text-lg font-bold text-blue-400">
+          Visual AI Engineering (Matplotlib Diagnostics)
+        </div>
+        <div className="text-center font-bold text-white">
+          Inspect Feature Histograms → Track Train/Val Curves → Visualize Confusion &amp; Attention Maps → Reliable Model
+        </div>
+      </div>
+      <div>
+        The important conceptual shift is treating visualization not as a pretty slide-deck decoration at the end of a project, but as your primary debugging tool at every stage—before training (to spot bad data), during training (to catch overfitting), and after training (to see where the model makes mistakes).
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Remember:</strong> A single 5-line Matplotlib chart will often reveal in two seconds a bug that would take two days to find by staring at printed arrays in a terminal.
+      </div>
+    </div>
+  </section>
+</div>

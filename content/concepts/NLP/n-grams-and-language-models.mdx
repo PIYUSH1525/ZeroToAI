@@ -1,0 +1,521 @@
+---
+title: "N-Grams and Language Models"
+slug: "n-grams-and-language-models"
+order: 2
+category: "NLP"
+subcategory: "Language Modeling"
+difficulty: "Beginner"
+readTime: "26 min"
+description: "How statistical language modeling began—from the Chain Rule of Probability and Markov N-Grams to Laplace Smoothing, Perplexity, and the leap to Neural LLMs."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Thesis:</strong> Before neural networks and Transformers existed, how did computers predict the next word on your phone keyboard or score whether a sentence sounded like real English? They used N-Gram Language Models—statistical engines that count how often short sequences of $N$ words appear together in a massive text corpus. Understanding N-Grams gives you the exact mathematical foundation of modern Large Language Models, because GPT-4 and Llama-3 solve the exact same next-token probability equation[cite: 10]!
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner Foundations: What is a Language Model?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        At its core, a <strong className="text-white">Language Model (LM)</strong> is any mathematical system that does two equivalent things:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 text-lg font-bold text-cyan-300">1. Score a Full Sentence</div>
+          <div className="mb-4 text-sm leading-relaxed text-slate-300">
+            Assigns a probability $P(w_1, w_2, \dots, w_T)$ to an entire sequence of words so a speech recognizer or translator knows that <strong className="text-white">&quot;recognize speech&quot;</strong> is much more likely than <strong className="text-rose-300">&quot;wreck a nice beach&quot;</strong>!
+          </div>
+          <div className="rounded-lg border border-white/10 bg-slate-950 p-3 text-center font-mono text-xs text-cyan-300">
+            P(&quot;the cat sat&quot;) &gt;&gt; P(&quot;sat cat the&quot;)
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-2 text-lg font-bold text-violet-300">2. Predict the Next Word</div>
+          <div className="mb-4 text-sm leading-relaxed text-slate-300">
+            Given the preceding words, computes the conditional probability of the upcoming word $P(w_t \mid w_1, \dots, w_{t-1})$[cite: 10]—powering autocomplete and text generation[cite: 10]!
+          </div>
+          <div className="rounded-lg border border-white/10 bg-slate-950 p-3 text-center font-mono text-xs text-violet-300">
+            P(&quot;mat&quot; | &quot;the cat sat on the&quot;)
+          </div>
+        </div>
+      </div>
+      <div>
+        How are these two tasks connected? Through the <strong className="text-white">Chain Rule of Probability</strong>! The probability of any full sentence is simply the product of each word&apos;s conditional probability given all the words that came before it:
+      </div>
+      <div className="my-6 rounded-2xl border border-blue-400/20 bg-blue-400/[0.04] px-6 py-8 text-center text-lg">
+        <div>$$P(w_1, w_2, \dots, w_T) = P(w_1) \cdot P(w_2 \mid w_1) \cdot P(w_3 \mid w_1, w_2) \cdots = \prod_{t=1}^{T} P(w_t \mid w_1, \dots, w_{t-1})$$</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">
+          Why Counting Full Histories Fails Immediately
+        </div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          Suppose we want to compute $P(\text{&quot;mat&quot;} \mid \text{&quot;Yesterday the fluffy ginger cat sat quietly on the&quot;})$ by counting how many times that exact $9$-word history appeared on the internet. Because language is infinitely creative, almost any long sentence has appeared <strong className="text-rose-300">$0$ times</strong> in your dataset! We need a shortcut that looks only at the most recent few words.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: What is an N-Gram and the Markov Assumption?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        An <strong className="text-white">N-Gram</strong> is simply a contiguous chunk of <strong className="text-violet-300">$N$ consecutive tokens (words)</strong> from a piece of text. Depending on the window size $N$, we give them specific names:
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.05] p-5">
+          <div className="mb-2 text-base font-bold text-cyan-300">1. Unigram ($N = 1$)</div>
+          <div className="mb-2 font-mono text-xs text-slate-400">[&quot;the&quot;], [&quot;cat&quot;], [&quot;sat&quot;]</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Single isolated words ($0$ words of context). Assumes every word is chosen independently based purely on how common it is.
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.05] p-5">
+          <div className="mb-2 text-base font-bold text-violet-300">2. Bigram ($N = 2$)</div>
+          <div className="mb-2 font-mono text-xs text-slate-400">[&quot;the cat&quot;], [&quot;cat sat&quot;]</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            2-word pairs. Predicts the next word by looking at <strong className="text-white">only the $1$ immediately preceding word</strong>: $P(w_t \mid w_{t-1})$.
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5">
+          <div className="mb-2 text-base font-bold text-emerald-300">3. Trigram ($N = 3$)</div>
+          <div className="mb-2 font-mono text-xs text-slate-400">[&quot;the cat sat&quot;]</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            3-word triplets. Predicts the next word by looking at the <strong className="text-white">$2$ preceding words</strong>: $P(w_t \mid w_{t-2}, w_{t-1})$.
+          </div>
+        </div>
+      </div>
+      <div>
+        To make counting possible, an N-Gram model makes the <strong className="text-white">Markov Assumption</strong>: instead of conditioning on the entire paragraph history, we assume the probability of the next word depends <strong className="text-cyan-300">only on the last $N - 1$ words</strong>:
+      </div>
+      <div className="my-6 rounded-2xl border border-violet-400/20 bg-violet-400/[0.04] px-6 py-8 text-center text-lg">
+        <div>$$P(w_t \mid w_1, w_2, \dots, w_{t-1}) \approx P(w_t \mid w_{t-N+1}, \dots, w_{t-1})$$</div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check </span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          In a Trigram ($N = 3$) language model, how many previous words of context does the model look at when predicting the next word $w_t$?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) 2 previous words (because N - 1 = 3 - 1 = 2)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>A Trigram consists of $3$ words total: the $2$ context words $(w_{t-2}, w_{t-1})$ plus the $1$ target word $w_t$ being predicted!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) 3 previous words</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Looking at $3$ previous words plus the $1$ predicted word forms a $4$-word window (a 4-gram). An $N$-gram model always conditions on $N - 1$ previous words.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Intermediate: Maximum Likelihood Estimation (Counting &amp; Dividing)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        How do we &quot;train&quot; a Bigram ($N = 2$) model on a text dataset? There is no gradient descent required! By <strong className="text-emerald-300">Maximum Likelihood Estimation (MLE)</strong>, the probability $P(w_t \mid w_{t-1})$ is simply the number of times the pair $(w_{t-1}, w_t)$ appeared together, divided by the total number of times $w_{t-1}$ appeared:
+      </div>
+      <div className="my-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] px-6 py-8 text-center text-lg">
+        <div>$$P_{\text{MLE}}(w_t \mid w_{t-1}) = \dfrac{\text{Count}(w_{t-1}, w_t)}{\text{Count}(w_{t-1})}$$</div>
+      </div>
+      <div className="rounded-2xl border border-blue-400/15 bg-blue-400/[0.05] p-6">
+        <h3 className="mb-4 text-lg font-bold text-white">Step-by-Step Worked Example: Calculating Bigram Probabilities by Hand</h3>
+        <div className="space-y-4 text-sm">
+          <div>
+            Suppose our training corpus has $3$ sentences framed with start <code>&lt;s&gt;</code> and end <code>&lt;/s&gt;</code> tokens:<br />
+            1. <code>&lt;s&gt; I love deep learning &lt;/s&gt;</code><br />
+            2. <code>&lt;s&gt; I love machine learning &lt;/s&gt;</code><br />
+            3. <code>&lt;s&gt; deep learning is fun &lt;/s&gt;</code>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-slate-950/80 p-4 text-center">
+              <div className="mb-2 font-bold text-cyan-300">What follows &quot;love&quot;?</div>
+              <div>$$\text{Count}(\text{love}) = 2$$</div>
+              <div className="mt-2">$$P(\text{deep} \mid \text{love}) = \dfrac{1}{2} = 0.50, \quad P(\text{machine} \mid \text{love}) = \dfrac{1}{2} = 0.50$$</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/80 p-4 text-center">
+              <div className="mb-2 font-bold text-emerald-300">What follows &quot;deep&quot;?</div>
+              <div>$$\text{Count}(\text{deep}) = 2$$</div>
+              <div className="mt-2">$$P(\text{learning} \mid \text{deep}) = \dfrac{\text{Count}(\text{deep, learning})}{\text{Count}(\text{deep})} = \dfrac{2}{2} = 1.00$$</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Intermediate: The Zero-Probability Trap, Smoothing &amp; Perplexity
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        What happens at test time if a user types a completely valid phrase like <code>&quot;I love Python&quot;</code>, where the bigram <code>(&quot;love&quot;, &quot;Python&quot;)</code> never appeared in our small training set?
+      </div>
+      <div>
+        Because $\text{Count}(\text{love, Python}) = 0$, our MLE formula gives $P(\text{Python} \mid \text{love}) = 0.0$. Worse yet, because sentence probability multiplies all word probabilities together ($P_1 \times P_2 \times 0 \times P_4 = 0$), <strong className="text-rose-300">a single unseen N-gram makes the probability of the entire document collapse to ZERO</strong> (and $\ln(0) = -\infty$)!
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-orange-300">1. Add-$k$ / Laplace Smoothing ($k = 1$)</div>
+          <div className="mb-4 text-sm text-slate-300">
+            The simplest fix: add a small count $k$ (e.g., $k=1$ for Laplace smoothing, or $k=0.1$) to every possible bigram in the vocabulary of size $|\mathcal{V}|$, and add $k|\mathcal{V}|$ to the denominator so probabilities still sum to $1.0$:
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 text-center text-sm">
+            <div>$$P_{\text{Add-}k}(w_t \mid w_{t-1}) = \dfrac{\text{Count}(w_{t-1}, w_t) + k}{\text{Count}(w_{t-1}) + k|\mathcal{V}|}$$</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-cyan-300">2. Interpolation &amp; Kneser-Ney Backoff</div>
+          <div className="mb-4 text-sm text-slate-300">
+            For large vocabularies, <strong className="text-white">Linear Interpolation</strong> blends Trigram, Bigram, and Unigram probabilities together ($\lambda_3 P_3 + \lambda_2 P_2 + \lambda_1 P_1$ where $\sum \lambda_i = 1$) so the model falls back to shorter contexts when a 3-gram is unseen!
+          </div>
+          <div className="rounded-lg bg-slate-950 p-3 text-center text-sm">
+            <div>$$\hat{P}(w_t \mid w_{t-2}, w_{t-1}) = \lambda_3 P_3 + \lambda_2 P_2 + \lambda_1 P_1$$</div>
+          </div>
+        </div>
+      </div>
+      <h3 className="mt-8 text-xl font-bold text-white">How We Evaluate ANY Language Model: Perplexity ($\text{PPL}$)</h3>
+      <div>
+        How do researchers compare an N-Gram model, Llama-3, and GPT-4 on a test dataset? We use <strong className="text-emerald-300">Perplexity ($\text{PPL}$)</strong>, which is simply the <strong className="text-white">exponential of the average Cross-Entropy (Negative Log-Likelihood) Loss</strong> over $T$ test tokens:
+      </div>
+      <div className="my-6 rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-8 text-center text-lg">
+        <div>$$\text{Perplexity (PPL)} = \exp\left( -\dfrac{1}{T} \sum_{t=1}^{T} \ln P(w_t \mid w_{\lt t}) \right) = \exp(\mathcal{L}_{\text{Cross-Entropy}})$$</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">
+          Intuitive Meaning of Perplexity (Lower is Better!)
+        </div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          Perplexity measures the <strong className="text-cyan-300">effective branching factor</strong>—how &quot;surprised&quot; or confused the model is by the test text. If a language model has a Perplexity of <strong className="text-emerald-300">$10$</strong>, it means that on average, at each step, the model is as uncertain as if it had to choose uniformly among <strong className="text-white">$10$ equally likely words</strong>. A perfect model that predicts every word with $100\%$ certainty ($P = 1.0$) has the lowest possible Perplexity of $e^0 = 1.0$!
+        </div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check </span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          You evaluate two language models on a validation dataset. Model A achieves an average Cross-Entropy Loss of $2.0$ ($\text{PPL} = e^{2.0} \approx 7.39$), while Model B achieves a Cross-Entropy Loss of $4.0$ ($\text{PPL} = e^{4.0} \approx 54.60$). Which model is better?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) Model A (Lower Perplexity 7.39 means higher probability assigned to the true test words!)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>Lower Perplexity is always better: Model A narrows the next token down to $\approx 7.4$ plausible choices on average, whereas Model B is confused among $\approx 54.6$ choices.</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) Model B (because 54.60 is a larger number)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Perplexity is $\exp(\text{Loss})$—so a higher Perplexity means higher error and lower confidence on the ground-truth tokens.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Why N-Grams Hit a Wall &amp; How Neural LLMs Replaced Them
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Why can&apos;t we just build a $50$-gram count model to rival ChatGPT? Because classical N-Gram models suffer from <strong className="text-rose-300">three fatal scaling bottlenecks</strong> that only Neural Language Models (Embeddings + Transformers) could solve:
+      </div>
+      <div className="my-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Bottleneck</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Classical N-Gram Count Model</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Modern Neural LLM (Transformer)</th>
+            </tr>
+          </thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-rose-300">1. Curse of Dimensionality</td>
+              <td className="px-5 py-4">Table size explodes as $|\mathcal{V}|^N$. For $|\mathcal{V}|=50\text{k}$, a 4-gram table has $6.25 \times 10^{18}$ cells!</td>
+              <td className="px-5 py-4 text-emerald-300">Uses fixed-size weight matrices $\mathbf{W}$ that scale linearly/quadratically with dimension $d$, not $|\mathcal{V}|^N$.</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-amber-300">2. Zero Semantic Sharing</td>
+              <td className="px-5 py-4">Seeing <em>&quot;the cat chased the mouse&quot;</em> teaches the model <strong className="text-white">zero</strong> about <em>&quot;the dog pursued the rodent&quot;</em>!</td>
+              <td className="px-5 py-4 text-emerald-300"><strong className="text-white">Vector Embeddings</strong> place <em>&quot;cat&quot;</em> and <em>&quot;dog&quot;</em> nearby in $\mathbb{R}^d$, generalizing across synonyms automatically!</td>
+            </tr>
+            <tr>
+              <td className="px-5 py-4 font-semibold text-cyan-300">3. Myopic Context Window</td>
+              <td className="px-5 py-4">Blind to anything beyond $3\text{--}5$ words ago; forgets a character&apos;s name from the previous sentence.</td>
+              <td className="px-5 py-4 text-emerald-300"><strong className="text-white">Self-Attention</strong> attends directly across $32\text{k}\text{--}1\text{M}+$ tokens of context!</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">
+          Where N-Grams Are Still Used in Modern AI Today!
+        </div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          Even in the age of GPT-4, N-Grams are used every day for: (1) <strong className="text-cyan-300">Evaluation Metrics</strong> like <strong className="text-white">BLEU</strong> (precision of $1\text{--}4$ grams in machine translation) and <strong className="text-white">ROUGE-N</strong> (summarization overlap), (2) <strong className="text-violet-300">BM25 / TF-IDF Keyword Retrieval</strong> inside Hybrid RAG systems, and (3) <strong className="text-emerald-300">N-Gram Speculative Decoding</strong>, where a fast N-gram lookup drafts candidate tokens from the prompt and the LLM verifies them in parallel!
+        </div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check </span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          A Trigram model is trained on a corpus containing &quot;The surgeon walked into the operating room&quot; $500$ times, but the phrase &quot;The physician walked into the operating room&quot; never appeared once. Why does a Neural Language Model assign a high probability to the second sentence while the unsmoothed Trigram model assigns $0$?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) Neural models represent &quot;surgeon&quot; and &quot;physician&quot; as similar dense vectors; N-grams treat words as unrelated discrete symbols</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>Because N-gram tables index by exact string IDs, zero information transfers between synonyms. Neural LMs map both words to nearly identical vectors in embedding space, so anything learned about &quot;surgeon&quot; generalizes to &quot;physician&quot;!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) Because Neural Language Models do not predict conditional probabilities</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Both N-gram models and Neural LLMs predict the exact same conditional distribution $P(w_t \mid \text{context})$[cite: 10]; they differ in how they parameterize that function (count tables vs. continuous embeddings + neural weights).</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: From N-Gram Counts to Perplexity &amp; Generation
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Look at how a statistical N-Gram Language Model extracts sliding windows of $N$ tokens, builds a smoothed conditional probability table, evaluates test sentences via Perplexity, and generates new text autoregressively:
+      </div>
+      <Mermaid chart="graph LR; Text[Training Corpus] -->|Slide Window of Size N| Count[Count N-Grams & N-1 Contexts]; Count -->|Add-k Laplace Smoothing| Prob[Smoothed Probability Table P of w_t given context]; Prob -->|Sum Log-Probabilities on Test Set| PPL[Evaluate Model: Perplexity = exp of NLL]; Prob -->|Sample Next Token & Shift Window| Gen[Autoregressive Text Generation];" />
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Smoothed Bigram Language Model &amp; Perplexity Calculator
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Here is a complete, runnable Python implementation of a <strong className="text-white">Laplace-Smoothed Bigram Language Model</strong> that trains on a text corpus, computes exact <strong className="text-cyan-300">Perplexity</strong> on an unseen test sentence, and generates text autoregressively:
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">ngram_language_model.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.11+ · Math &amp; Collections</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-cyan-300">import math</span>
+            <span className="block text-cyan-300">from collections import Counter</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Training Corpus Framed with &lt;s&gt; (BOS) and &lt;/s&gt; (EOS)</span>
+            <span className="block">corpus = [</span>
+            <span className="block">    &quot;&lt;s&gt; neural networks learn representations &lt;/s&gt;&quot;,</span>
+            <span className="block">    &quot;&lt;s&gt; neural networks predict tokens &lt;/s&gt;&quot;,</span>
+            <span className="block">    &quot;&lt;s&gt; language models predict tokens &lt;/s&gt;&quot;</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">unigramCounts = Counter()</span>
+            <span className="block">bigramCounts = Counter()</span>
+            <span className="block">vocab = set()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for sentence in corpus:</span>
+            <span className="block">    tokens = sentence.split()</span>
+            <span className="block">    vocab.update(tokens)</span>
+            <span className="block">    for i in range(len(tokens)):</span>
+            <span className="block">        unigramCounts[tokens[i]] += 1</span>
+            <span className="block">        if i &gt; 0:</span>
+            <span className="block">            bigramCounts[(tokens[i - 1], tokens[i])] += 1</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">vocabSize = len(vocab)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Add-k (Laplace) Smoothed Bigram Probability P(w_t | w_{t-1})</span>
+            <span className="block text-cyan-300">def bigramProb(prevWord: str, targetWord: str, k: float = 0.1) -&gt; float:</span>
+            <span className="block">    num = bigramCounts[(prevWord, targetWord)] + k</span>
+            <span className="block">    den = unigramCounts[prevWord] + (k * vocabSize)</span>
+            <span className="block">    return num / den</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Compute Sentence Perplexity: exp( -1/T * sum(ln P(w_t | w_{t-1})) )</span>
+            <span className="block text-cyan-300">def computePerplexity(sentence: str, k: float = 0.1) -&gt; float:</span>
+            <span className="block">    tokens = sentence.split()</span>
+            <span className="block">    logProbSum = 0.0</span>
+            <span className="block">    numPredictions = len(tokens) - 1</span>
+            <span className="block">    for i in range(1, len(tokens)):</span>
+            <span className="block">        prob = bigramProb(tokens[i - 1], tokens[i], k=k)</span>
+            <span className="block">        logProbSum += math.log(prob)</span>
+            <span className="block">    avgNegLogLikelihood = -logProbSum / numPredictions</span>
+            <span className="block">    return math.exp(avgNegLogLikelihood)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">seenSentence = &quot;&lt;s&gt; neural networks predict tokens &lt;/s&gt;&quot;</span>
+            <span className="block">unseenMix    = &quot;&lt;s&gt; language models learn representations &lt;/s&gt;&quot;</span>
+            <span className="block text-emerald-300">print(&quot;P(networks | neural):&quot;, round(bigramProb(&quot;neural&quot;, &quot;networks&quot;), 4))</span>
+            <span className="block text-emerald-300">print(&quot;Perplexity on Seen Sentence:&quot;, round(computePerplexity(seenSentence), 3))</span>
+            <span className="block text-emerald-300">print(&quot;Perplexity on Unseen Mix:&quot;, round(computePerplexity(unseenMix), 3))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-teal-500/20 bg-teal-500/[0.05] p-5 text-sm leading-7 text-slate-300">
+        <div className="mb-2 font-bold text-teal-300">
+          Pro Tip (Why We Sum Log-Probabilities Instead of Multiplying Raw Probabilities):
+        </div>
+        <div>
+          Look at <code>logProbSum += math.log(prob)</code> inside <code>computePerplexity()</code>! If a test book has $10{,}000$ words and each word has probability $0.1$, multiplying $0.1^{10000}$ immediately underflows to <code>0.0</code> in 64-bit floating-point arithmetic. Summing $\ln P$ in <strong className="text-white">log-space</strong> and taking $\exp()$ at the very end completely prevents numerical underflow!
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A Language Model assigns probabilities to sequences of tokens via the Chain Rule of Probability: $P(w_1, \dots, w_T) = \prod_{t=1}^{T} P(w_t \mid w_1, \dots, w_{t-1})$.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>An N-Gram model applies the Markov Assumption to approximate the full history using only the preceding $N - 1$ tokens (Unigram $N=1$, Bigram $N=2$, Trigram $N=3$).</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Maximum Likelihood Estimation (MLE) computes N-gram probabilities by simple frequency ratios: $P(w_t \mid w_{t-1}) = \dfrac{\text{Count}(w_{t-1}, w_t)}{\text{Count}(w_{t-1})}$.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Smoothing techniques (Laplace Add-$k$ Smoothing, Linear Interpolation, and Kneser-Ney Backoff) prevent unseen N-grams from assigning zero probability to valid test sentences.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Perplexity ($\text{PPL} = \exp(\text{Cross-Entropy Loss})$) is the universal intrinsic evaluation metric for both N-gram models and modern LLMs; lower Perplexity means a better, more confident model.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Classical N-grams suffer from exponential memory growth ($|\mathcal{V}|^N$) and zero semantic generalization across synonyms—limitations solved by Word Embeddings and Transformers.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Common Mistakes
+    </h2>
+    <div className="rounded-2xl border border-rose-500/25 bg-rose-950/[0.15] p-6 sm:p-8">
+      <div className="space-y-6">
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Evaluating an unsmoothed N-gram model on unseen test data.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Without smoothing or backoff, a single unseen word pair yields $P = 0$, causing $\ln(0) = -\infty$ and an infinite Perplexity score! Always apply smoothing or interpolation.
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Multiplying raw probabilities P_1 * P_2 * ... * P_T instead of adding log-probabilities.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Multiplying more than a few dozen probabilities smaller than $1.0$ causes floating-point underflow to zero. Always compute $\sum \ln P(w_t \mid \text{context})$ in log space.
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Comparing Perplexity scores between two models that use different tokenizers/vocabularies.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Perplexity is a branching factor over a specific vocabulary $|\mathcal{V}|$. A model with a $32\text{k}$ vocabulary will naturally have a lower per-token Perplexity than a model with a $128\text{k}$ vocabulary! Only compare Perplexity directly when models share the same tokenizer (or normalize by character/byte count).
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Forgetting to add start &lt;s&gt; and end &lt;/s&gt; boundary tokens before counting N-grams.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Without <code>&lt;s&gt;</code>, the model does not know which words are likely to start a sentence; without <code>&lt;/s&gt;</code>, generated sequences have no way to know when a sentence is complete and probabilities over all finite-length strings do not sum to $1.0$.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section className="pb-6">
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">
+          Classical N-Gram Language Models (Count Tables)
+        </div>
+        <div className="text-center font-bold text-white">
+          Look Back Only 2–4 Words → Exact String Matching → Zero Synonym Sharing → Explodes at Large N
+        </div>
+      </div>
+      <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-6">
+        <div className="mb-4 text-lg font-bold text-blue-400">
+          Neural Language Models / LLMs (Embeddings + Self-Attention)
+        </div>
+        <div className="text-center font-bold text-white">
+          Same Next-Token Equation P(w_t | context) → Continuous Vector Space → 100k+ Context Window!
+        </div>
+      </div>
+      <div>
+        The important conceptual shift is realizing that <strong className="text-white">the goal of language modeling has never changed</strong>: both a 1990s Trigram model and GPT-4 are autoregressive engines trying to minimize Perplexity by predicting $P(w_t \mid \text{context})$[cite: 10]. What changed is <em>how</em> we compute that probability—moving from brittle, discrete count tables to continuous <strong className="text-cyan-300">Word Embeddings</strong> and <strong className="text-violet-300">Transformer Self-Attention</strong>.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Remember:</strong> N-Grams proved that simple next-word prediction could capture grammar and local fluency, and their core failure—treating words as isolated symbols with zero shared meaning—directly motivated the invention of <strong className="text-emerald-300">Word Embeddings</strong>!
+      </div>
+    </div>
+  </section>
+</div>
