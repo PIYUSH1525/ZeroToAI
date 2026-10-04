@@ -1,411 +1,491 @@
 ---
-title: "The Transformer: Attention Is All You Need"
-slug: "offical-research-paper"
+title: "The Transformer Paper: Attention Is All You Need (Architecture Deep Dive)"
+slug: "the-transformer-attention-is-all-you-need"
+order: 6
 category: "Transformers"
-difficulty: "Advanced"
-description: "From sequence transduction to the architecture that reshaped modern AI."
+subcategory: "Architecture Foundations"
+difficulty: "Beginner"
+readTime: "24 min"
+description: "A complete theoretical breakdown of the landmark 2017 'Attention Is All You Need' architecture—exploring the 6-layer Encoder stack, the 3-stage Decoder stack, Cross-Attention bridges, Residual Highways, LayerNorm, and Feed-Forward Networks."
 ---
 
-<div className="mx-auto w-full max-w-4xl">
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea (NeurIPS 2017 · Vaswani et al.):</strong> Before June 2017, every top AI system for language translation and sequence modeling was built on <strong>Recurrent Neural Networks (RNNs, LSTMs, and GRUs)</strong>. Because recurrent models process text word-by-word from left to right ($h_t$ must wait for $h_{t-1}$), they could not be parallelized across GPUs during training, and their memory of early words faded over long paragraphs. The <em>&quot;Attention Is All You Need&quot;</em> paper introduced the <strong>Transformer</strong>—the first sequence transduction architecture to eliminate recurrence and convolutions completely, relying entirely on Self-Attention and Position-wise Feed-Forward Networks to connect any two words in a sentence in a single $\mathcal{O}(1)$ direct step!
+      </div>
+    </div>
+  </section>
 
-  <main className="pt-2 space-y-16">
-
-    <section>
-      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 text-lg leading-relaxed text-slate-200 shadow-[0_0_20px_rgba(0,240,255,0.05)]">
-          Published in 2017 by eight researchers at Google, "Attention Is All You Need" is arguably the most influential artificial intelligence research paper of the 21st century. Before this paper, the world of Al struggled to understand human language effectively. After this paper, the foundation was laid for the modern Al boom, directly enabling systems like ChatGPT, Claude, and Gemini.
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. High-Level Architecture: How the Encoder and Decoder Work Together
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The original 2017 Transformer was designed for <strong className="text-white">Sequence-to-Sequence (Seq2Seq) tasks</strong> like translating an English sentence into French. To do this, the architecture is divided into two main macro-components that work as a team:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-lg font-bold text-cyan-300">1. The Encoder Stack (Left Tower)</span>
+            <span className="rounded bg-cyan-950/80 px-2 py-0.5 font-mono text-xs text-cyan-300">The Reader</span>
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Takes the entire input sequence of token symbols $(x_1, x_2, \dots, x_n)$ all at once and transforms them through $N = 6$ stacked layers into a sequence of rich, context-aware continuous representations $\mathbf{Z} = (\mathbf{z}_1, \mathbf{z}_2, \dots, \mathbf{z}_n)$. Because the entire input sentence is already known, the Encoder processes all words <strong className="text-white">simultaneously in parallel</strong>.
+          </div>
         </div>
-        
-        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5">
-          <strong className="text-cyan-400">The Core Thesis:</strong> Instead of reading data sequentially, the Transformer uses attention to process entire sequences in parallel, dramatically improving both training speed and translation quality.
-        </div>
-        
-        <div>
-          This guide is designed to take you from a beginner to a deep conceptual understanding of the paper. We will cover why it was written, the problems it solved, how its revolutionary architecture works, and why it changed technology forever-keeping all the essential theory while leaving out the dense academic jargon.
-        </div>
-        
-        <div className="text-sm font-semibold uppercase tracking-wider text-cyan-400">
-          From sequence transduction to the architecture that reshaped modem Al
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-lg font-bold text-violet-300">2. The Decoder Stack (Right Tower)</span>
+            <span className="rounded bg-violet-950/80 px-2 py-0.5 font-mono text-xs text-violet-300">The Writer</span>
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Receives the Encoder&apos;s contextual memory matrix $\mathbf{Z}$ and generates the output sequence $(y_1, y_2, \dots, y_m)$ <strong className="text-white">one token at a time</strong>. The model is <strong className="text-violet-300">auto-regressive</strong>: at each step, it consumes the tokens it has already generated so far as additional input to predict the very next token.
+          </div>
         </div>
       </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        1. The Problem: Life Before Transformers
-      </h2>
-
-      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
-        <div>
-          To understand why this paper is so brilliant, we first need to understand the problem it was trying to solve: Sequence Transduction. This is a fancy term for taking one sequence of data (like an English sentence) and turning it into another sequence (like a French sentence).
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <h3 className="mb-3 text-lg font-bold text-white">The Input Pipeline Before Layer 1 (Embeddings + $\sqrt{d_{\text{model}}}$ Scaling + Positional Waves)</h3>
+        <div className="space-y-3 text-sm leading-relaxed text-slate-300">
+          <div>
+            1. <strong className="text-cyan-300">Scaled Token Embeddings:</strong> Input token IDs are converted into vectors of dimension $d_{\text{model}} = 512$ using a learned embedding table. Notably, the paper <strong className="text-white">multiplies the embedding weights by $\sqrt{d_{\text{model}}}$ ($\sqrt{512} \approx 22.6$)</strong> before adding positional encodings so that the word&apos;s semantic meaning is not drowned out by the $[-1, +1]$ positional wave values!
+          </div>
+          <div>
+            2. <strong className="text-emerald-300">Sinusoidal Positional Encoding Addition:</strong> Because the Transformer contains zero recurrence and zero convolution, a $512$-dimensional vector of multi-frequency $\sin$ and $\cos$ waves is added element-wise to inject exact token order.
+          </div>
         </div>
+      </div>
+    </div>
+  </section>
 
-        <div>
-          Before 2017, the Al industry relied on two main architectures to process language:
-          <ol className="mt-2 list-decimal space-y-2 pl-6">
-            <li>RNNs (Recurrent Neural Networks) and their advanced cousins, LSTMS (Long Short-Term Memories).</li>
-            <li>CNNs (Convolutional Neural Networks).</li>
-          </ol>
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Inside the Encoder: The 2-Sublayer Architecture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The Encoder is composed of a stack of <strong className="text-white">$N = 6$ identical layers</strong> piled on top of one another. Every single Encoder layer maintains the exact same vector width ($d_{\text{model}} = 512$) from bottom to top, and contains <strong className="text-cyan-300">two distinct sub-layers</strong>:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-cyan-400">Encoder Sub-Layer 1</div>
+          <div className="mb-2 text-lg font-bold text-white">Bidirectional Multi-Head Self-Attention</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            In this sub-layer, all three inputs—Queries ($\mathbf{Q}$), Keys ($\mathbf{K}$), and Values ($\mathbf{V}$)—come from the <strong className="text-white">output of the previous Encoder layer</strong>. Every position in the Encoder can attend to <strong className="text-cyan-300">every position in the entire input sentence</strong> (both left and right, with no causal mask). Across the $8$ parallel attention heads, each word gathers grammatical, coreference, and contextual clues from the whole sentence at once.
+          </div>
         </div>
-
-        <h3 className="mt-8 text-xl font-bold text-white">The Fatal Flaw of Recurrence</h3>
-        <div>
-          RNNs process text exactly like a human reads a book: sequentially, one word at a time. If you give an RNN a 100-word sentence, it reads word 1, processes it, updates its memory, moves to word 2, and so on.
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-violet-400">Encoder Sub-Layer 2</div>
+          <div className="mb-2 text-lg font-bold text-white">Position-Wise Feed-Forward Network (FFN)</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Once Self-Attention has mixed context across words, each word vector passes <strong className="text-white">individually and identically</strong> through a 2-layer fully connected neural network. It expands the $512$-dimensional vector to an inner dimension of <strong className="text-violet-300">$d_{\text{ff}} = 2{,}048$</strong> ($4\times$ wider), applies a non-linear $\text{ReLU}$ activation, and projects it back down to $512$.
+          </div>
         </div>
-        <div>This sequential nature created two massive bottlenecks:</div>
+      </div>
+      <div className="my-6 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.04] px-6 py-8 text-center space-y-4">
+        <div className="text-xs font-bold uppercase tracking-widest text-cyan-300">Mathematical Flow Through One Encoder Block</div>
+        <div className="text-base sm:text-lg">$$\mathbf{H} = \text{LayerNorm}\left(\mathbf{X} + \text{MultiHeadAttention}(\mathbf{X}, \mathbf{X}, \mathbf{X})\right)$$</div>
+        <div className="text-base sm:text-lg">$$\mathbf{Z} = \text{LayerNorm}\left(\mathbf{H} + \text{FFN}(\mathbf{H})\right) \quad \text{where} \quad \text{FFN}(\mathbf{h}) = \max(0, \; \mathbf{h}\mathbf{W}_1 + \mathbf{b}_1)\mathbf{W}_2 + \mathbf{b}_2$$</div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          Why did the authors force every single embedding layer, attention layer, and feed-forward output in the Transformer Base model to have the exact same dimension ($d_{\text{model}} = 512$)?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) To facilitate the Residual Skip Connections (x + Sublayer(x)), which require identical vector dimensions for element-wise addition</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>As stated directly in Section 3.1 of the paper: <em>&quot;To facilitate these residual connections, all sub-layers in the model, as well as the embedding layers, produce outputs of dimension $d_{\text{model}} = 512$.&quot;</em></span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) Because GPUs cannot multiply matrices that are larger than 512</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Inside the FFN sub-layer, the vector actually expands to $2{,}048$ before projecting back down to $512$ so it can be added back to the $512$-D residual stream.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
 
-        <div className="my-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.06] p-5">
-            <div className="mb-3 font-semibold text-blue-200">• The Memory Problem:</div>
-            <div className="text-sm leading-relaxed text-slate-300">
-              By the time the RNN reaches word 100, it has largely "forgotten" the context of word 1. This made translating long paragraphs incredibly difficult.
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Inside the Decoder: The 3-Sublayer Architecture &amp; Output Generator
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The Decoder is also composed of a stack of <strong className="text-white">$N = 6$ identical layers</strong>. However, unlike the Encoder (which has 2 sub-layers per block), <strong className="text-violet-300">each Decoder block contains THREE sub-layers</strong>, all wrapped with Residual Connections and Layer Normalization:
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-rose-400">Decoder Sub-Layer 1</div>
+          <div className="mb-2 text-base font-bold text-white">Masked Multi-Head Self-Attention</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Allows each position in the Decoder to attend to all earlier generated positions up to and including itself. Future positions are masked out (set to $-\infty$ before Softmax) combined with shifting target outputs right by one position, ensuring predictions for position $i$ depend <strong className="text-rose-300">only on known outputs at positions less than $i$</strong>.
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-emerald-400">Decoder Sub-Layer 2</div>
+          <div className="mb-2 text-base font-bold text-white">Encoder-Decoder Cross-Attention</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            This is the <strong className="text-emerald-300">bridge between the two towers</strong>! Here, the <strong className="text-white">Queries ($\mathbf{Q}$)</strong> come from the previous Decoder sub-layer, while the <strong className="text-cyan-300">Keys ($\mathbf{K}$) and Values ($\mathbf{V}$)</strong> come from the final output ($\mathbf{Z}$) of the Encoder stack. This lets every position in the Decoder attend over all positions in the input sequence!
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-violet-400">Decoder Sub-Layer 3</div>
+          <div className="mb-2 text-base font-bold text-white">Position-Wise Feed-Forward (FFN)</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Identical in structure to the Encoder&apos;s FFN ($512 \to 2048 \to 512$ with $\text{ReLU}$). Processes the combined target context + source context at each position independently to prepare for predicting the next word.
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-6">
+        <h3 className="mb-2 text-lg font-bold text-amber-300">The Final Top Cap: Linear Projection + Softmax Generator</h3>
+        <div className="space-y-3 text-sm leading-relaxed text-slate-300">
+          <div>
+            1. <strong className="text-white">The Linear Layer (Unembedding Projection):</strong> Projects the $512$-dimensional vector from the top of Decoder Layer #6 up to the size of the entire subword vocabulary ($|\mathcal{V}| = 37{,}000$ logits).
+          </div>
+          <div>
+            2. <strong className="text-white">The Softmax Layer:</strong> Converts those $37{,}000$ raw logit scores into a valid probability distribution summing to $100\%$, and selects the next output token!
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Residual Connections, Layer Normalization &amp; Training Tricks
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Around <em>every single sub-layer</em> in both the Encoder and Decoder, the authors wrapped a <strong className="text-emerald-300">Residual Skip Connection</strong> ($\mathbf{x} + \text{Sublayer}(\mathbf{x})$) followed by <strong className="text-cyan-300">Layer Normalization</strong>:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-emerald-300">1. Why the Residual ($+$) Wire?</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Without the skip connection, multiplying matrices across $6$ Encoder and $6$ Decoder layers ($30+$ sub-layers total!) causes gradients to vanish and destroys the token&apos;s original identity &amp; position signal. With the $+$ wire, each layer only needs to learn a small refinement ($\Delta \mathbf{x}$) added onto the main highway!
+          </div>
+        </div>
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-cyan-300">2. Why LayerNorm?</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Repeatedly adding vectors across dozens of layers causes their magnitudes to grow uncontrollably. LayerNorm normalizes the $512$ features of each individual token to mean $0$ and variance $1$ after every step.
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-1 font-bold text-cyan-300">1. 4,000-Step LR Warmup</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Ramps the learning rate up linearly over the first $4{,}000$ training steps before decaying by $\text{step}^{-0.5}$ so early attention gradients never explode.
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-1 font-bold text-violet-300">2. Label Smoothing ($\epsilon_{ls} = 0.1$)</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Softens target one-hot labels to $0.9$ during training so the model learns not to be overconfident, improving translation accuracy and BLEU scores.
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-1 font-bold text-emerald-300">3. 3-Way Weight Sharing</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Shares the exact same $37{,}000 \times 512$ weight matrix between the Encoder embedding, the Decoder embedding, and the pre-softmax Linear layer!
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Complexity Comparison: Why Self-Attention Beat RNNs &amp; CNNs
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In Section 4 of the paper, the authors proved why Self-Attention is superior to Recurrent and Convolutional layers across three fundamental mathematical metrics:
+      </div>
+      <div className="my-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Layer Type (Paper Section 4)</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Complexity per Layer</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Sequential Waiting Operations</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Maximum Path Length Between Tokens</th>
+            </tr>
+          </thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-cyan-300">Self-Attention</td>
+              <td className="px-5 py-4 font-mono text-xs">$\mathcal{O}(n^2 \cdot d)$</td>
+              <td className="px-5 py-4 font-mono text-xs text-emerald-300"><strong className="text-white">$\mathcal{O}(1)$</strong> (All at once!)</td>
+              <td className="px-5 py-4 font-mono text-xs text-emerald-300"><strong className="text-white">$\mathcal{O}(1)$</strong> (1 direct hop!)</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-rose-300">Recurrent (RNN / LSTM)</td>
+              <td className="px-5 py-4 font-mono text-xs">$\mathcal{O}(n \cdot d^2)$</td>
+              <td className="px-5 py-4 font-mono text-xs text-rose-300">$\mathcal{O}(n)$ (Waits $n$ steps)</td>
+              <td className="px-5 py-4 font-mono text-xs text-rose-300">$\mathcal{O}(n)$ ($n$ steps apart)</td>
+            </tr>
+            <tr>
+              <td className="px-5 py-4 font-semibold text-amber-300">Convolutional (Kernel $k$)</td>
+              <td className="px-5 py-4 font-mono text-xs">$\mathcal{O}(k \cdot n \cdot d^2)$</td>
+              <td className="px-5 py-4 font-mono text-xs text-emerald-300">$\mathcal{O}(1)$</td>
+              <td className="px-5 py-4 font-mono text-xs text-amber-300">$\mathcal{O}(\log_k(n))$</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          According to Section 4 of the paper, why is it much easier for a Transformer to learn long-range dependencies between distant words in a sentence compared to an RNN or CNN?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) Because the maximum path length between any two input/output positions in Self-Attention is a constant O(1)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>The shorter the path forward and backward signals must travel between any two positions in the network, the easier it is to learn long-range dependencies. In Self-Attention, any two tokens interact directly in $1$ step ($\mathcal{O}(1)$)!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) Because Self-Attention deletes all words that are more than 5 positions away</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Self-Attention compares every token across the entire sequence without distance limits.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Complete &quot;Figure 1&quot; Architecture Blueprint
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Below is a complete, color-coded architectural map of <strong className="text-white">Figure 1 from the 2017 paper</strong>. Follow the signal from the bottom of both towers all the way to the top <strong className="text-amber-300">Linear + Softmax</strong> output generator:
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8 shadow-[0_0_40px_rgba(0,240,255,0.04)] space-y-6">
+        <div className="grid gap-6 lg:grid-cols-12">
+          <div className="hidden lg:block lg:col-span-6" />
+          <div className="lg:col-span-6 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-pink-500/15 p-4 text-center">
+            <div className="font-mono text-[10px] font-bold uppercase tracking-widest text-amber-300">
+              FINAL OUTPUT GENERATOR (TOP OF DECODER)
+            </div>
+            <div className="mt-1 text-base font-extrabold text-white">
+              Linear Projection (512 → 37,000) ➔ Softmax ➔ Next Token Probabilities
             </div>
           </div>
-          <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.06] p-5">
-            <div className="mb-3 font-semibold text-rose-200">• The Speed Problem:</div>
-            <div className="text-sm leading-relaxed text-slate-300">
-              Because word 5 cannot be processed until word 4 is finished, you cannot use parallel processing. You could have a supercomputer with thousands of GPUs, but an RNN forces them to wait in a single-file line. Training these models took weeks or months.
-            </div>
-          </div>
         </div>
 
-        <h3 className="mt-8 text-xl font-bold text-white">The Attempted Fix</h3>
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-          Researchers tried adding an "Attention Mechanism" to these RNNs. This allowed the model to "look back" at specific words in the input sentence when generating an output. However, because the underlying engine was still an RNN, the slow, sequential bottleneck remained.
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        2. The Big Idea: "Attention Is All You Need"
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          The Google research team asked a radical question: What if we completely throw away the Recurrent Neural Network, and just keep the Attention mechanism?
-        </div>
-
-        <div>
-          They proposed a brand-new architecture called the Transformer. Instead of processing words one by one, the Transformer processes every word in a sentence simultaneously.
-        </div>
-
-        <div>By dispensing with recurrence and convolution entirely, the Transformer achieved two things:</div>
-
-        <div className="my-7 space-y-4 rounded-xl border border-violet-400/15 bg-violet-400/[0.04] p-6">
-          <div className="border-l-2 border-emerald-400/60 pl-4">
-            <div><strong className="text-white">1. Infinite Context:</strong> It could directly connect word 1 to word 100 in a single step.</div>
-          </div>
-          <div className="border-l-2 border-cyan-400/60 pl-4">
-            <div><strong className="text-white">2. Massive Parallelization:</strong> Because words are processed simultaneously, the model could be trained on modern GPUs at unprecedented speeds.</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        3. The Core Innovation: Self-Attention
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          If you aren't processing words sequentially, how does the Al know how words relate to each other? The answer is Self-Attention.
-        </div>
-
-        <div>
-          Self-attention allows every word in a sentence to look at every other word and calculate how strongly they are connected. Consider the sentence:
-        </div>
-        
-        <blockquote className="border-l-4 border-emerald-500 pl-4 font-mono text-emerald-200">
-          "The bank of the river was steep, so I couldn't sit by the bank."
-        </blockquote>
-
-        <div>
-          How does a computer know that the first "bank" is a geographical feature and the second is a financial institution? Through self-attention, the word "bank" looks at the surrounding words ("river", "steep") and updates its own mathematical definition based on that context.
-        </div>
-
-        <h3 className="mt-8 text-xl font-bold text-white">The Q, K, V Analogy</h3>
-        <div>
-          To compute self-attention, the Transformer creates three vectors (lists of numbers) for every single word: a Query (Q), a Key (K), and a Value (V).
-        </div>
-        
-        <div>Think of it like searching for a book in a library:</div>
-
-        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
-          <div className="grid gap-5 md:grid-cols-3">
-            <div className="rounded-xl border border-pink-400/20 bg-pink-400/[0.05] p-5">
-              <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-pink-300">• Query (Q)</div>
-              <div className="text-center text-sm leading-6 text-slate-400">
-                What you are looking for. (e.g., "I am the word 'bank', and I am looking for words that clarify my meaning.")
-              </div>
-            </div>
-            <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.05] p-5">
-              <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-cyan-300">• Key (K)</div>
-              <div className="text-center text-sm leading-6 text-slate-400">
-                The label on every book in the library. (e.g., "I am the word 'river', and my label says I relate to water and nature.")
-              </div>
-            </div>
-            <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5">
-              <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-emerald-300">• Value (V)</div>
-              <div className="text-center text-sm leading-6 text-slate-400">
-                The actual contents of the book. (e.g., The core mathematical meaning of the word 'river').
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-          The Al measures how well a word's Query matches every other word's Key. If there is a strong match (like 'bank' and 'river'), the model takes the Value of 'river' and blends it into the meaning of 'bank'.
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        4. The Math: Scaled Dot-Product Attention
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          The paper introduces a specific mathematical formula to calculate this blending, called Scaled Dot-Product Attention.
-        </div>
-
-        <div className="my-8 rounded-2xl border border-orange-400/15 bg-orange-400/[0.04] px-6 py-8 text-center text-xl overflow-x-auto">
-          $$
-          Attention(Q,K,V)=softmax((QK^{T})/\sqrt{d}_{k})V
-          $$
-        </div>
-
-        <div>Let's break this down without getting lost in the algebra:</div>
-
-        <div className="space-y-4">
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-            <div><strong className="text-white">1. Q $K^{\wedge}T$ (Dot Product):</strong> The model multiplies the Queries by the Keys. This calculates a "score" of how much focus each word should put on other words.</div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-            <div><strong className="text-white">2. $\sqrt{d_k}$ (Scaling):</strong> The researchers noticed that when models get large, multiplying these numbers together creates massive values, which breaks the neural network (a problem called vanishing gradients). They solved this by dividing the scores by the square root of the dimension size (d_k). This simple scaling trick is crucial for stabilizing the model.</div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-            <div><strong className="text-white">3. Softmax:</strong> This function converts the raw scores into percentages (probabilities) that add up to 100%. For example, "bank" might pay 80% attention to "river", 15% to "steep", and 5% to "the".</div>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-            <div><strong className="text-white">4. Multiply by V:</strong> Finally, the model multiplies these percentages by the Values to get the final, context-aware meaning of the word.</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        5. Multi-Head Attention: Thinking in Multiple Dimensions
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          If you only use one attention mechanism, the model might get hyper-fixated on just one type of relationship (like grammatical structure). But human language is complex. Words relate to each other through grammar, emotion, logic, and historical context.
-        </div>
-        <div>
-          To solve this, the paper introduced Multi-Head Attention. Instead of doing the Q, K, V math once, the Transformer does it h times in parallel (the original paper used 8 "heads").
-        </div>
-        <ul className="list-none space-y-3 pl-2">
-          <li className="flex items-start"><span className="mr-2 text-pink-400">•</span> Head 1 might figure out the subject-verb relationship (Who is doing the action?).</li>
-          <li className="flex items-start"><span className="mr-2 text-pink-400">•</span> Head 2 might figure out the emotional tone.</li>
-          <li className="flex items-start"><span className="mr-2 text-pink-400">•</span> Head 3 might track pronouns (figuring out that "she" refers to "Sarah" from two sentences ago).</li>
-        </ul>
-        <div className="rounded-xl border border-pink-400/15 bg-pink-400/[0.04] p-5">
-          After all 8 heads do their independent thinking, their conclusions are concatenated (stitched together) and sent to the next layer.
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        6. Positional Encoding: Giving Words a Sense of Time
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          Because the Transformer processes all words at the exact same time to maximize speed, it entirely loses the concept of word order. To the raw Transformer, "The dog bit the man" and "The man bit the dog" look exactly the same.
-        </div>
-        <div>
-          To fix this, the authors introduced Positional Encoding. Before the words are fed into the network, the model injects a special "time stamp" into the mathematical representation of the word.
-        </div>
-        <div>
-          They used mathematical sine and cosine wave functions of different frequencies to create these stamps. This is a brilliant engineering trick because it allows the model to easily calculate the relative distance between words, regardless of how long the sentence is, without needing to learn the positions from scratch.
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        7. The Architecture Breakdown
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          The complete Transformer is split into two halves: The Encoder (which reads and understands the input) and the Decoder (which writes the output).
-        </div>
-
-        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-6">
-          <div className="mb-6 text-center text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Figure 1: The Transformer model architecture.
-          </div>
-          
-          <div className="grid gap-8 md:grid-cols-2">
-            {/* Encoder Representation */}
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-500/[0.02] p-5">
-              <div className="w-full rounded bg-slate-900 px-4 py-3 text-center text-sm border border-white/5">Inputs</div>
-              <div className="text-slate-600">↑</div>
-              <div className="w-full rounded bg-pink-900/40 px-4 py-3 text-center text-sm border border-pink-500/30 text-pink-200">Input Embedding <br/><span className="text-xs text-pink-400">+ Positional Encoding</span></div>
-              <div className="text-slate-600">↑</div>
-              
-              <div className="w-full rounded-lg border border-blue-400/30 bg-blue-900/20 p-4 relative">
-                <div className="absolute -left-8 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-500">Nx</div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-full rounded bg-orange-900/40 px-3 py-2 text-center text-sm border border-orange-500/30 text-orange-200">Multi-Head Attention</div>
-                  <div className="w-full rounded bg-yellow-900/40 px-3 py-2 text-center text-xs border border-yellow-500/30 text-yellow-200">Add & Norm</div>
-                  <div className="w-full rounded bg-blue-900/40 px-3 py-2 text-center text-sm border border-blue-500/30 text-blue-200 mt-2">Feed Forward</div>
-                  <div className="w-full rounded bg-yellow-900/40 px-3 py-2 text-center text-xs border border-yellow-500/30 text-yellow-200">Add & Norm</div>
+        <div className="grid gap-6 lg:grid-cols-12 items-stretch">
+          <div className="lg:col-span-5 flex flex-col justify-between rounded-2xl border border-cyan-500/35 bg-gradient-to-b from-cyan-500/[0.08] to-slate-950 p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <div className="font-mono text-xs font-bold uppercase text-cyan-300">
+                  🗼 ENCODER STACK (N = 6×)
                 </div>
+                <div className="text-xs text-slate-400">2 Sub-Layers per Block</div>
+              </div>
+              <span className="rounded bg-cyan-500/20 px-2.5 py-1 font-mono text-xs font-bold text-cyan-200">
+                d_model = 512
+              </span>
+            </div>
+
+            <div className="space-y-1.5 rounded-xl border border-violet-400/30 bg-slate-950 p-4">
+              <div className="flex items-center justify-between rounded bg-emerald-500/15 px-2.5 py-1 font-mono text-[11px] font-bold text-emerald-300">
+                <span>Add &amp; LayerNorm</span>
+                <span>LayerNorm(x + FFN(x))</span>
+              </div>
+              <div className="pt-1 text-sm font-bold text-violet-300">
+                Sub-Layer 2: Position-Wise FFN
+              </div>
+              <div className="text-xs text-slate-400">
+                2-Layer MLP ($512 \xrightarrow{\text{ReLU}} 2048 \to 512$) applied to each token position independently.
               </div>
             </div>
 
-            {/* Decoder Representation */}
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.02] p-5">
-              <div className="w-full rounded bg-slate-900 px-4 py-3 text-center text-sm border border-white/5">Outputs (shifted right)</div>
-              <div className="text-slate-600">↑</div>
-              <div className="w-full rounded bg-pink-900/40 px-4 py-3 text-center text-sm border border-pink-500/30 text-pink-200">Output Embedding <br/><span className="text-xs text-pink-400">+ Positional Encoding</span></div>
-              <div className="text-slate-600">↑</div>
-              
-              <div className="w-full rounded-lg border border-emerald-400/30 bg-emerald-900/20 p-4 relative">
-                <div className="absolute -right-8 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-500">Nx</div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-full rounded bg-orange-900/40 px-3 py-2 text-center text-sm border border-orange-500/30 text-orange-200">Masked Multi-Head Attention</div>
-                  <div className="w-full rounded bg-yellow-900/40 px-3 py-2 text-center text-xs border border-yellow-500/30 text-yellow-200">Add & Norm</div>
-                  <div className="w-full rounded bg-orange-900/40 px-3 py-2 text-center text-sm border border-orange-500/30 text-orange-200 mt-2">Multi-Head Attention</div>
-                  <div className="w-full rounded bg-yellow-900/40 px-3 py-2 text-center text-xs border border-yellow-500/30 text-yellow-200">Add & Norm</div>
-                  <div className="w-full rounded bg-blue-900/40 px-3 py-2 text-center text-sm border border-blue-500/30 text-blue-200 mt-2">Feed Forward</div>
-                  <div className="w-full rounded bg-yellow-900/40 px-3 py-2 text-center text-xs border border-yellow-500/30 text-yellow-200">Add & Norm</div>
-                </div>
+            <div className="space-y-1.5 rounded-xl border border-cyan-400/30 bg-slate-950 p-4">
+              <div className="flex items-center justify-between rounded bg-emerald-500/15 px-2.5 py-1 font-mono text-[11px] font-bold text-emerald-300">
+                <span>Add &amp; LayerNorm</span>
+                <span>LayerNorm(x + MHA(x))</span>
               </div>
-              
-              <div className="text-slate-600">↓</div>
-              <div className="w-full rounded bg-purple-900/40 px-4 py-2 text-center text-sm border border-purple-500/30 text-purple-200">Linear</div>
-              <div className="w-full rounded bg-purple-900/40 px-4 py-2 text-center text-sm border border-purple-500/30 text-purple-200">Softmax</div>
-              <div className="w-full rounded bg-slate-900 px-4 py-3 text-center text-sm border border-white/5">Output Probabilities</div>
+              <div className="pt-1 text-sm font-bold text-cyan-300">
+                Sub-Layer 1: Multi-Head Self-Attention
+              </div>
+              <div className="text-xs text-slate-400">
+                8 Parallel Heads ($d_k = 64$). Unmasked 360° vision across all input words ($Q, K, V$ all from Encoder).
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-dashed border-cyan-500/40 bg-[#04070F] p-3.5 text-center font-mono text-xs">
+              <div className="font-bold text-cyan-300">⊕ Sinusoidal Positional Encoding</div>
+              <div className="mt-1 text-slate-300">↑ Input Embeddings ($\times \sqrt{512}$)</div>
+              <div className="mt-1 text-[11px] text-slate-500">Source Input Tokens $(x_1, \dots, x_n)$</div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 flex flex-col items-center justify-center text-center py-2">
+            <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-950/40 p-4 shadow-[0_0_25px_rgba(16,185,129,0.15)]">
+              <div className="font-mono text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                Encoder Memory Z
+              </div>
+              <div className="my-2 text-2xl font-bold text-emerald-400">➔</div>
+              <div className="font-mono text-xs font-bold text-white">
+                Keys (K) &amp; Values (V)
+              </div>
+              <div className="mt-1.5 text-[11px] leading-relaxed text-slate-300">
+                Top of Encoder #6 feeds $K$ and $V$ into Sub-Layer 2 of all 6 Decoder blocks!
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-5 flex flex-col justify-between rounded-2xl border border-violet-500/35 bg-gradient-to-b from-violet-500/[0.08] to-slate-950 p-5 space-y-3">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <div className="font-mono text-xs font-bold uppercase text-violet-300">
+                  🗼 DECODER STACK (N = 6×)
+                </div>
+                <div className="text-xs text-slate-400">3 Sub-Layers per Block</div>
+              </div>
+              <span className="rounded bg-violet-500/20 px-2.5 py-1 font-mono text-xs font-bold text-violet-200">
+                Auto-Regressive
+              </span>
+            </div>
+
+            <div className="space-y-1 rounded-xl border border-violet-400/30 bg-slate-950 p-3.5">
+              <div className="flex items-center justify-between rounded bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300">
+                <span>Add &amp; LayerNorm</span>
+                <span>LayerNorm(x + FFN(x))</span>
+              </div>
+              <div className="pt-1 text-sm font-bold text-violet-300">
+                Sub-Layer 3: Position-Wise FFN
+              </div>
+              <div className="text-xs text-slate-400">
+                Expands $512 \to 2048 \to 512$ per token position.
+              </div>
+            </div>
+
+            <div className="space-y-1 rounded-xl border border-emerald-400/40 bg-emerald-950/20 p-3.5">
+              <div className="flex items-center justify-between rounded bg-emerald-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300">
+                <span>Add &amp; LayerNorm</span>
+                <span>Cross-Attention Bridge</span>
+              </div>
+              <div className="pt-1 text-sm font-bold text-emerald-300">
+                Sub-Layer 2: Encoder-Decoder Attention
+              </div>
+              <div className="text-xs text-slate-300">
+                <strong>Queries ($Q$)</strong> from Decoder Sub-Layer 1; <strong>Keys ($K$) &amp; Values ($V$)</strong> from Encoder Tower!
+              </div>
+            </div>
+
+            <div className="space-y-1 rounded-xl border border-rose-400/30 bg-slate-950 p-3.5">
+              <div className="flex items-center justify-between rounded bg-rose-500/15 px-2 py-0.5 font-mono text-[10px] font-bold text-rose-300">
+                <span>Add &amp; LayerNorm</span>
+                <span>🔒 Causal Mask (-∞)</span>
+              </div>
+              <div className="pt-1 text-sm font-bold text-rose-300">
+                Sub-Layer 1: Masked Multi-Head Attention
+              </div>
+              <div className="text-xs text-slate-400">
+                Blocks future positions ($j \gt i$) so token $i$ can only attend to already-generated words!
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-dashed border-violet-500/40 bg-[#04070F] p-3 text-center font-mono text-xs">
+              <div className="font-bold text-violet-300">⊕ Sinusoidal Positional Encoding</div>
+              <div className="mt-1 text-slate-300">↑ Output Embeddings (Shifted Right)</div>
+              <div className="mt-1 text-[11px] text-slate-500">Starts with &lt;BOS&gt; token</div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
 
-        <h3 className="mt-8 text-xl font-bold text-white">The Encoder (The Reader)</h3>
-        <div>
-          The original paper stacks 6 identical Encoder layers on top of each other. Each layer does two things:
-          <ol className="mt-2 list-decimal space-y-2 pl-6">
-            <li>Multi-Head Self-Attention: Figures out how the input words relate to each other.</li>
-            <li>Feed-Forward Neural Network: A standard, small neural network that processes the attention data and refines it.</li>
-          </ol>
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The 2017 Transformer is an Encoder-Decoder architecture ($N = 6$ layers each, $d_{\text{model}} = 512$, $H = 8$ heads, $d_{\text{ff}} = 2{,}048$) that relies entirely on Attention and Feed-Forward layers with zero recurrence.</span>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-          Note on Stability: Around both of these steps, the authors used Residual Connections (adding the original input back into the output) and Layer Normalization. This prevents data loss and keeps the math stable as information travels deep into the 6 layers.
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong>Each Encoder block</strong> has 2 sub-layers: (1) Bidirectional Multi-Head Self-Attention and (2) a Position-Wise Feed-Forward Network ($512 \to 2048 \to 512$), each wrapped with a Residual Connection and LayerNorm.</span>
         </div>
-
-        <h3 className="mt-8 text-xl font-bold text-white">The Decoder (The Writer)</h3>
-        <div>
-          The Decoder also consists of 6 stacked layers, but it operates slightly differently because it is generating text one word at a time based on what the Encoder learned.
-          <ol className="mt-2 list-decimal space-y-4 pl-6">
-            <li>Masked Self-Attention: When generating the 4th word of a translation, the model is not allowed to look at the 5th or 6th word (because they haven't been generated yet). The "Mask" mathematically hides future words to prevent the Al from "cheating" during training.</li>
-            <li>Cross-Attention: This is the bridge. The Decoder takes its own Queries (what it needs to write next) and matches them against the Keys and Values generated by the Encoder (the source material). This is how the model knows which part of the English sentence to look at while writing the French sentence.</li>
-            <li>Feed-Forward Network: Refines the output, just like the Encoder.</li>
-          </ol>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong>Each Decoder block</strong> has 3 sub-layers: (1) Masked Multi-Head Self-Attention (which blocks future positions with $-\infty$), (2) Encoder-Decoder Cross-Attention ($Q$ from Decoder, $K$ &amp; $V$ from Encoder), and (3) a Position-Wise FFN.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Self-Attention connects any two tokens in $\mathcal{O}(1)$ sequential operations and $\mathcal{O}(1)$ path length, enabling massive GPU parallelization during training.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>This single paper gave birth to all three modern Transformer families: <strong>BERT</strong> (the Encoder stack), <strong>GPT / Llama / Claude</strong> (the Masked Decoder stack), and <strong>T5 / Whisper</strong> (the full Encoder-Decoder stack).</span>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section>
-      <h2 className="mb-6 border-l-4 border-yellow-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        8. Why is the Transformer Better? (The Proof)
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          The paper didn't just claim the Transformer was better; it provided mathematical and computational proof comparing it to RNNs and CNNs across three metrics:
+  <section className="pb-6">
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">
+          The Encoder Stack (Left Tower · 2 Sub-Layers × 6)
         </div>
-
-        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
-          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-            <thead className="bg-white/[0.06] text-white">
-              <tr>
-                <th className="border-b border-white/10 px-5 py-4 font-semibold">Feature</th>
-                <th className="border-b border-white/10 px-5 py-4 font-semibold text-rose-300">Recurrent (RNN)</th>
-                <th className="border-b border-white/10 px-5 py-4 font-semibold text-cyan-300">Transformer</th>
-                <th className="border-b border-white/10 px-5 py-4 font-semibold">Why it matters</th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-300">
-              <tr className="border-b border-white/10">
-                <td className="px-5 py-4 font-semibold text-white">Sequential Operations</td>
-                <td className="px-5 py-4">$0(n)$</td>
-                <td className="px-5 py-4">$0(1)$</td>
-                <td className="px-5 py-4">An RNN takes 100 steps for a 100-word sentence. The Transformer takes 1 step, processed in parallel.</td>
-              </tr>
-              <tr className="border-b border-white/10">
-                <td className="px-5 py-4 font-semibold text-white">Maximum Path Length</td>
-                <td className="px-5 py-4">$0(n)$</td>
-                <td className="px-5 py-4">$0(1)$</td>
-                <td className="px-5 py-4">How far information has to travel between word 1 and word 100. In a Transformer, every word is exactly 1 step away from every other word, eliminating memory loss.</td>
-              </tr>
-              <tr>
-                <td className="px-5 py-4 font-semibold text-white">Complexity per Layer</td>
-                <td className="px-5 py-4">$\mathcal{O}(n \cdot d^2)$</td>
-                <td className="px-5 py-4">$\mathcal{O}(n^2 \cdot d)$</td>
-                <td className="px-5 py-4">For most sentences, n (sequence length) is smaller than d (representation dimension), making the Transformer mathematically faster to compute.</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="text-center font-bold text-white">
+          Input + Sine Waves → Bidirectional Self-Attention → 4x FFN → Exports Context Memory (K, V)
         </div>
       </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        9. The Results that Shocked the Industry
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          To prove their architecture worked, the Google team tested the Transformer on standard Machine Translation benchmarks.
+      <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-6">
+        <div className="mb-4 text-lg font-bold text-blue-400">
+          The Decoder Stack (Right Tower · 3 Sub-Layers × 6)
         </div>
-        
-        <ol className="list-decimal space-y-4 pl-6">
-          <li><strong>English-to-German (WMT 2014):</strong> The model achieved a BLEU score of 28.4. Not only did it beat the existing state-of-the-art models, it beat massive ensembles (groups of models working together) by over 2 full BLEU points, which is a massive leap in Al research.</li>
-          <li><strong>English-to-French (WMT 2014):</strong> It established a new single-model record with a BLEU score of 41.8.</li>
-          <li><strong>The Training Cost:</strong> This was the killing blow. Previous state-of-the-art models took weeks to train on massive supercomputers. The Transformer's base model trained in just 12 hours on 8 GPUs. Even their massive "Big Model" took only 3.5 days. It was vastly smarter and incredibly cheap to train.</li>
-        </ol>
-      </div>
-    </section>
-    
-    <section className="pb-8">
-      <h2 className="mb-6 border-l-4 border-purple-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        10. The Legacy
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          "Attention Is All You Need" was meant to be a paper about language translation. But the architecture was so universally powerful that it quickly took over the entire Al industry.
+        <div className="text-center font-bold text-white">
+          Shifted Outputs → Masked Self-Attention → Cross-Attention (Reads K, V) → 4x FFN → Linear + Softmax
         </div>
-        
-        <ul className="list-none space-y-3 pl-2">
-          <li className="flex items-start"><span className="mr-2 text-purple-400">•</span> Within a year, Google released BERT, an Encoder-only Transformer that revolutionized Google Search by understanding the context of user queries.</li>
-          <li className="flex items-start"><span className="mr-2 text-purple-400">•</span> OpenAl released the GPT series (Generative Pre-trained Transformer), using a Decoder-only architecture to generate human-like text, eventually leading to ChatGPT.</li>
-          <li className="flex items-start"><span className="mr-2 text-purple-400">•</span> Today, Transformers are not just used for text. They are used in computer vision (Vision Transformers), audio generation, and even biological protein folding (AlphaFold).</li>
-        </ul>
-
-        <blockquote className="rounded-2xl border border-purple-400/20 bg-purple-400/[0.05] p-6 text-lg font-medium leading-8 text-slate-100 shadow-[0_0_20px_rgba(139,92,246,0.05)]">
-          <strong>By proving that you don't need complex, slow sequential processing-and that attention really is all you need-this paper unlocked the era of highly scalable, deeply capable Artificial Intelligence.</strong>
-        </blockquote>
       </div>
-    </section>
-
-  </main>
+      <div>
+        The big takeaway is simple: <strong className="text-white">the 2017 Transformer proved that Attention really is all you need</strong>. By separating cross-token communication (<strong className="text-cyan-300">Multi-Head Attention</strong>) from per-token feature processing (<strong className="text-violet-300">Position-Wise FFN</strong>) and wiring them together along a clean <strong className="text-emerald-300">Residual + LayerNorm highway</strong>, Vaswani et al. created the universal engine of modern Artificial Intelligence.
+      </div>
+    </div>
+  </section>
 </div>

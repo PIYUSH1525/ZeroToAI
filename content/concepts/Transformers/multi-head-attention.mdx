@@ -1,0 +1,704 @@
+---
+title: "Multi-Head Attention: Why One Spotlight Is Never Enough"
+slug: "multi-head-attention"
+order: 4
+category: "Transformers"
+subcategory: "Architecture Foundations"
+difficulty: "Beginner"
+readTime: "26 min"
+description: "Learn how Multi-Head Attention gives a Transformer multiple pairs of eyes at once—from the Detective Team analogy and tensor head-splitting to Grouped-Query Attention (GQA) in Llama-3."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> In the last lesson, we saw how a single Self-Attention spotlight lets a word look around a sentence to gather context. But what if one word needs to track <em>three different things at the exact same time</em>—like WHO did an action, WHERE it happened, and WHAT the tone is? If you average all three into a single spotlight, the beam gets blurry! <strong>Multi-Head Attention (MHA)</strong> fixes this by splitting the vector into $H$ smaller independent spotlights (Heads) that scan the sentence in parallel, each hunting for a different type of clue.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: The &quot;Blurred Spotlight&quot; Problem (Why One Head Fails)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Look at the word <strong className="text-cyan-300">&quot;it&quot;</strong> in this rich sentence:
+      </div>
+      <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.05] p-5 text-center text-base text-white">
+        &quot;The <strong className="text-cyan-300">chef</strong> dropped the <strong className="text-violet-300">glass bowl</strong> on the <strong className="text-emerald-300">tile floor</strong> because <span className="rounded bg-amber-500/20 px-2 py-0.5 font-bold text-amber-300 underline decoration-amber-400">it</span> was <strong className="text-pink-300">slippery</strong>.&quot;
+      </div>
+      <div>
+        To truly understand the word <strong className="text-amber-300">&quot;it&quot;</strong> in that sentence, your brain actually asks <strong className="text-white">three totally different questions at once</strong>:
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.05] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-cyan-400">Detective #1 · Noun Link</div>
+          <div className="mb-2 text-base font-bold text-white">&quot;What noun is &apos;it&apos;?&quot;</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Shines a spotlight back on <strong className="text-violet-300">&quot;glass bowl&quot;</strong> (the object that slipped out of the chef&apos;s hands).
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-emerald-400">Detective #2 · Property Link</div>
+          <div className="mb-2 text-base font-bold text-white">&quot;How is &apos;it&apos; described?&quot;</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Shines a spotlight forward on <strong className="text-pink-300">&quot;slippery&quot;</strong> to know <em>why</em> the bowl fell.
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-amber-400">Detective #3 · Action Link</div>
+          <div className="mb-2 text-base font-bold text-white">&quot;What happened to &apos;it&apos;?&quot;</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Shines a spotlight on <strong className="text-cyan-300">&quot;chef dropped&quot;</strong> and <strong className="text-emerald-300">&quot;tile floor&quot;</strong> to track the physical event.
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">
+          Why a Single Softmax Row Cannot Do All Three Jobs Well
+        </div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          Remember that Softmax forces all attention percentages in a row to add up to $100\%$—and winners take almost everything! If you only have <strong className="text-rose-300">1 Attention Head</strong>, it might spend $90\%$ of its budget looking at <em>&quot;bowl&quot;</em> and miss <em>&quot;slippery&quot;</em> and <em>&quot;dropped&quot;</em>! By giving the layer <strong className="text-emerald-300">$H = 8$ to $64$ separate Attention Heads</strong>, each head gets its own independent $100\%$ Softmax budget to focus on a different relationship!
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: The Zero-Extra-Cost Trick (Splitting Sliders, Not Copying!)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Wait a minute! If we use <strong className="text-white">$8$ Attention Heads</strong> instead of $1$, does that make the Transformer <strong className="text-rose-300">$8\times$ slower and $8\times$ heavier</strong>?
+      </div>
+      <div>
+        <strong className="text-emerald-300">No! It costs the exact same amount of math as 1 giant head!</strong> Here is the clever trick the Transformer authors used: instead of giving all $8$ heads the full $512$-number vector, <strong className="text-white">they slice the $512$ sliders into $8$ equal mini-chunks of $64$ sliders each</strong>!
+      </div>
+      <div className="my-6 rounded-2xl border border-violet-400/20 bg-violet-400/[0.04] px-6 py-6 text-center text-lg">
+        <div>$$d_{\text{head}} = d_k = \dfrac{d_{\text{model}}}{H} = \dfrac{512 \text{ total sliders}}{8 \text{ heads}} = 64 \text{ sliders per head!}$$</div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.05] p-5 text-center">
+          <div className="text-xs font-mono uppercase text-cyan-400">Step 1 · Split Into H Heads</div>
+          <div className="mt-2 text-base font-bold text-white">512 → 8 × 64</div>
+          <div className="mt-2 text-xs text-slate-300">
+            Head #1 gets sliders $0\text{--}63$, Head #2 gets sliders $64\text{--}127$, all the way to Head #8!
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.05] p-5 text-center">
+          <div className="text-xs font-mono uppercase text-violet-400">Step 2 · Run 8 Spotlights</div>
+          <div className="mt-2 text-base font-bold text-white">8 Separate Attention Grids</div>
+          <div className="mt-2 text-xs text-slate-300">
+            Each head runs $\text{softmax}\left(\frac{Q_i K_i^T}{\sqrt{64}}\right)V_i$ in parallel on its own 64-slider slice.
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5 text-center">
+          <div className="text-xs font-mono uppercase text-emerald-400">Step 3 · Glue Back Together</div>
+          <div className="mt-2 text-base font-bold text-white">8 × 64 → 512</div>
+          <div className="mt-2 text-xs text-slate-300">
+            Concatenate all $8$ mini-outputs side-by-side back into a single $512$-slider vector!
+          </div>
+        </div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          Suppose a Transformer has a model dimension of $d_{\text{model}} = 768$ (like BERT-Base and GPT-2) and uses $H = 12$ Attention Heads. How many numbers (sliders) does each individual head work with ($d_k$)?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) 64 sliders per head (because 768 / 12 = 64)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>Dividing $768$ equally across $12$ heads gives $d_k = 64$ features per head. When all $12$ heads finish, concatenating $12 \times 64$ restores the exact $768$-dimensional vector!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) 9,216 sliders per head (768 * 12)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Multi-Head Attention <em>splits</em> $d_{\text{model}}$ across the $H$ heads ($d_k = d_{\text{model}} / H$) so computational cost stays constant.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: The Final Mixing Desk ($\mathbf{W}_O$) &amp; Exact Equations
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        After the $H$ heads finish scanning the sentence and we glue their $64$-slider results side-by-side back into a $512$-slider vector, there is <strong className="text-emerald-300">one final step</strong> that beginners often overlook!
+      </div>
+      <div>
+        Right now, sliders $0\text{--}63$ only know what Detective #1 found, and sliders $64\text{--}127$ only know what Detective #2 found—the detectives haven&apos;t actually <strong className="text-white">shared their notes with each other</strong> yet!
+      </div>
+      <div>
+        To let all $H$ detectives combine their findings, we multiply the glued vector by one final learnable weight matrix called the <strong className="text-cyan-300">Output Projection Matrix ($\mathbf{W}_O \in \mathbb{R}^{d_{\text{model}} \times d_{\text{model}}}$)</strong>:
+      </div>
+      <div className="my-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] px-6 py-8 text-center">
+        <div className="mb-3 text-xs font-bold uppercase tracking-widest text-emerald-300">The Complete Multi-Head Attention Equation</div>
+        <div className="text-lg">$$\text{MultiHead}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \text{Concat}\left(\text{head}_1, \; \text{head}_2, \; \dots, \; \text{head}_H\right)\mathbf{W}_O$$</div>
+        <div className="mt-3 text-sm text-slate-300">$$\text{where} \quad \text{head}_i = \text{Attention}\left(\mathbf{X}\mathbf{W}_Q^{(i)}, \; \mathbf{X}\mathbf{W}_K^{(i)}, \; \mathbf{X}\mathbf{W}_V^{(i)}\right)$$</div>
+      </div>
+      <div className="rounded-2xl border border-blue-400/15 bg-blue-400/[0.05] p-6">
+        <h3 className="mb-3 text-lg font-bold text-white">How PyTorch Computes All H Heads in ONE Matrix Multiply (Tensor Reshape Trick!)</h3>
+        <div className="space-y-3 text-sm leading-relaxed text-slate-300">
+          <div>
+            In Python code, we <strong className="text-rose-300">NEVER write a slow <code>for</code> loop</strong> over the $8$ heads! Instead, we use one giant `nn.Linear(512, 512)` layer and reshape the tensor in 3 steps:
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3 font-mono text-xs text-center">
+            <div className="rounded-lg bg-slate-950 p-3 border border-white/10">
+              <div className="text-cyan-300 font-bold mb-1">1. Linear Projection</div>
+              <div className="text-white">(B, T, 512)</div>
+              <div className="text-slate-400 mt-1">All 8 heads packed together</div>
+            </div>
+            <div className="rounded-lg bg-slate-950 p-3 border border-white/10">
+              <div className="text-violet-300 font-bold mb-1">2. view + transpose</div>
+              <div className="text-white">(B, 8, T, 64)</div>
+              <div className="text-slate-400 mt-1">Splits 512 into 8 heads of 64!</div>
+            </div>
+            <div className="rounded-lg bg-slate-950 p-3 border border-white/10">
+              <div className="text-emerald-300 font-bold mb-1">3. Parallel Attention</div>
+              <div className="text-white">(B, 8, T, T)</div>
+              <div className="text-slate-400 mt-1">GPU runs all 8 grids at once!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: What Real Attention Heads Actually Learn in the Wild
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When researchers open up trained Transformers (like BERT, GPT-2, and Llama-3) and inspect what each head looks at, they find that heads automatically specialize into distinct jobs without ever being told to:
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-1 font-bold text-cyan-300">1. Previous-Word / Local Heads</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Always look $1$ or $2$ seats to the left—acting like a local Bigram/Trigram detector to bind adjectives to nouns (like <em>&quot;red&quot; → &quot;apple&quot;</em>).
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-1 font-bold text-violet-300">2. Pronoun / Coreference Heads</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Connect pronouns (<em>&quot;he&quot;, &quot;she&quot;, &quot;it&quot;, &quot;they&quot;</em>) directly back to the person or object&apos;s name across long paragraphs!
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-1 font-bold text-emerald-300">3. Induction / Copy Heads (In-Context Learning)</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Search earlier in your prompt for patterns like <code>[A][B] ... [A]</code> and predict <code>[B]</code> next—powering few-shot prompting and code completion!
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5">
+          <div className="mb-1 font-bold text-amber-300">4. Punctuation / &quot;Resting&quot; Heads</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Park their spotlight on the very first token (<code>&lt;BOS&gt;</code>) or a period (<code>.</code>) when the specific clue they hunt for isn&apos;t present in the sentence!
+          </div>
+        </div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          What is the role of the final Output Projection matrix $\mathbf{W}_O$ at the very end of a Multi-Head Attention layer?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) It mixes and combines the information discovered by all H separate heads across the full vector</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>Concatenation simply places the $H$ head outputs side-by-side; multiplying by $\mathbf{W}_O$ allows features from Head #1, Head #2, ..., Head #H to interact and blend together!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) It converts the vector directly into English text strings</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>$\mathbf{W}_O$ outputs a dense vector of size $d_{\text{model}}$ that stays inside the Transformer block to pass into the next layer.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Grouped-Query Attention (GQA) — How Llama-3 Saves 8x GPU Memory!
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When ChatGPT or Llama-3 generates a long answer one word at a time, it saves the past <strong className="text-white">Key ($\mathbf{K}$) and Value ($\mathbf{V}$)</strong> vectors of every earlier word in GPU memory (called the <strong className="text-cyan-300">KV Cache</strong>) so it doesn&apos;t have to recompute them.
+      </div>
+      <div>
+        In standard <strong className="text-white">Multi-Head Attention (MHA)</strong>, if you have $32$ Query heads, you also have to store <strong className="text-rose-300">$32$ separate Key heads and $32$ Value heads</strong> in GPU memory—eating up tens of gigabytes of VRAM on long chats!
+      </div>
+      <div>
+        To solve this memory bottleneck, modern LLMs use <strong className="text-emerald-300">Grouped-Query Attention (GQA)</strong> (used in Llama-3, Mistral, Gemma-2, and Qwen):
+      </div>
+      <div className="my-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[740px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Attention Variant</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Query Heads ($H_Q$)</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Key / Value Heads ($H_{KV}$)</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">KV Cache Memory &amp; Speed</th>
+            </tr>
+          </thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-cyan-300">1. Multi-Head Attention (MHA)</td>
+              <td className="px-5 py-4 font-mono text-xs">32 Query Heads</td>
+              <td className="px-5 py-4 font-mono text-xs">32 Key/Value Heads (1:1)</td>
+              <td className="px-5 py-4 text-rose-300">100% KV Cache Memory (Heavy VRAM on long context)</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-amber-300">2. Multi-Query Attention (MQA)</td>
+              <td className="px-5 py-4 font-mono text-xs">32 Query Heads</td>
+              <td className="px-5 py-4 font-mono text-xs">1 Shared Key/Value Head (32:1)</td>
+              <td className="px-5 py-4 text-amber-300">32x smaller memory, but slight accuracy drop</td>
+            </tr>
+            <tr>
+              <td className="px-5 py-4 font-semibold text-emerald-300">3. Grouped-Query Attention (GQA)</td>
+              <td className="px-5 py-4 font-mono text-xs">32 Query Heads</td>
+              <td className="px-5 py-4 font-mono text-xs">8 Key/Value Heads (4:1 Groups)</td>
+              <td className="px-5 py-4 text-emerald-300"><strong className="text-white">4x–8x less memory with 99.9% of MHA quality!</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          In Llama-3 8B, each layer has $32$ Query Heads ($H_Q = 32$) but only $8$ Key/Value Heads ($H_{KV} = 8$) using Grouped-Query Attention (GQA). How does that work, and why do we do it?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) Every group of 4 Query heads shares 1 Key/Value head, cutting KV Cache GPU memory by 4x during generation!</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>Sharing 1 Key/Value head across 4 Query heads slashes the KV Cache memory footprint by $75\%$ ($4\times$ smaller) while keeping all $32$ independent Query spotlights active!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) It deletes 24 Query heads at test time</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>All $32$ Query heads remain active; they are simply grouped into $8$ teams of $4$ that share the $8$ Key/Value heads.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The 3-Head Detective Split &amp; Mixing Desk
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Instead of a single blurry beam, watch how <strong className="text-white">Multi-Head Attention</strong> slices an incoming word vector into <strong className="text-cyan-300">3 Specialist Detective Heads</strong>, lets each head lock onto a different clue in the sentence, and blends their discoveries at the <strong className="text-emerald-300">$\mathbf{W}_O$ Mixing Desk</strong>:
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060913] p-6 shadow-[0_0_40px_rgba(0,240,255,0.04)] sm:p-8 space-y-6">
+        
+        {/* Top Bar: Incoming Full Vector */}
+        <div className="rounded-xl border border-white/10 bg-slate-950 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <span className="font-mono text-xs font-bold uppercase text-slate-300">
+              1. INCOMING WORD VECTOR FOR &quot;it&quot; (d_model = 12 Sliders)
+            </span>
+            <span className="font-mono text-xs text-slate-400">Sliced into 3 Heads of 4 Sliders Each!</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 font-mono text-xs text-center">
+            <div className="rounded border border-cyan-500/40 bg-cyan-500/10 py-2 text-cyan-300 font-bold">
+              Sliders [0..3] → Head 1
+            </div>
+            <div className="rounded border border-violet-500/40 bg-violet-500/10 py-2 text-violet-300 font-bold">
+              Sliders [4..7] → Head 2
+            </div>
+            <div className="rounded border border-amber-500/40 bg-amber-500/10 py-2 text-amber-300 font-bold">
+              Sliders [8..11] → Head 3
+            </div>
+          </div>
+        </div>
+
+        {/* Middle Studio: 3 Parallel Specialist Heads */}
+        <div className="grid gap-5 lg:grid-cols-3">
+          {/* Head 1: Cyan Noun Hunter */}
+          <div className="rounded-xl border border-cyan-500/35 bg-gradient-to-b from-cyan-500/[0.08] to-slate-950 p-5">
+            <div className="flex items-center justify-between">
+              <span className="rounded bg-cyan-500/20 px-2.5 py-0.5 font-mono text-[11px] font-bold text-cyan-300">
+                🕵️ HEAD #1 · NOUN HUNTER
+              </span>
+              <span className="font-mono text-xs text-slate-400">d_k = 4</span>
+            </div>
+            <div className="mt-3 text-xs text-slate-300">
+              Asks: <em>&quot;Which physical object does &apos;it&apos; refer to?&quot;</em>
+            </div>
+            <div className="mt-4 space-y-2 font-mono text-xs">
+              <div>
+                <div className="flex justify-between text-cyan-300 font-bold">
+                  <span>➔ &quot;glass bowl&quot;</span>
+                  <span>88%</span>
+                </div>
+                <div className="mt-1 h-2 w-full rounded-full bg-slate-800">
+                  <div className="h-2 w-[88%] rounded-full bg-cyan-400" />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-slate-500">
+                  <span>&quot;chef&quot;</span>
+                  <span>7%</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full rounded-full bg-slate-800">
+                  <div className="h-1.5 w-[7%] rounded-full bg-slate-600" />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-slate-500">
+                  <span>&quot;slippery&quot;</span>
+                  <span>5%</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full rounded-full bg-slate-800">
+                  <div className="h-1.5 w-[5%] rounded-full bg-slate-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Head 2: Violet Property Tracker */}
+          <div className="rounded-xl border border-violet-500/35 bg-gradient-to-b from-violet-500/[0.08] to-slate-950 p-5">
+            <div className="flex items-center justify-between">
+              <span className="rounded bg-violet-500/20 px-2.5 py-0.5 font-mono text-[11px] font-bold text-violet-300">
+                🕵️ HEAD #2 · TRAIT HUNTER
+              </span>
+              <span className="font-mono text-xs text-slate-400">d_k = 4</span>
+            </div>
+            <div className="mt-3 text-xs text-slate-300">
+              Asks: <em>&quot;What adjective describes &apos;it&apos;?&quot;</em>
+            </div>
+            <div className="mt-4 space-y-2 font-mono text-xs">
+              <div>
+                <div className="flex justify-between text-violet-300 font-bold">
+                  <span>➔ &quot;slippery&quot;</span>
+                  <span>84%</span>
+                </div>
+                <div className="mt-1 h-2 w-full rounded-full bg-slate-800">
+                  <div className="h-2 w-[84%] rounded-full bg-violet-400" />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-slate-500">
+                  <span>&quot;glass bowl&quot;</span>
+                  <span>10%</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full rounded-full bg-slate-800">
+                  <div className="h-1.5 w-[10%] rounded-full bg-slate-600" />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-slate-500">
+                  <span>&quot;dropped&quot;</span>
+                  <span>6%</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full rounded-full bg-slate-800">
+                  <div className="h-1.5 w-[6%] rounded-full bg-slate-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Head 3: Amber Action Tracker */}
+          <div className="rounded-xl border border-amber-500/35 bg-gradient-to-b from-amber-500/[0.08] to-slate-950 p-5">
+            <div className="flex items-center justify-between">
+              <span className="rounded bg-amber-500/20 px-2.5 py-0.5 font-mono text-[11px] font-bold text-amber-300">
+                🕵️ HEAD #3 · ACTION HUNTER
+              </span>
+              <span className="font-mono text-xs text-slate-400">d_k = 4</span>
+            </div>
+            <div className="mt-3 text-xs text-slate-300">
+              Asks: <em>&quot;What action happened to &apos;it&apos;?&quot;</em>
+            </div>
+            <div className="mt-4 space-y-2 font-mono text-xs">
+              <div>
+                <div className="flex justify-between text-amber-300 font-bold">
+                  <span>➔ &quot;dropped on floor&quot;</span>
+                  <span>81%</span>
+                </div>
+                <div className="mt-1 h-2 w-full rounded-full bg-slate-800">
+                  <div className="h-2 w-[81%] rounded-full bg-amber-400" />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-slate-500">
+                  <span>&quot;chef&quot;</span>
+                  <span>14%</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full rounded-full bg-slate-800">
+                  <div className="h-1.5 w-[14%] rounded-full bg-slate-600" />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-slate-500">
+                  <span>&quot;glass bowl&quot;</span>
+                  <span>5%</span>
+                </div>
+                <div className="mt-1 h-1.5 w-full rounded-full bg-slate-800">
+                  <div className="h-1.5 w-[5%] rounded-full bg-slate-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Bar: Concatenation + W_O Mixing Console */}
+        <div className="rounded-xl border border-emerald-500/35 bg-gradient-to-r from-emerald-500/[0.08] via-teal-500/[0.05] to-slate-950 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <span className="rounded-full bg-emerald-500/20 px-3 py-0.5 font-mono text-[11px] font-bold text-emerald-300">
+              🎛️ STEP 3 · CONCATENATE + W_O MIXING DESK
+            </span>
+            <span className="font-mono text-xs text-emerald-300">Output Shape Restored: (d_model = 12)</span>
+          </div>
+          <div className="text-sm text-slate-200">
+            Glues <span className="text-cyan-300">[Bowl]</span> + <span className="text-violet-300">[Slippery]</span> + <span className="text-amber-300">[Dropped]</span> back into $12$ sliders and multiplies by $\mathbf{W}_O$—so the final vector for <strong className="text-white">&quot;it&quot;</strong> knows it is a <strong className="text-emerald-300">&quot;slippery glass bowl that got dropped on the floor&quot;</strong>!
+          </div>
+
+          {/* Interactive GQA Switcher */}
+          <details className="group mt-4 rounded-xl border border-white/10 bg-slate-950/90 p-4 transition-all">
+            <summary className="flex cursor-pointer items-center justify-between gap-4 marker:content-['']">
+              <div className="text-xs font-bold text-white">
+                ⚡ Click to Compare: Standard MHA vs. Llama-3 Grouped-Query Attention (GQA) Wiring
+              </div>
+              <div className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-500/20 px-3.5 py-1.5 font-mono text-xs font-semibold text-emerald-300">
+                <span>Compare Wiring</span>
+                <span className="inline-block text-[10px] leading-none transition-transform duration-200 group-open:rotate-180">
+                  ▼
+                </span>
+              </div>
+            </summary>
+            <div className="mt-4 grid gap-3 border-t border-white/10 pt-3 text-xs sm:grid-cols-2">
+              <div className="rounded border border-cyan-500/30 bg-[#060913] p-3">
+                <div className="font-bold text-cyan-300">Standard MHA (GPT-2 / BERT):</div>
+                <div className="mt-1 text-slate-300">
+                  • 32 Query Heads<br />
+                  • 32 Key Heads + 32 Value Heads<br />
+                  <span className="text-rose-400">Requires storing 64 full K/V tensors in GPU cache!</span>
+                </div>
+              </div>
+              <div className="rounded border border-emerald-500/30 bg-[#060913] p-3">
+                <div className="font-bold text-emerald-300">Grouped-Query Attention (Llama-3):</div>
+                <div className="mt-1 text-slate-300">
+                  • 32 Query Heads (8 groups of 4)<br />
+                  • Only 8 Key Heads + 8 Value Heads!<br />
+                  <span className="text-emerald-400">Uses 4x less GPU RAM with zero loss in smarts!</span>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Multi-Head Attention From Scratch in PyTorch
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Here is a complete, runnable PyTorch implementation of <strong className="text-white">Multi-Head Attention</strong> showing how professional LLM code splits <code>d_model</code> into <code>num_heads</code> using <code>.view()</code> and <code>.transpose()</code>—running all heads in parallel without a single Python loop:
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">multi_head_attention.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.11+ · PyTorch 2.x</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-cyan-300">import math</span>
+            <span className="block text-cyan-300">import torch</span>
+            <span className="block text-cyan-300">import torch.nn as nn</span>
+            <span className="block">import torch.nn.functional as F</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">class MultiHeadAttention(nn.Module):</span>
+            <span className="block">    def __init__(self, dModel: int, numHeads: int):</span>
+            <span className="block">        super().__init__()</span>
+            <span className="block">        assert dModel % numHeads == 0, &quot;dModel must be divisible by numHeads!&quot;</span>
+            <span className="block">        self.dModel = dModel</span>
+            <span className="block">        self.numHeads = numHeads</span>
+            <span className="block text-violet-300">        self.dHead = dModel // numHeads                  # e.g., 512 // 8 = 64 sliders per head</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">        self.wQ = nn.Linear(dModel, dModel, bias=False)</span>
+            <span className="block">        self.wK = nn.Linear(dModel, dModel, bias=False)</span>
+            <span className="block">        self.wV = nn.Linear(dModel, dModel, bias=False)</span>
+            <span className="block text-emerald-300">        self.wO = nn.Linear(dModel, dModel, bias=False)  # Final Mixing Desk (W_O)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">    def forward(self, x: torch.Tensor) -&gt; torch.Tensor:</span>
+            <span className="block">        B, T, C = x.shape</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">        # 1. Project Q, K, V and split C into (numHeads, dHead) -&gt; Transpose to (B, H, T, dHead)</span>
+            <span className="block text-violet-300">        Q = self.wQ(x).view(B, T, self.numHeads, self.dHead).transpose(1, 2)</span>
+            <span className="block text-violet-300">        K = self.wK(x).view(B, T, self.numHeads, self.dHead).transpose(1, 2)</span>
+            <span className="block text-violet-300">        V = self.wV(x).view(B, T, self.numHeads, self.dHead).transpose(1, 2)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">        # 2. Run Scaled Dot-Product Attention across all H heads in parallel!</span>
+            <span className="block">        scores = (Q @ K.transpose(-2, -1)) / math.sqrt(self.dHead)      # Shape: (B, H, T, T)</span>
+            <span className="block">        weights = F.softmax(scores, dim=-1)</span>
+            <span className="block">        headOutputs = weights @ V                                       # Shape: (B, H, T, dHead)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">        # 3. Concatenate all H heads back into (B, T, dModel) and mix with W_O!</span>
+            <span className="block text-cyan-300">        glued = headOutputs.transpose(1, 2).contiguous().view(B, T, C)</span>
+            <span className="block text-emerald-300">        return self.wO(glued)                                           # Shape: (B, T, dModel)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">torch.manual_seed(42)</span>
+            <span className="block">mha = MultiHeadAttention(dModel=512, numHeads=8)</span>
+            <span className="block">sampleInput = torch.randn(2, 10, 512)                                   # 2 sentences, 10 words, 512 sliders</span>
+            <span className="block">output = mha(sampleInput)</span>
+            <span className="block text-emerald-300">print(&quot;Input Shape:&quot;, sampleInput.shape, &quot;-&gt; MHA Output Shape:&quot;, output.shape)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-teal-500/20 bg-teal-500/[0.05] p-5 text-sm leading-7 text-slate-300">
+        <div className="mb-2 font-bold text-teal-300">
+          Pro Tip (Why Do We Need .contiguous() Before .view(B, T, C)?):
+        </div>
+        <div>
+          Look at Step 3 in the code above: <code>headOutputs.transpose(1, 2).contiguous().view(B, T, C)</code>. In PyTorch, calling <code>.transpose(1, 2)</code> swaps the axes without rearranging the numbers in RAM. Calling <strong className="text-white"><code>.contiguous()</code></strong> neatly lines the numbers up in memory row-by-row so <code>.view(B, T, C)</code> can glue the $8$ heads of $64$ back into $512$ without throwing a PyTorch stride error!
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Multi-Head Attention (MHA) splits each token&apos;s $d_{\text{model}}$ vector into $H$ smaller subspaces of size $d_k = d_{\text{model}} / H$, allowing the model to attend to multiple relationships simultaneously.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Because each head operates on a slice of size $d_{\text{model}} / H$, running $H$ heads in parallel costs the exact same total FLOPs and parameters as running a single full-sized head.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>After all $H$ heads compute their outputs in parallel, their vectors are concatenated back to size $d_{\text{model}}$ and multiplied by the Output Projection matrix $\mathbf{W}_O$ so heads can share information.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Different heads automatically specialize during training into roles like tracking pronouns, binding nearby adjectives, or copying patterns (Induction Heads).</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Modern LLMs (Llama-3, Mistral, Gemma) use <strong>Grouped-Query Attention (GQA)</strong>—sharing 1 Key/Value head across every 4 to 8 Query heads to slash KV Cache GPU memory by $4\text{--}8\times$.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Common Mistakes
+    </h2>
+    <div className="rounded-2xl border border-rose-500/25 bg-rose-950/[0.15] p-6 sm:p-8">
+      <div className="space-y-6">
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Choosing a d_model that is not evenly divisible by num_heads.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Because every head gets $d_{\text{model}} / H$ sliders, picking $d_{\text{model}} = 512$ with $H = 12$ crashes immediately ($512 / 12 = 42.66$). Always pick $H$ that divides $d_{\text{model}}$ cleanly (like $512 / 8 = 64$ or $768 / 12 = 64$).
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Scaling attention scores by sqrt(d_model) instead of sqrt(d_head).
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Each individual head computes a dot product over $d_{\text{head}} = 64$ numbers, not $d_{\text{model}} = 512$. Always divide scores by $\sqrt{d_{\text{head}}}$ (e.g., $\sqrt{64} = 8$)!
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Calling .view(B, T, C) directly after .transpose(1, 2) without .contiguous() (or .reshape()).
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Transposing the head and sequence dimensions makes the tensor non-contiguous in memory. Always call <code>.contiguous().view(B, T, C)</code> or <code>.reshape(B, T, C)</code> when concatenating heads back together.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section className="pb-6">
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">
+          Single-Head Attention (One Blurred Spotlight)
+        </div>
+        <div className="text-center font-bold text-white">
+          1 Softmax Budget for All Clues → Grammar, Pronouns &amp; Tone Get Averaged Together
+        </div>
+      </div>
+      <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-6">
+        <div className="mb-4 text-lg font-bold text-blue-400">
+          Multi-Head &amp; Grouped-Query Attention (Specialist Detective Team)
+        </div>
+        <div className="text-center font-bold text-white">
+          Slice Sliders Into H Heads → Parallel Spotlights Hunt Different Clues → Mix Together via W_O!
+        </div>
+      </div>
+      <div>
+        The big takeaway is simple: <strong className="text-white">Multi-Head Attention gives the AI multiple pairs of eyes at zero extra math cost</strong>. While one head links a pronoun to its noun, a second head checks verb tense, and a third head tracks the overall topic—then the $\mathbf{W}_O$ mixing desk blends all their answers into one rich vector.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Remember:</strong> Multi-Head Attention is the communication engine where words talk to each other—in our very next lesson, we will wrap Multi-Head Attention with <strong className="text-cyan-300">Feed-Forward Networks, Residual Highways, and LayerNorm</strong> to build a complete <strong className="text-emerald-300">Transformer Block</strong>!
+      </div>
+    </div>
+  </section>
+</div>

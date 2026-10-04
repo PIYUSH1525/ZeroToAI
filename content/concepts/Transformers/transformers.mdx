@@ -1,266 +1,564 @@
 ---
-title: "Transformers"
+title: "Introduction to Transformers: The Engine Behind Modern AI"
 slug: "transformers-intro"
+order: 0
 category: "Transformers"
-difficulty: "Advanced"
-description: "The parallel-processing architecture powered by self-attention that revolutionized natural language processing, computer vision, and multimodal AI."
+subcategory: "Architecture Foundations"
+difficulty: "Beginner"
+readTime: "22 min"
+description: "Discover how Transformers broke the slow word-by-word bottleneck of older neural networks—using parallel processing and Self-Attention to power ChatGPT, Vision Transformers, and Multimodal AI."
 ---
 
-<div className="mx-auto w-full max-w-4xl">
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> If you have ever used ChatGPT, Claude, Gemini, or an AI image generator, the letter <strong>&quot;T&quot;</strong> in GPT literally stands for <strong>Transformer</strong>! Before 2017, AI models had to read sentences like a person reading through a tiny straw—one word after another in a slow line. Transformers changed history by rising up like a helicopter to view the <em>entire paragraph all at once</em>, connecting distant ideas instantly and unlocking the era of Large Language Models and Multimodal AI.
+      </div>
+    </div>
+  </section>
 
-  <main className="pt-2 space-y-16">
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: The Evolution — Why Did AI Need Transformers?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        To understand why every AI lab on Earth switched to Transformers, we first have to look at the <strong className="text-white">three generations of neural networks</strong> that came before them—and why each one hit a wall when reading human language:
+      </div>
 
-    <section>
-      <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        1. The Evolution: Why Transformers?
-      </h2>
-
-      <div className="space-y-5 text-[16px] leading-8 text-slate-300">
-        <div>
-          To understand Transformers, we first have to understand the bottlenecks of previous neural network architectures when dealing with different types of data.
-        </div>
-
-        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
-          <div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
-            <div className="mb-8 grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-slate-700/50 bg-slate-800/20 p-5">
-                <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Tabular Data
-                </div>
-                <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-white">
-                  Feed Forward NN
-                </div>
-                <div className="text-center text-sm leading-6 text-rose-400">
-                  Cannot handle sequential data (like sentences or time-series).
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-700/50 bg-slate-800/20 p-5">
-                <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Sequential Data
-                </div>
-                <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-white">
-                  RNN (Recurrent NN)
-                </div>
-                <div className="text-center text-sm leading-6 text-rose-400">
-                  Suffers from short memory, vanishing gradients, and slow sequential processing.
-                </div>
-              </div>
-            </div>
-
-            <div className="mx-auto max-w-md rounded-xl border border-blue-400/25 bg-blue-400/[0.06] p-5">
-               <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-blue-300">
-                  The Bridge
-                </div>
-                <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-white">
-                  LSTM (Long Short-Term Memory)
-                </div>
-                <div className="text-center text-sm leading-6 text-slate-300">
-                  Better memory than RNNs, but still restricted by <strong className="text-rose-400">slow, sequential training</strong>.
-                </div>
-            </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-rose-400">Generation 1 · Tabular Data</div>
+          <div className="mb-2 text-base font-bold text-white">Feed-Forward NN (MLP)</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Great for spreadsheets (like predicting house prices from square footage), but has <strong className="text-rose-300">zero memory of order</strong>. It cannot handle sequential data like sentences, audio, or time-series!
           </div>
         </div>
 
-        <div>
-          The fundamental flaw of RNNs and LSTMs is that they read data word-by-word[cite: 2]. You cannot process word #50 until you have finished processing word #49. This makes training on massive datasets agonizingly slow.
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        2. Enter The Transformer
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          Introduced in 2017, <strong className="font-semibold text-white">Transformers</strong> are a neural network architecture based entirely on a <strong className="font-semibold text-white">Multi-Head Attention Mechanism</strong>[cite: 2]. They discarded recurrent loops entirely.
-        </div>
-
-        <div className="my-7 space-y-4 rounded-xl border border-violet-400/15 bg-violet-400/[0.04] p-6">
-          <div className="border-l-2 border-emerald-400/60 pl-4">
-            <div><strong className="text-white">Parallel Processing:</strong> Unlike RNNs, Transformers process entire data sequences (like a whole paragraph) simultaneously in parallel[cite: 2]. This allows them to scale smoothly on massive datasets[cite: 2].</div>
-          </div>
-
-          <div className="border-l-2 border-cyan-400/60 pl-4">
-            <div><strong className="text-white">Long Context:</strong> By looking at all words at once, the model retains perfect memory of the beginning of a document, solving the vanishing gradient problem[cite: 2].</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        3. The Core Concept: Self-Attention
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          Instead of processing words sequentially, Transformers use <strong className="font-semibold text-white">Self-Attention</strong>[cite: 2]. This mechanism allows every word in a sequence to "look" at every other word to gather context.
-        </div>
-
-        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
-          <div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
-            <div className="mb-5 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Contextual Weighting (Self-Attention)
-            </div>
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-center text-lg font-semibold text-slate-300">
-                "The <span className="text-emerald-400">bank</span> of the river."
-              </div>
-              <div className="text-center text-xl text-slate-500">vs</div>
-              <div className="text-center text-lg font-semibold text-slate-300">
-                "I deposited money in the <span className="text-blue-400">bank</span>."
-              </div>
-              <div className="mt-4 max-w-lg rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center text-sm text-slate-400">
-                The word "bank" means entirely different things. Self-attention allows the model to dynamically shift its focus to "river" or "money" to encode the correct mathematical meaning.
-              </div>
-            </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-amber-400">Generation 2 · Sequential</div>
+          <div className="mb-2 text-base font-bold text-white">Recurrent NN (RNN)</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Reads sentences word-by-word and passes a sticky note forward. Suffers from <strong className="text-amber-300">short-term amnesia (vanishing gradients)</strong>—forgetting the start of a sentence after $\approx 10$ words!
           </div>
         </div>
 
-        <div>
-          The mathematical engine behind this relies on three matrices derived from the input: <strong>Queries (Q)</strong>, <strong>Keys (K)</strong>, and <strong>Values (V)</strong>.
-        </div>
-
-        <div className="my-8 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.04] px-6 py-8 text-center text-xl">
-          $$
-          \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
-          $$
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        4. Multimodal Capabilities & Use Cases
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div>
-          While Transformers were originally designed for sequence-to-sequence tasks (like language translation)[cite: 2], their parallel architecture proved so powerful that they are now the state-of-the-art across multiple domains[cite: 2].
-        </div>
-
-        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
-          <div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-6">
-            <div className="grid gap-5 md:grid-cols-3">
-              <div className="rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-5">
-                <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-violet-300">
-                  Natural Language (NLP)
-                </div>
-                <div className="text-center text-sm leading-6 text-slate-400">
-                  Text summarization, language conversion (translation), and Large Language Models (LLMs)[cite: 2].
-                </div>
-              </div>
-              <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5">
-                <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-emerald-300">
-                  Computer Vision (CV)
-                </div>
-                <div className="text-center text-sm leading-6 text-slate-400">
-                  Vision Transformers (ViT) replacing CNNs for image classification and generation[cite: 2].
-                </div>
-              </div>
-              <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.05] p-5">
-                <div className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-blue-300">
-                  Speech & Audio
-                </div>
-                <div className="text-center text-sm leading-6 text-slate-400">
-                  Real-time transcription and generative voice synthesis[cite: 2].
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 mx-auto max-w-xl rounded-xl border border-orange-400/25 bg-orange-400/[0.06] px-5 py-4 text-center font-semibold text-orange-100">
-              Multimodal Models: Processing Text, Image, and Speech simultaneously.
-            </div>
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-cyan-400">Generation 3 · The Bridge</div>
+          <div className="mb-2 text-base font-bold text-white">LSTM &amp; GRU</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Added a memory conveyor belt to remember longer sentences, <strong className="text-rose-300">but still trapped in a slow 1-by-1 loop</strong>: it cannot read Word #50 until it finishes waiting for Word #49!
           </div>
         </div>
       </div>
-    </section>
 
-    <section>
-      <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        5. Head-to-Head: RNN vs. Transformers
-      </h2>
-
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div className="my-8 overflow-x-auto rounded-2xl border border-white/10">
-          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-            <thead className="bg-white/[0.06] text-white">
-              <tr>
-                <th className="border-b border-white/10 px-5 py-4 font-semibold">Feature</th>
-                <th className="border-b border-white/10 px-5 py-4 font-semibold text-rose-300">RNN / LSTM</th>
-                <th className="border-b border-white/10 px-5 py-4 font-semibold text-cyan-300">Transformers</th>
-              </tr>
-            </thead>
-            <tbody className="text-slate-300">
-              <tr className="border-b border-white/10">
-                <td className="px-5 py-4 font-semibold text-white">Data Processing</td>
-                <td className="px-5 py-4">Sequential Process (Step-by-step)[cite: 2]</td>
-                <td className="px-5 py-4">Parallel Processing (Entire sequence at once)[cite: 2]</td>
-              </tr>
-              <tr className="border-b border-white/10">
-                <td className="px-5 py-4 font-semibold text-white">Context Memory</td>
-                <td className="px-5 py-4">Short memory / Vanishing Gradient[cite: 2]</td>
-                <td className="px-5 py-4">Long context retention via Self-Attention[cite: 2]</td>
-              </tr>
-              <tr className="border-b border-white/10">
-                <td className="px-5 py-4 font-semibold text-white">Training Speed</td>
-                <td className="px-5 py-4">Slow Training (Bottlenecked by sequential logic)[cite: 2]</td>
-                <td className="px-5 py-4">Extremely fast; works on very large data smoothly[cite: 2]</td>
-              </tr>
-              <tr>
-                <td className="px-5 py-4 font-semibold text-white">Core Mechanism</td>
-                <td className="px-5 py-4">Recurrent Hidden States</td>
-                <td className="px-5 py-4">Multi-Head Attention Mechanism[cite: 2]</td>
-              </tr>
-            </tbody>
-          </table>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <h3 className="mb-2 text-lg font-bold text-white">The Fatal Flaw: The &quot;Single-Lane Traffic Jam&quot; on GPUs</h3>
+        <div className="text-sm leading-relaxed text-slate-300">
+          Modern AI graphics cards (GPUs) are built like a stadium of <strong className="text-cyan-300">$10{,}000$ math calculators</strong> that want to work at the exact same time. When you train an RNN or LSTM, $9{,}999$ of those calculators sit idle because Word #2 has to wait for Word #1 to finish! Training an LSTM on the whole internet would take <strong className="text-rose-300">decades</strong>. AI needed an architecture that could feed all words into all $10{,}000$ GPU cores at the exact same millisecond!
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section>
-      <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        6. Key Takeaways
-      </h2>
-
-      <div className="space-y-7 text-[16px] leading-8 text-slate-300">
-        <blockquote className="rounded-2xl border border-pink-400/20 bg-pink-400/[0.05] p-6 text-lg font-medium leading-8 text-slate-100">
-          <strong>Transformers broke the sequential bottleneck of RNNs. By processing entire datasets in parallel using multi-head attention, they became the state-of-the-art foundation for modern AI across text, images, and speech.</strong>
-        </blockquote>
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Enter the Transformer (Two Superpowers at Once!)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In 2017, researchers introduced the <strong className="text-white">Transformer</strong>—an architecture that threw out recurrent loops completely and replaced them with <strong className="text-cyan-300">Multi-Head Self-Attention</strong>.
       </div>
-    </section>
+      <div>
+        This single design shift gave AI <strong className="text-emerald-300">two superpowers</strong> that no neural network had ever combined before:
+      </div>
 
-    <section className="pb-8">
-      <h2 className="mb-6 border-l-4 border-sky-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        7. What to Learn Next
-      </h2>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-lg font-bold text-emerald-300">1. Massive Parallel Processing</span>
+            <span className="rounded bg-emerald-950/80 px-2.5 py-0.5 font-mono text-xs text-emerald-300">Speed</span>
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Unlike RNNs, a Transformer ingests an <strong className="text-white">entire paragraph or book page simultaneously in parallel</strong>. Every GPU core works at $100\%$ capacity at once, allowing models to train smoothly on trillions of words from the web!
+          </div>
+        </div>
 
-      <div className="space-y-6 text-[16px] leading-8 text-slate-300">
-        <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50 p-5">
-          <div className="my-8 rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-            <div className="flex flex-col items-stretch justify-center gap-3 md:flex-row md:items-center">
-              <div className="rounded-xl border border-blue-400/25 bg-blue-400/[0.06] px-4 py-4 text-center font-semibold text-blue-100">
-                Attention Math
-              </div>
-              <div className="text-center text-xl text-slate-500">→</div>
-              <div className="rounded-xl border border-violet-400/25 bg-violet-400/[0.06] px-4 py-4 text-center font-semibold text-violet-100">
-                Transformers
-              </div>
-              <div className="text-center text-xl text-slate-500">→</div>
-              <div className="rounded-xl border border-orange-400/25 bg-orange-400/[0.06] px-4 py-4 text-center font-semibold text-orange-100">
-                Large Language Models
-              </div>
-              <div className="text-center text-xl text-slate-500">→</div>
-              <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-4 py-4 text-center font-semibold text-emerald-100">
-                Vision Transformers
-              </div>
-            </div>
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-lg font-bold text-cyan-300">2. Instant Long-Range Memory</span>
+            <span className="rounded bg-cyan-950/80 px-2.5 py-0.5 font-mono text-xs text-cyan-300">Memory</span>
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Because the model looks at all words at once, Word #500 can look directly back at Word #1 in a <strong className="text-white">single 1-hop step</strong>! Nothing gets watered down or forgotten along a chain, solving the vanishing gradient problem over long contexts.
           </div>
         </div>
       </div>
-    </section>
 
-  </main>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          Why can a Transformer train on massive internet datasets dramatically faster on GPUs than an LSTM?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) It removes the word-by-word sequential loop and processes all tokens in a training sequence simultaneously in parallel</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>An LSTM must wait for step $t-1$ before computing step $t$. A Transformer computes representations across all token positions at once using fast parallel matrix multiplications!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) Because Transformers only read the first and last word of every book</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Transformers read every single token in the sequence—they just process them all in parallel rather than waiting in a single-file line.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: The Core Concept — Self-Attention (&quot;Chameleon Words&quot;)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        How does a Transformer actually understand human language when it looks at all words at once? Through its core engine: <strong className="text-emerald-300">Self-Attention</strong>.
+      </div>
+      <div>
+        Think about how many English words are <strong className="text-white">&quot;chameleon words&quot;</strong>—they completely change their meaning depending on the other words sitting around them! Look at the word <strong className="text-cyan-300">&quot;bank&quot;</strong> in these two sentences:
+      </div>
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="text-xs font-mono uppercase text-emerald-400">Sentence 1 · Nature Meaning</div>
+          <div className="mt-1 text-lg font-bold text-white">
+            &quot;The <span className="underline decoration-emerald-400">bank</span> of the <span className="text-emerald-300">river</span>.&quot;
+          </div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-300">
+            Self-Attention lets <em>&quot;bank&quot;</em> look across the sentence, spot the clue word <strong className="text-emerald-300">&quot;river&quot;</strong>, and update its vector to mean <strong className="text-white">muddy shoreline</strong>!
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="text-xs font-mono uppercase text-cyan-400">Sentence 2 · Finance Meaning</div>
+          <div className="mt-1 text-lg font-bold text-white">
+            &quot;I deposited <span className="text-cyan-300">money</span> in the <span className="underline decoration-cyan-400">bank</span>.&quot;
+          </div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-300">
+            Here, Self-Attention lets <em>&quot;bank&quot;</em> spot the clue words <strong className="text-cyan-300">&quot;deposited&quot;</strong> and <strong className="text-cyan-300">&quot;money&quot;</strong>, shifting its vector to mean <strong className="text-white">financial vault</strong>!
+          </div>
+        </div>
+      </div>
+
+      <div>
+        Under the hood, every word creates three vectors—a <strong className="text-cyan-300">Query ($Q$)</strong> (what clues it is searching for), a <strong className="text-violet-300">Key ($K$)</strong> (its label tag for other words to match against), and a <strong className="text-emerald-300">Value ($V$)</strong> (its actual meaning payload)—and runs this single equation:
+      </div>
+
+      <div className="my-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] px-6 py-8 text-center text-lg">
+        <div>$$\text{Attention}(Q, K, V) = \text{softmax}\left(\dfrac{QK^T}{\sqrt{d_k}}\right)V$$</div>
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">
+          How to Read That Equation in 10 Seconds
+        </div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          1. <strong className="text-cyan-300">$QK^T$</strong> multiplies every word&apos;s Query by every other word&apos;s Key to measure how strongly two words relate.<br />
+          2. <strong className="text-violet-300">$\text{softmax}(\dots / \sqrt{d_k})$</strong> converts those raw scores into clean percentages that add up to $100\%$.<br />
+          3. <strong className="text-emerald-300">$\times V$</strong> blends the meanings (Values) of the relevant words together according to those percentages!
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Beyond Text — How Transformers Conquered Vision, Audio &amp; Multimodal AI
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Here is the coolest surprise in modern AI: even though Transformers were originally invented in 2017 to translate text, researchers quickly realized that <strong className="text-white">Self-Attention doesn&apos;t care if a token is a word, a square patch of a photo, or a slice of music</strong>!
+      </div>
+      <div>
+        As long as you can chop data into a sequence of vectors (tokens), a Transformer can learn how all the pieces relate to each other:
+      </div>
+
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-violet-400">1. Natural Language (NLP)</div>
+          <div className="mb-2 text-base font-bold text-white">Subword Tokens</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Chops sentences into subword bricks. Powers <strong className="text-violet-300">Large Language Models (GPT-4, Claude, Llama-3)</strong> for chat, summarization, translation, and coding.
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-emerald-400">2. Computer Vision (CV)</div>
+          <div className="mb-2 text-base font-bold text-white">16×16 Image Patches</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            <strong className="text-emerald-300">Vision Transformers (ViT)</strong> slice an image into a grid of $16 \times 16$ pixel squares and treat each square just like a word—replacing CNNs for image recognition and generation!
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-cyan-400">3. Speech &amp; Audio</div>
+          <div className="mb-2 text-base font-bold text-white">20ms Spectrogram Slices</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            Slices soundwaves into tiny time frames. Powers <strong className="text-cyan-300">OpenAI Whisper</strong> for transcription and realistic voice synthesis!
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-violet-500/10 to-cyan-500/10 p-6 text-center">
+        <div className="font-mono text-xs font-bold uppercase tracking-widest text-amber-300">
+          🌐 The Ultimate Evolution: Native Multimodal Models (GPT-4o &amp; Gemini)
+        </div>
+        <div className="mt-2 text-sm leading-relaxed text-slate-200">
+          Because text words, image patches, and audio slices all get turned into the <strong className="text-white">exact same kind of vectors</strong>, a single Multimodal Transformer can read a <strong className="text-violet-300">text question</strong>, look at a <strong className="text-emerald-300">photo of your fridge</strong>, and reply with <strong className="text-cyan-300">spoken voice instructions</strong> all inside one shared Self-Attention space!
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Head-to-Head Comparison: RNN / LSTM vs. Transformers
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Here is the side-by-side summary table comparing classical Recurrent Models against modern Transformers:
+      </div>
+
+      <div className="my-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[740px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Feature</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold text-rose-300">RNN / LSTM (Pre-2017)</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold text-cyan-300">Transformers (2017–Present)</th>
+            </tr>
+          </thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-white">Data Processing</td>
+              <td className="px-5 py-4">Sequential Process (Word-by-word step loop)</td>
+              <td className="px-5 py-4 text-emerald-300"><strong className="text-white">Parallel Processing</strong> (Entire sequence at once)</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-white">Context Memory</td>
+              <td className="px-5 py-4">Fades over time / Vanishing Gradients</td>
+              <td className="px-5 py-4 text-emerald-300">Direct 1-hop memory across long documents via Self-Attention</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-white">Training Speed on GPUs</td>
+              <td className="px-5 py-4 text-rose-300">Slow (Bottlenecked waiting for previous step)</td>
+              <td className="px-5 py-4 text-emerald-300">Extremely fast; scales smoothly to trillions of tokens</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-white">Core Mechanism</td>
+              <td className="px-5 py-4">Recurrent Hidden States ($h_{t-1} \to h_t$)</td>
+              <td className="px-5 py-4 text-cyan-300"><strong className="text-white">Multi-Head Self-Attention + Feed-Forward MLP</strong></td>
+            </tr>
+            <tr>
+              <td className="px-5 py-4 font-semibold text-white">Multimodal Flexibility</td>
+              <td className="px-5 py-4">Mostly limited to 1D text or time-series</td>
+              <td className="px-5 py-4 text-emerald-300">Universal across Text, Vision (ViT), Audio, Video &amp; Code</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          How does a Vision Transformer (ViT) apply the Transformer architecture—originally built for sentences of words—to a 2D digital photograph?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) It chops the image into a grid of square patches (like 16x16 pixels) and treats each patch as a token vector!</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>To a Vision Transformer, a $224 \times 224$ photo sliced into $16 \times 16$ patches is simply a &quot;sentence&quot; of $196$ visual patch tokens that can talk to each other via Self-Attention!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) It converts the image into an English paragraph first before looking at it</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>A Vision Transformer operates directly on the pixel patches by projecting each patch into an embedding vector.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Interactive Context Switcher &amp; Multimodal Token Studio
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Explore how a Transformer shifts its <strong className="text-cyan-300">Self-Attention Spotlight</strong> to decode the chameleon word <strong className="text-white">&quot;bank&quot;</strong>, and click below to see how <strong className="text-emerald-300">Text, Images, and Audio</strong> all merge into one shared token stream:
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060913] p-6 shadow-[0_0_40px_rgba(0,240,255,0.04)] sm:p-8 space-y-6">
+        
+        {/* Top Studio: Side-by-Side SVG Context Switcher for "bank" */}
+        <div className="grid gap-5 md:grid-cols-2">
+          
+          {/* Left Panel: River Bank */}
+          <div className="rounded-xl border border-emerald-500/35 bg-gradient-to-b from-emerald-500/[0.08] to-slate-950 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 font-mono text-[10px] font-bold text-emerald-300">
+                🌲 SCENE A · NATURE CONTEXT
+              </span>
+              <span className="font-mono text-xs text-emerald-400">84% Attention Link</span>
+            </div>
+
+            <svg viewBox="0 0 320 120" className="w-full h-auto">
+              {/* Curved Attention Arc from "bank" to "river" */}
+              <path d="M 95 45 Q 175 5 255 45" fill="none" stroke="#34d399" strokeWidth="4" />
+              <circle cx="95" cy="45" r="4" fill="#34d399" />
+              <circle cx="255" cy="45" r="4" fill="#34d399" />
+              <text x="175" y="18" fill="#6ee7b7" fontSize="11" fontFamily="monospace" textAnchor="middle">84% Focus ➔</text>
+
+              {/* Word Boxes */}
+              <rect x="10" y="48" width="45" height="30" rx="6" fill="#0f172a" stroke="#334155" />
+              <text x="32" y="67" fill="#94a3b8" fontSize="12" fontFamily="monospace" textAnchor="middle">The</text>
+
+              <rect x="65" y="45" width="60" height="34" rx="6" fill="#064e3b" stroke="#34d399" strokeWidth="2" />
+              <text x="95" y="66" fill="#ffffff" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="middle">bank</text>
+
+              <rect x="135" y="48" width="80" height="30" rx="6" fill="#0f172a" stroke="#334155" />
+              <text x="175" y="67" fill="#94a3b8" fontSize="12" fontFamily="monospace" textAnchor="middle">of the</text>
+
+              <rect x="225" y="45" width="65" height="34" rx="6" fill="#064e3b" stroke="#34d399" strokeWidth="2" />
+              <text x="257" y="66" fill="#6ee7b7" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="middle">river</text>
+
+              <text x="160" y="106" fill="#a7f3d0" fontSize="11" fontFamily="monospace" textAnchor="middle">Vector Shifts To: [Water: +0.96, Money: 0.01]</text>
+            </svg>
+          </div>
+
+          {/* Right Panel: Money Bank */}
+          <div className="rounded-xl border border-cyan-500/35 bg-gradient-to-b from-cyan-500/[0.08] to-slate-950 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="rounded-full bg-cyan-500/20 px-2.5 py-0.5 font-mono text-[10px] font-bold text-cyan-300">
+                🏦 SCENE B · FINANCE CONTEXT
+              </span>
+              <span className="font-mono text-xs text-cyan-400">89% Attention Link</span>
+            </div>
+
+            <svg viewBox="0 0 320 120" className="w-full h-auto">
+              {/* Curved Attention Arc from "bank" back to "money" */}
+              <path d="M 260 45 Q 180 5 105 45" fill="none" stroke="#22d3ee" strokeWidth="4" />
+              <circle cx="260" cy="45" r="4" fill="#22d3ee" />
+              <circle cx="105" cy="45" r="4" fill="#22d3ee" />
+              <text x="182" y="18" fill="#67e8f9" fontSize="11" fontFamily="monospace" textAnchor="middle">← 89% Focus</text>
+
+              {/* Word Boxes */}
+              <rect x="10" y="48" width="55" height="30" rx="6" fill="#0f172a" stroke="#334155" />
+              <text x="37" y="67" fill="#94a3b8" fontSize="12" fontFamily="monospace" textAnchor="middle">Saved</text>
+
+              <rect x="73" y="45" width="65" height="34" rx="6" fill="#083344" stroke="#22d3ee" strokeWidth="2" />
+              <text x="105" y="66" fill="#67e8f9" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="middle">money</text>
+
+              <rect x="146" y="48" width="75" height="30" rx="6" fill="#0f172a" stroke="#334155" />
+              <text x="183" y="67" fill="#94a3b8" fontSize="12" fontFamily="monospace" textAnchor="middle">in the</text>
+
+              <rect x="230" y="45" width="65" height="34" rx="6" fill="#083344" stroke="#22d3ee" strokeWidth="2" />
+              <text x="262" y="66" fill="#ffffff" fontSize="13" fontWeight="bold" fontFamily="monospace" textAnchor="middle">bank</text>
+
+              <text x="160" y="106" fill="#a5f3fc" fontSize="11" fontFamily="monospace" textAnchor="middle">Vector Shifts To: [Water: 0.00, Money: +0.98]</text>
+            </svg>
+          </div>
+        </div>
+
+        {/* Interactive Multimodal Token Stream Inspector */}
+        <details className="group rounded-xl border border-violet-500/30 bg-violet-500/[0.05] p-5 transition-all open:bg-violet-500/[0.09]">
+          <summary className="flex cursor-pointer items-center justify-between gap-4 marker:content-['']">
+            <div>
+              <div className="font-mono text-[11px] font-bold uppercase tracking-wider text-violet-400">
+                🎛️ MULTIMODAL TOKEN STUDIO · CLICK TO EXPAND
+              </div>
+              <div className="mt-1 text-base font-bold text-white">
+                🌐 How Can One Transformer Read Text, Photos, and Voice at the Same Time?
+              </div>
+            </div>
+            <div className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-violet-500/20 px-3.5 py-1.5 font-mono text-xs font-semibold text-violet-300">
+              <span>Inspect</span>
+              <span className="inline-block text-[10px] leading-none transition-transform duration-200 group-open:rotate-180">
+                ▼
+              </span>
+            </div>
+          </summary>
+
+          <div className="mt-4 space-y-4 border-t border-white/10 pt-4 text-xs">
+            <div className="text-slate-300">
+              To a Multimodal Transformer (like GPT-4o or Gemini), <strong>everything is converted into the exact same size vector</strong> (for example, $4{,}096$ numbers per token) and lined up in one shared sequence:
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 font-mono">
+              <div className="rounded-lg border border-violet-500/30 bg-slate-950 p-3.5">
+                <div className="font-bold text-violet-300">📝 1. Text Tokenizer</div>
+                <div className="mt-1 text-white">&quot;What animal is this?&quot;</div>
+                <div className="mt-2 rounded bg-violet-500/10 px-2 py-1 text-[11px] text-violet-200">
+                  ➔ 5 Text Vectors
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-emerald-500/30 bg-slate-950 p-3.5">
+                <div className="font-bold text-emerald-300">🖼️ 2. Vision Patch Grid</div>
+                <div className="mt-1 text-white">[Photo Sliced into 16×16 Squares]</div>
+                <div className="mt-2 rounded bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-200">
+                  ➔ 196 Image Patch Vectors
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-cyan-500/30 bg-slate-950 p-3.5">
+                <div className="font-bold text-cyan-300">🎙️ 3. Audio Encoder</div>
+                <div className="mt-1 text-white">[Soundwave 20ms Frames]</div>
+                <div className="mt-2 rounded bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-200">
+                  ➔ 50 Audio Frame Vectors
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-slate-950 p-3 text-center text-slate-300 border border-white/5">
+              Because all $251$ vectors sit in the <strong className="text-white">same Self-Attention layer</strong>, the text word <em>&quot;animal&quot;</em> can shine its spotlight directly onto the image patch showing the cat&apos;s ears!
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Feed-Forward Networks (MLPs) cannot process sequential order, while RNNs and LSTMs are bottlenecked by slow, step-by-step sequential processing that cannot be parallelized across GPU cores.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Introduced in 2017, <strong>Transformers</strong> discarded recurrent loops entirely and replaced them with <strong>Multi-Head Self-Attention</strong>, processing entire sequences in parallel.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong>Self-Attention</strong> allows every word to look directly at every other word in a single hop—dynamically resolving ambiguous words (like <em>&quot;river bank&quot;</em> vs. <em>&quot;money bank&quot;</em>) using Query ($Q$), Key ($K$), and Value ($V$) vectors.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Beyond text (LLMs), Transformers power Computer Vision (<strong>Vision Transformers / ViT</strong> using image patches), speech recognition (<strong>Whisper</strong>), and native <strong>Multimodal AI</strong>.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Common Mistakes
+    </h2>
+    <div className="rounded-2xl border border-rose-500/25 bg-rose-950/[0.15] p-6 sm:p-8">
+      <div className="space-y-6">
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Thinking Transformers are only for text and Natural Language Processing.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            A Transformer is a general-purpose sequence engine! Any data that can be broken into patches or frames—images, video, audio, protein chains, or robot actions—can be processed by Self-Attention.
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Assuming parallel processing means a Transformer inherently knows word order without help.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Because a Transformer looks at all words at once instead of in a 1-by-1 loop, it is completely blind to word order until we add <strong>Positional Encodings</strong> (which you will learn in Lesson 2!).
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section className="pb-6">
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture &amp; Your Learning Roadmap
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">
+          Before 2017: Recurrent Models (RNNs &amp; LSTMs)
+        </div>
+        <div className="text-center font-bold text-white">
+          Reads 1 Word at a Time → GPUs Sit Idle Waiting in Line → Forgets Early Context
+        </div>
+      </div>
+      <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-6">
+        <div className="mb-4 text-lg font-bold text-blue-400">
+          The Transformer Revolution (2017–Today)
+        </div>
+        <div className="text-center font-bold text-white">
+          Reads Entire Sequence in Parallel → Self-Attention Connects All Tokens → Powers LLMs &amp; Multimodal AI!
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-[#080C17] p-6">
+        <div className="mb-4 text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
+          🗺️ What You Will Master Next in This Module (Step-by-Step):
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-6 text-center font-mono text-xs">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 text-cyan-200">
+            <div className="font-bold text-white">1. Tokenization</div>
+            <div className="mt-1 text-[10px] text-slate-400">BPE Subword Bricks</div>
+          </div>
+          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3 text-violet-200">
+            <div className="font-bold text-white">2. Positions</div>
+            <div className="mt-1 text-[10px] text-slate-400">Waves &amp; RoPE Dials</div>
+          </div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-emerald-200">
+            <div className="font-bold text-white">3. Self-Attention</div>
+            <div className="mt-1 text-[10px] text-slate-400">Query, Key &amp; Value</div>
+          </div>
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-200">
+            <div className="font-bold text-white">4. Multi-Head</div>
+            <div className="mt-1 text-[10px] text-slate-400">Parallel Spotlights</div>
+          </div>
+          <div className="rounded-xl border border-pink-500/30 bg-pink-500/10 p-3 text-pink-200">
+            <div className="font-bold text-white">5. Enc / Dec</div>
+            <div className="mt-1 text-[10px] text-slate-400">BERT vs. GPT Masks</div>
+          </div>
+          <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3 text-blue-200">
+            <div className="font-bold text-white">6. 2017 Paper</div>
+            <div className="mt-1 text-[10px] text-slate-400">Full Blueprint</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>

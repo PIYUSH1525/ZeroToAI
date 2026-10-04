@@ -1,0 +1,653 @@
+---
+title: "Positional Encodings: How Transformers Know Word Order"
+slug: "positional-encodings"
+order: 2
+category: "Transformers"
+subcategory: "Architecture Foundations"
+difficulty: "Beginner"
+readTime: "24 min"
+description: "Learn why Transformers are blind to word order without help—and how Sinusoidal Positional Encodings, Learned Embeddings, and RoPE (Rotary Position Embeddings) stamp every word with its place in line."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> In the last module, we saw that RNNs and LSTMs read a sentence one word at a time from left to right—so they naturally know which word came first, second, and third. A <strong>Transformer</strong> throws out that slow loop and reads <em>all words in the sentence at the exact same time</em>! That makes it super fast on GPUs, but creates a huge problem: without a loop, all the words get dumped into a bag at once and the model has no idea what order they were in! <strong>Positional Encodings</strong> fix this by stamping a unique &quot;Seat Number&quot; pattern onto every word vector before the Transformer reads it.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: The &quot;Bag of Scrabble Tiles&quot; Problem
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Look at these two sentences that use the exact same $5$ words:
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-xs font-mono uppercase text-emerald-400">Sentence A</div>
+          <div className="mt-1 text-lg font-bold text-white">&quot;The dog bit the man.&quot;</div>
+          <div className="mt-1 text-xs text-slate-400">An everyday accident</div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-xs font-mono uppercase text-rose-400">Sentence B</div>
+          <div className="mt-1 text-lg font-bold text-white">&quot;The man bit the dog.&quot;</div>
+          <div className="mt-1 text-xs text-slate-400">Crazy front-page news!</div>
+        </div>
+      </div>
+      <div>
+        To a human, those two sentences mean opposite things because of <strong className="text-white">word order</strong>.
+      </div>
+      <div>
+        But if you feed both sentences into a raw Transformer <em>without</em> Positional Encodings, Self-Attention compares every word to every other word all at once—like shaking Scrabble tiles inside a bag! To a raw Transformer, Sentence A and Sentence B produce the <strong className="text-rose-300">exact same mathematical values</strong>!
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">
+          The Fix: Give Every Word a &quot;Seat Number&quot; Vector!
+        </div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          Before the words enter the first Transformer layer, we take each word&apos;s <strong className="text-cyan-300">Meaning Vector</strong> (from <code>nn.Embedding</code>) and <strong className="text-emerald-300">add ($+$) a Position Vector</strong> that tells the model whether that word is sitting in Seat #0, Seat #1, or Seat #2:
+        </div>
+        <div className="mt-4 rounded-lg bg-slate-950 p-4 text-center text-base">
+          <div>$$\text{Final Input Vector} = \text{Word Meaning Vector} + \text{Position Vector}$$</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Why Simple Seat Numbers (1, 2, 3...) Fail
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        At first, you might think: <em>&quot;Why not just add $+1$ to the first word, $+2$ to the second word, $+3$ to the third word, and $+500$ to the 500th word?&quot;</em>
+      </div>
+      <div>
+        Let us see why the simple ideas break down immediately:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-rose-300">Bad Idea #1: Adding Raw Integers (1, 2, 3 ... 1000)</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Remember that word meaning vectors contain tiny decimals between $-1.0$ and $+1.0$ (like <code>[0.42, -0.15]</code>). If you add $+500$ to the 500th word in an essay, the vector becomes <code>[500.42, 499.85]</code>—<strong className="text-white">the giant position number completely drowns out the meaning of the word</strong>!
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-amber-300">Bad Idea #2: Fractions From 0.0 to 1.0</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            What if you divide by sentence length so the first word is $0.0$ and the last word is $1.0$? In a 4-word sentence, the step between words is $0.25$. In a 100-word paragraph, the step between words shrinks to $0.01$! <strong className="text-white">A 1-word step would mean something totally different in every sentence!</strong>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+        <h3 className="mb-2 text-lg font-bold text-emerald-300">What a Great Positional Encoding Needs (The 3 Rules)</h3>
+        <div className="space-y-2 text-sm text-slate-300">
+          <div>1. <strong className="text-white">Small Bounded Numbers:</strong> All values must stay neatly between $-1.0$ and $+1.0$ so they never crush the word&apos;s meaning.</div>
+          <div>2. <strong className="text-white">Consistent Step Size:</strong> The distance from Word #2 to Word #3 must look the same whether the sentence is 5 words long or 5,000 words long.</div>
+          <div>3. <strong className="text-white">Unique Pattern per Seat:</strong> Every position needs its own distinct fingerprint vector of length $d_{\text{model}}$.</div>
+        </div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          How do standard Positional Encodings combine with a word&apos;s Meaning Embedding vector at the input of a Transformer?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) They have the exact same dimension d_model and are added together element-by-element (+)</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>If each word embedding has 512 numbers, its positional encoding also has 512 numbers, and we simply add them together (<code>x = word_emb + pos_emb</code>) so the vector size stays 512!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) We replace the word embedding completely and throw the word&apos;s meaning away</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>The model needs <em>both</em> what the word means and where it sits, so we add the small wave pattern on top of the meaning vector.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Sinusoidal Positional Encodings (The Hands of a Clock)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        How did the creators of the original 2017 Transformer (<em>&quot;Attention Is All You Need&quot;</em>) solve all three rules at once? With a brilliant analogy: <strong className="text-emerald-300">The Hands of a Clock!</strong>
+      </div>
+      <div>
+        Think about how a clock tells time using three hands spinning at different speeds:
+        <br />• The <strong className="text-cyan-300">Second Hand</strong> ticks super fast (changes on every single step).
+        <br />• The <strong className="text-violet-300">Minute Hand</strong> moves at medium speed.
+        <br />• The <strong className="text-emerald-300">Hour Hand</strong> moves super slowly (only changes over long distances).
+      </div>
+      <div>
+        <strong className="text-white">Sinusoidal Positional Encoding</strong> does the exact same thing using smooth <strong className="text-cyan-300">Sine and Cosine waves</strong> ($\sin$ and $\cos$), which naturally stay bounded between $-1.0$ and $+1.0$ forever!
+      </div>
+      <div className="my-6 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] px-6 py-8 text-center">
+        <div className="mb-3 text-xs font-bold uppercase tracking-widest text-emerald-300">The Classic Transformer Wave Formulas (Even vs. Odd Sliders)</div>
+        <div>$$PE_{(pos, \; 2i)} = \sin\left(\dfrac{pos}{10000^{2i / d_{\text{model}}}}\right) \qquad \text{and} \qquad PE_{(pos, \; 2i+1)} = \cos\left(\dfrac{pos}{10000^{2i / d_{\text{model}}}}\right)$$</div>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-cyan-300">Early Sliders ($i = 0, 1, 2$): Fast Waves</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Like the <strong className="text-white">Second Hand</strong> on a watch, the first few numbers in the vector wiggle up and down rapidly with every word step—helping the AI tell immediate neighbors (Position #4 vs. Position #5) apart.
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-violet-300">Late Sliders ($i = 250+$): Slow Waves</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Because of the $10000^{2i/d}$ denominator, the later numbers in the vector wave very slowly—like the <strong className="text-white">Hour Hand</strong>—helping the AI track which paragraph or chapter a word belongs to!
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Learned Positional Embeddings (Used in BERT &amp; GPT-2)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Instead of using fixed math waves ($\sin$ and $\cos$), models like <strong className="text-white">BERT and GPT-2</strong> took an even simpler approach called <strong className="text-orange-300">Learned Positional Embeddings</strong>:
+      </div>
+      <div>
+        They literally created a <strong className="text-cyan-300">second <code>nn.Embedding(max_seq_len, d_model)</code> lookup table</strong> just for seat numbers (Seat #0, Seat #1, ..., Seat #1023) and let Backpropagation learn the best numbers for each seat during training!
+      </div>
+      <div className="my-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[740px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Method</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">How It Works</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Can It Read Longer Texts Than Trained On?</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Famous Models</th>
+            </tr>
+          </thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-cyan-300">1. Sinusoidal Waves</td>
+              <td className="px-5 py-4">Fixed $\sin$ and $\cos$ frequencies added to input embeddings ($0$ extra trainable parameters).</td>
+              <td className="px-5 py-4 text-amber-300">Somewhat (waves continue forever)</td>
+              <td className="px-5 py-4">Original 2017 Transformer</td>
+            </tr>
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-4 font-semibold text-violet-300">2. Learned Position Table</td>
+              <td className="px-5 py-4">A trainable <code>nn.Embedding(L_max, d)</code> lookup table indexed by position $0, 1, \dots, L-1$.</td>
+              <td className="px-5 py-4 text-rose-300">No! Hard limit at $L_{\max}$ (e.g. 512 in BERT)</td>
+              <td className="px-5 py-4">BERT, RoBERTa, GPT-2, GPT-3</td>
+            </tr>
+            <tr>
+              <td className="px-5 py-4 font-semibold text-emerald-300">3. RoPE (Rotary Embeddings)</td>
+              <td className="px-5 py-4">Rotates Query and Key vectors by an angle $m\theta$ inside every Attention layer!</td>
+              <td className="px-5 py-4 text-emerald-300"><strong className="text-white">Yes! Scales to 128k–1M+ tokens!</strong></td>
+              <td className="px-5 py-4"><strong className="text-white">Llama-3, Mistral, DeepSeek, Gemma, Qwen</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          BERT was trained using a Learned Positional Embedding table of size <code>nn.Embedding(512, 768)</code>. What happens if you try to pass a 600-token paragraph into BERT without truncating it?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) It crashes with an IndexError because Row #512 to #599 do not exist in the position lookup table!</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>A learned position table only has rows for positions $0$ through $511$. Asking for Position #512 triggers an out-of-bounds table lookup error!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) BERT automatically adds 88 new trained rows on the fly</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>A fixed <code>nn.Embedding</code> table cannot invent trained weights for unseen row indices at test time.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: RoPE (Rotary Position Embeddings) — How Modern LLMs Work
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        If you open the code for <strong className="text-white">Llama-3, Mistral, DeepSeek, or Qwen</strong>, you will find they do <em>not</em> add position vectors at the start of the model! Why?
+      </div>
+      <div>
+        Think about human language: when you read a sentence, does it really matter if the phrase <em>&quot;blue sky&quot;</em> is at <strong className="text-white">Word #10 and #11</strong> versus <strong className="text-white">Word #510 and #511</strong>? No! What matters is the <strong className="text-cyan-300">Relative Distance</strong> between the two words ($11 - 10 = 1$ word apart)!
+      </div>
+      <div>
+        <strong className="text-emerald-300">RoPE (Rotary Position Embedding, Su et al. 2021)</strong> encodes relative distance with a super clean geometric trick: instead of <em>adding</em> numbers to the word vector, <strong className="text-white">RoPE rotates the word&apos;s vector like the hand of a clock by an angle $m \cdot \theta$ proportional to its seat number $m$</strong>!
+      </div>
+      <div className="my-6 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.04] px-6 py-6 text-center text-lg">
+        <div>$$\begin{pmatrix} q_1^{\text{rotated}} \\ q_2^{\text{rotated}} \end{pmatrix} = \begin{pmatrix} \cos(m\theta) &amp; -\sin(m\theta) \\ \sin(m\theta) &amp; \cos(m\theta) \end{pmatrix} \begin{pmatrix} q_1 \\ q_2 \end{pmatrix}$$</div>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-emerald-300">Why Rotating Beats Adding!</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Remember that Self-Attention compares Word $m$ and Word $n$ by measuring the <strong className="text-white">angle between their vectors</strong> (dot product). If Word $m$ is rotated by $m\theta$ and Word $n$ is rotated by $n\theta$, the angle between them depends <strong className="text-emerald-300">ONLY on their relative gap $(m - n)\theta$</strong>!
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-violet-300">Context Extension (8k → 128k+ Tokens)</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Because RoPE is just clock rotation, engineers can stretch a model&apos;s context window from $8{,}192$ tokens to $128{,}000+$ tokens (<strong className="text-white">NTK-Aware RoPE Scaling / YaRN</strong>) simply by slowing down the rotation speed $\theta$ so more words fit around the clock face!
+          </div>
+        </div>
+      </div>
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          In RoPE (Rotary Position Embedding), if Word A at position $m = 10$ is rotated by $10\theta$ and Word B at position $n = 12$ is rotated by $12\theta$, what is the angle difference between them? What if the same two words appear later at $m = 510$ and $n = 512$?
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) Both pairs have the exact same relative angle difference of 2*theta!</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>Because $12\theta - 10\theta = 2\theta$ and $512\theta - 510\theta = 2\theta$, Attention sees the exact same 2-word relative distance regardless of where the phrase appears in a 100,000-token book!</span>
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) The second pair is 500 times farther apart in angle</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Because both vectors are rotated forward together around the circle, the angle <em>between</em> them only depends on their difference $(n - m) = 2$.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Wave Fingerprint &amp; Rotary Clock Console
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Look at how a Transformer stamps seat numbers onto every word—comparing the classic <strong className="text-cyan-300">Multi-Speed Wave Barcode (Sinusoidal)</strong> with modern <strong className="text-emerald-300">RoPE Clock Dials (Llama-3)</strong>:
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060913] p-6 shadow-[0_0_40px_rgba(0,240,255,0.04)] sm:p-8 space-y-8">
+        
+        {/* Top Visual: Multi-Speed Wave Barcode Strip */}
+        <div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <span className="rounded-full bg-cyan-500/20 px-3 py-0.5 font-mono text-[11px] font-bold text-cyan-300">
+              PART 1 · SINUSOIDAL WAVE BARCODE (MULTI-SPEED CLOCK HANDS)
+            </span>
+            <span className="font-mono text-xs text-slate-400">Each Seat Gets a Unique Wave Fingerprint!</span>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-4">
+            {/* Seat 0 */}
+            <div className="rounded-xl border border-cyan-500/30 bg-slate-950 p-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="font-mono text-xs font-bold text-cyan-300">SEAT #0</span>
+                <span className="text-sm font-bold text-white">&quot;The&quot;</span>
+              </div>
+              <div className="mt-3 space-y-2 font-mono text-[11px]">
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Fast Wave:</span><span className="text-cyan-300">0.00</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[50%] rounded bg-cyan-400" /></div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Med Wave:</span><span className="text-violet-300">1.00</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-full rounded bg-violet-400" /></div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Slow Wave:</span><span className="text-emerald-300">0.00</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[50%] rounded bg-emerald-400" /></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Seat 1 */}
+            <div className="rounded-xl border border-violet-500/30 bg-slate-950 p-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="font-mono text-xs font-bold text-violet-300">SEAT #1</span>
+                <span className="text-sm font-bold text-white">&quot;dog&quot;</span>
+              </div>
+              <div className="mt-3 space-y-2 font-mono text-[11px]">
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Fast Wave:</span><span className="text-cyan-300">+0.84</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[92%] rounded bg-cyan-400" /></div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Med Wave:</span><span className="text-violet-300">+0.54</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[77%] rounded bg-violet-400" /></div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Slow Wave:</span><span className="text-emerald-300">+0.01</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[51%] rounded bg-emerald-400" /></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Seat 2 */}
+            <div className="rounded-xl border border-emerald-500/30 bg-slate-950 p-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="font-mono text-xs font-bold text-emerald-300">SEAT #2</span>
+                <span className="text-sm font-bold text-white">&quot;bit&quot;</span>
+              </div>
+              <div className="mt-3 space-y-2 font-mono text-[11px]">
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Fast Wave:</span><span className="text-cyan-300">+0.91</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[95%] rounded bg-cyan-400" /></div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Med Wave:</span><span className="text-violet-300">-0.42</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[29%] rounded bg-violet-400" /></div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Slow Wave:</span><span className="text-emerald-300">+0.02</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[52%] rounded bg-emerald-400" /></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Seat 3 */}
+            <div className="rounded-xl border border-amber-500/30 bg-slate-950 p-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="font-mono text-xs font-bold text-amber-300">SEAT #3</span>
+                <span className="text-sm font-bold text-white">&quot;man&quot;</span>
+              </div>
+              <div className="mt-3 space-y-2 font-mono text-[11px]">
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Fast Wave:</span><span className="text-cyan-300">+0.14</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[57%] rounded bg-cyan-400" /></div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Med Wave:</span><span className="text-violet-300">-0.99</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[5%] rounded bg-violet-400" /></div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-slate-400"><span>Slow Wave:</span><span className="text-emerald-300">+0.03</span></div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-slate-800"><div className="h-1.5 w-[53%] rounded bg-emerald-400" /></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Visual: RoPE Rotary Clock Dials (SVG + Interactive Proof) */}
+        <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/[0.06] via-cyan-500/[0.04] to-transparent p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <span className="rounded-full bg-emerald-500/20 px-3 py-0.5 font-mono text-[11px] font-bold text-emerald-300">
+              PART 2 · MODERN RoPE CLOCK DIALS (LLAMA-3 &amp; DEEPSEEK)
+            </span>
+            <span className="font-mono text-xs text-slate-400">Each Seat Rotates the Vector by +30°!</span>
+          </div>
+
+          <div className="grid items-center gap-4 sm:grid-cols-4 text-center">
+            <div className="rounded-lg border border-white/10 bg-slate-950 p-3">
+              <svg viewBox="0 0 80 80" className="mx-auto h-16 w-16">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#1e293b" strokeWidth="3" />
+                <line x1="40" y1="40" x2="40" y2="12" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="40" cy="40" r="4" fill="#38bdf8" />
+              </svg>
+              <div className="mt-1 font-mono text-xs font-bold text-cyan-300">Seat #0 · 0°</div>
+              <div className="text-xs text-white">&quot;The&quot;</div>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-slate-950 p-3">
+              <svg viewBox="0 0 80 80" className="mx-auto h-16 w-16">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#1e293b" strokeWidth="3" />
+                <line x1="40" y1="40" x2="54" y2="16" stroke="#a78bfa" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="40" cy="40" r="4" fill="#a78bfa" />
+              </svg>
+              <div className="mt-1 font-mono text-xs font-bold text-violet-300">Seat #1 · 30°</div>
+              <div className="text-xs text-white">&quot;dog&quot;</div>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-slate-950 p-3">
+              <svg viewBox="0 0 80 80" className="mx-auto h-16 w-16">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#1e293b" strokeWidth="3" />
+                <line x1="40" y1="40" x2="64" y2="26" stroke="#34d399" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="40" cy="40" r="4" fill="#34d399" />
+              </svg>
+              <div className="mt-1 font-mono text-xs font-bold text-emerald-300">Seat #2 · 60°</div>
+              <div className="text-xs text-white">&quot;bit&quot;</div>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-slate-950 p-3">
+              <svg viewBox="0 0 80 80" className="mx-auto h-16 w-16">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#1e293b" strokeWidth="3" />
+                <line x1="40" y1="40" x2="68" y2="40" stroke="#fbbf24" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="40" cy="40" r="4" fill="#fbbf24" />
+              </svg>
+              <div className="mt-1 font-mono text-xs font-bold text-amber-300">Seat #3 · 90°</div>
+              <div className="text-xs text-white">&quot;man&quot;</div>
+            </div>
+          </div>
+
+          <details className="group mt-5 rounded-xl border border-emerald-500/30 bg-slate-950/90 p-4 transition-all">
+            <summary className="flex cursor-pointer items-center justify-between gap-4 marker:content-['']">
+              <div className="text-sm font-bold text-white">
+                🧭 Click to See How RoPE Tells &quot;Dog Bit Man&quot; Apart From &quot;Man Bit Dog&quot;!
+              </div>
+              <div className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-500/20 px-3.5 py-1.5 font-mono text-xs font-semibold text-emerald-300">
+                <span>See Proof</span>
+                <span className="inline-block text-[10px] leading-none transition-transform duration-200 group-open:rotate-180">
+                  ▼
+                </span>
+              </div>
+            </summary>
+            <div className="mt-4 grid gap-3 border-t border-white/10 pt-3 text-xs sm:grid-cols-2">
+              <div className="rounded bg-[#060913] p-3 border border-emerald-500/30">
+                <div className="font-bold text-emerald-300">Sentence A: &quot;The dog (#1) bit (#2) man (#3)&quot;</div>
+                <div className="mt-1 text-slate-300">
+                  &quot;dog&quot; is at <strong>30°</strong> and &quot;bit&quot; is at <strong>60°</strong> (+30° clockwise). The AI immediately sees &quot;dog&quot; came <em>before</em> &quot;bit&quot;!
+                </div>
+              </div>
+              <div className="rounded bg-[#060913] p-3 border border-rose-500/30">
+                <div className="font-bold text-rose-300">Sentence B: &quot;The man (#1) bit (#2) dog (#3)&quot;</div>
+                <div className="mt-1 text-slate-300">
+                  Now &quot;dog&quot; is rotated to <strong>90°</strong> (-30° behind &quot;bit&quot;)! The relative clock angle flipped from <code>+30°</code> to <code>-30°</code>, so Attention knows &quot;dog&quot; is now the victim!
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Sinusoidal &amp; RoPE Positional Encodings in PyTorch
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Here is a clean, runnable PyTorch script that builds both the classic <strong className="text-cyan-300">Sinusoidal Positional Encoding</strong> table and a modern <strong className="text-emerald-300">2D RoPE Rotation</strong> function so you can see how both work in less than 40 lines of code:
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">positional_encodings_demo.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.11+ · PyTorch 2.x</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-cyan-300">import math</span>
+            <span className="block text-cyan-300">import torch</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Classic Sinusoidal Positional Encoding (Attention Is All You Need, 2017)</span>
+            <span className="block text-cyan-300">def buildSinusoidalPE(maxLen: int, dModel: int) -&gt; torch.Tensor:</span>
+            <span className="block">    pe = torch.zeros(maxLen, dModel)</span>
+            <span className="block">    positions = torch.arange(0, maxLen, dtype=torch.float).unsqueeze(1)  # (maxLen, 1)</span>
+            <span className="block">    divTerm = torch.exp(torch.arange(0, dModel, 2).float() * (-math.log(10000.0) / dModel))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-violet-300">    pe[:, 0::2] = torch.sin(positions * divTerm)  # Even sliders: Sine wave</span>
+            <span className="block text-violet-300">    pe[:, 1::2] = torch.cos(positions * divTerm)  # Odd sliders:  Cosine wave</span>
+            <span className="block">    return pe</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">posTable = buildSinusoidalPE(maxLen=10, dModel=4)</span>
+            <span className="block text-emerald-300">print(&quot;Seat #0 Wave Vector:&quot;, posTable[0].numpy().round(3))</span>
+            <span className="block text-emerald-300">print(&quot;Seat #1 Wave Vector:&quot;, posTable[1].numpy().round(3))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Modern RoPE (Rotary Position Embedding): Rotate a 2D Vector by m * theta!</span>
+            <span className="block text-cyan-300">def applyRope2D(vec: torch.Tensor, seatPos: int, theta: float = 0.5) -&gt; torch.Tensor:</span>
+            <span className="block">    angle = seatPos * theta</span>
+            <span className="block">    cosA, sinA = math.cos(angle), math.sin(angle)</span>
+            <span className="block">    x1, x2 = vec[0], vec[1]</span>
+            <span className="block text-violet-300">    return torch.tensor([x1 * cosA - x2 * sinA, x1 * sinA + x2 * cosA])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Proof: Dot product between Seat #1 &amp; #3 equals Seat #101 &amp; #103 (Both 2 seats apart!)</span>
+            <span className="block">qWord = torch.tensor([1.0, 0.5])</span>
+            <span className="block">kWord = torch.tensor([0.8, 0.2])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">scoreNear = torch.dot(applyRope2D(qWord, 1),   applyRope2D(kWord, 3))</span>
+            <span className="block">scoreFar  = torch.dot(applyRope2D(qWord, 101), applyRope2D(kWord, 103))</span>
+            <span className="block text-emerald-300">print(&quot;Attention Score (Seats 1 vs 3):&quot;,     round(scoreNear.item(), 5))</span>
+            <span className="block text-emerald-300">print(&quot;Attention Score (Seats 101 vs 103):&quot;, round(scoreFar.item(), 5))  # Exact Match!</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-teal-500/20 bg-teal-500/[0.05] p-5 text-sm leading-7 text-slate-300">
+        <div className="mb-2 font-bold text-teal-300">
+          Pro Tip (Look at the Two RoPE Scores at the Bottom!):
+        </div>
+        <div>
+          Run the code above and look at the last two lines: comparing Seat #1 vs. Seat #3 gives the <strong className="text-white">exact same attention score to 5 decimal places</strong> as comparing Seat #101 vs. Seat #103! That is why RoPE allows modern LLMs like Llama-3 to understand relative word distance effortlessly across huge documents.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Because Transformers process all tokens in parallel without a sequential loop, they are permutation-equivariant (&quot;blind to word order&quot;) unless we inject Positional Encodings.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Classic Positional Encodings have the exact same dimension $d_{\text{model}}$ as the token embeddings and are added element-wise ($\mathbf{x}_t = \mathbf{e}_t + \mathbf{p}_t$).</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Sinusoidal Positional Encodings use multi-frequency $\sin$ and $\cos$ waves (like the second, minute, and hour hands of a clock) to keep values bounded in $[-1, +1]$ across any sequence length.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Learned Positional Embeddings (used in BERT and GPT-2) store position vectors in a trainable <code>nn.Embedding(L_max, d)</code> table, but cannot extrapolate beyond $L_{\max}$.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Modern LLMs (Llama-3, Mistral, DeepSeek, Gemma) use <strong>RoPE (Rotary Position Embeddings)</strong>, which rotates Query and Key vectors in 2D pairs so their dot product depends purely on relative word distance $(m - n)$.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Common Mistakes
+    </h2>
+    <div className="rounded-2xl border border-rose-500/25 bg-rose-950/[0.15] p-6 sm:p-8">
+      <div className="space-y-6">
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Registering a fixed Sinusoidal Positional Encoding tensor as a trainable nn.Parameter.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Sinusoidal wave tables are fixed mathematical constants and should not be updated by the optimizer! In PyTorch, always register them with <code>self.register_buffer(&quot;pe&quot;, pe)</code> so they move to the GPU automatically without receiving gradients.
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Concatenating positional encodings to word embeddings instead of adding them.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Concatenating a 512-D position vector to a 512-D word vector doubles the hidden dimension to 1,024 and quadruples matrix sizes in every Transformer layer. Standard positional encodings are <strong>added ($+$)</strong>, and RoPE is applied via <strong>in-place rotation</strong>.
+          </div>
+        </div>
+        <div>
+          <div className="mb-1.5 font-bold text-rose-400">
+            ✕ Applying RoPE to Value (V) vectors in Self-Attention.
+          </div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            RoPE is applied <strong>only to Query ($\mathbf{Q}$) and Key ($\mathbf{K}$) vectors</strong> so that the attention score $\mathbf{q}_m^T \mathbf{k}_n$ captures relative distance; rotating the Value ($\mathbf{V}$) vectors scrambles the actual semantic content being passed forward!
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section className="pb-6">
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">
+          Without Positional Encodings (Bag of Words)
+        </div>
+        <div className="text-center font-bold text-white">
+          Parallel Processing → Words Lose All Order → &quot;Dog Bit Man&quot; Equals &quot;Man Bit Dog&quot;
+        </div>
+      </div>
+      <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-6">
+        <div className="mb-4 text-lg font-bold text-blue-400">
+          With Positional Encodings / RoPE (Parallel + Ordered!)
+        </div>
+        <div className="text-center font-bold text-white">
+          Stamp Every Word With Wave / Clock Angle → Process All Words at Once on GPU → Full Order Preserved!
+        </div>
+      </div>
+      <div>
+        The big takeaway is simple: <strong className="text-white">Positional Encodings give us the best of both worlds</strong>. We get the blazing parallel GPU speed of processing an entire book at once, without losing track of which word came first, second, or last.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Remember:</strong> Now that our tokens have both <strong className="text-cyan-300">Meaning (Word Embeddings)</strong> and <strong className="text-violet-300">Order (Positional Encodings)</strong>, they are ready to enter the beating heart of the Transformer in our next lesson: <strong className="text-emerald-300">Self-Attention</strong>!
+      </div>
+    </div>
+  </section>
+</div>
