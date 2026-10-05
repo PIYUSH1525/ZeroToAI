@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ConceptMeta } from "@/lib/types";
@@ -17,7 +17,6 @@ import {
   UserCheck,
   Trash2,
   Settings,
-  Save,
   RotateCcw,
 } from "lucide-react";
 
@@ -50,7 +49,6 @@ export default function DashboardClientView({
     toggleBookmark,
     toggleComplete,
     isCompleted,
-    signInWithGoogle,
     signOut,
   } = useProgress();
 
@@ -62,13 +60,6 @@ export default function DashboardClientView({
     tabParam === "settings"
       ? tabParam
       : "overview";
-
-  const [customName, setCustomName] = useState<string | null>(null);
-  const [customEmail, setCustomEmail] = useState<string | null>(null);
-  const [savedNotice, setSavedNotice] = useState(false);
-
-  const nameInput = customName ?? user?.name ?? "Piyush";
-  const emailInput = customEmail ?? user?.email ?? "piyush@gmail.com";
 
   const handleTabChange = (tab: DashboardTab) => {
     router.replace(`/dashboard?tab=${tab}`, { scroll: false });
@@ -103,13 +94,6 @@ export default function DashboardClientView({
     () => allConcepts.filter((c) => completedSlugs.includes(c.slug)),
     [allConcepts, completedSlugs]
   );
-
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    signInWithGoogle(nameInput, emailInput);
-    setSavedNotice(true);
-    setTimeout(() => setSavedNotice(false), 3000);
-  };
 
   const handleResetProgress = () => {
     completedSlugs.forEach((slug) => toggleComplete(slug));
@@ -459,46 +443,29 @@ export default function DashboardClientView({
               Update your profile details or manage your saved learning state.
             </p>
 
-            <form onSubmit={handleSaveProfile} className="mt-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300">
-                  Display Name
-                </label>
-                <input
-                  type="text"
-                  value={nameInput}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070910] px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500"
-                />
+            {user ? (
+              <div className="mt-6 space-y-4">
+                <div>
+                  <div className="block text-xs font-semibold text-slate-300">Name</div>
+                  <div className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070910] px-4 py-2.5 text-sm text-white">
+                    {user.name}
+                  </div>
+                </div>
+                <div>
+                  <div className="block text-xs font-semibold text-slate-300">Email Address</div>
+                  <div className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070910] px-4 py-2.5 text-sm text-white">
+                    {user.email}
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Signed in with Google. Name and email come from your Google account.
+                </p>
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={emailInput}
-                  onChange={(e) => setCustomEmail(e.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#070910] px-4 py-2.5 text-sm text-white outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500 sm:text-sm"
-                >
-                  <Save className="h-4 w-4" />
-                  <span>Save Changes</span>
-                </button>
-                {savedNotice && (
-                  <span className="text-xs font-semibold text-emerald-400">
-                    ✓ Profile updated!
-                  </span>
-                )}
-              </div>
-            </form>
+            ) : (
+              <p className="mt-6 text-sm text-slate-400">
+                Sign in with Google to see your account details.
+              </p>
+            )}
 
             <div className="mt-8 border-t border-white/[0.08] pt-6">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-rose-400">
@@ -516,7 +483,9 @@ export default function DashboardClientView({
                 {user && (
                   <button
                     type="button"
-                    onClick={signOut}
+                    onClick={() => {
+                      void signOut();
+                    }}
                     className="inline-flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-400 transition-colors hover:bg-rose-500/20"
                   >
                     <span>Sign Out</span>

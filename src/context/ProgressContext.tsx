@@ -8,6 +8,8 @@ import React, {
   useCallback,
 } from "react";
 import { CheckCircle2, X } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export interface UserProfile {
   name: string;
@@ -23,6 +25,8 @@ interface ProgressContextType {
   user: UserProfile | null;
   isAuthModalOpen: boolean;
   isSearchOpen: boolean;
+  isSigningIn: boolean;
+  authError: string | null;
   toggleComplete: (slug: string) => void;
   toggleBookmark: (slug: string) => void;
   setLastVisited: (slug: string) => void;
@@ -30,8 +34,8 @@ interface ProgressContextType {
   closeAuthModal: () => void;
   openSearch: () => void;
   closeSearch: () => void;
-  signInWithGoogle: (customName?: string, customEmail?: string) => void;
-  signOut: () => void;
+  signInWithGoogle: () => Promise<void>;
+  signOut: () => Promise<void>;
   isCompleted: (slug: string) => boolean;
   isBookmarked: (slug: string) => boolean;
 }
@@ -46,6 +50,18 @@ const STORAGE_KEYS = {
   STREAK: "neuralpath_streak_v2",
   LAST_LOGIN_DATE: "neuralpath_last_login_date_v2",
 };
+
+// Converts a verified Supabase user into the profile shape the UI uses.
+function toProfile(u: User): UserProfile {
+  const meta = u.user_metadata ?? {};
+  const email = u.email ?? "";
+  const name: string =
+    (typeof meta.full_name === "string" && meta.full_name.trim()) ||
+    (typeof meta.name === "string" && meta.name.trim()) ||
+    email.split("@")[0] ||
+    "Learner";
+  return { name, email, initial: name.charAt(0).toUpperCase() };
+}
 
 function getLocalDateString(date: Date = new Date()): string {
   const year = date.getFullYear();
@@ -89,6 +105,8 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
 // Load saved state on mount via async callback to satisfy react-hooks/set-state-in-effect
   useEffect(() => {
@@ -109,20 +127,33 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
         const savedLast = localStorage.getItem(STORAGE_KEYS.LAST_VISITED);
         if (savedLast) setLastVisitedSlug(savedLast);
 
-        const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
-        if (savedUser) {
-          const parsedUser = JSON.parse(savedUser);
-          setUser(parsedUser);
-          setStreakDays(syncLoginStreak());
-        } else {
-          setStreakDays(0);
-        }
+        // Remove the old fake "logged-in user" saved by the previous mock login.
+        localStorage.removeItem(STORAGE_KEYS.USER);
       } catch {
         // Ignore storage errors in private browsing
       }
     }, 0);
 
     return () => clearTimeout(timer);
+  }, []);
+
+  // Keep `user` in sync with the real Supabase session (login, logout, token refresh, other tabs).
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(toProfile(session.user));
+        try {
+          setStreakDays(syncLoginStreak());
+        } catch {}
+      } else {
+        setUser(null);
+        setStreakDays(0);
+      }
+    });
+
+    return () => data.subscription.unsubscribe();
   }, []);
 
   // Global keyboard shortcuts (Ctrl+K / Cmd+K and Escape)
@@ -176,32 +207,35 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  const signInWithGoogle = useCallback(
-    (customName?: string, customEmail?: string) => {
-      const name = customName?.trim() || "Piyush";
-      const email = customEmail?.trim() || "piyush@gmail.com";
-      const profile: UserProfile = {
-        name,
-        email,
-        initial: name.charAt(0).toUpperCase(),
-      };
-      setUser(profile);
-      try {
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(profile));
-        const activeStreak = syncLoginStreak();
-        setStreakDays(activeStreak);
-      } catch {}
-      setIsAuthModalOpen(false);
-    },
-    []
-  );
+  const signInWithGoogle = useCallback(async () => {
+    setAuthError(null);
+    setIsSigningIn(true);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const next = window.location.pathname + window.location.search;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        },
+      });
+      if (error) {
+        setAuthError("Could not start Google sign-in. Please try again.");
+        setIsSigningIn(false);
+      }
+      // On success the browser is redirected to Google, so nothing else to do.
+    } catch {
+      setAuthError("Could not start Google sign-in. Please try again.");
+      setIsSigningIn(false);
+    }
+  }, []);
 
-  const signOut = useCallback(() => {
+  const signOut = useCallback(async () => {
+    try {
+      await getSupabaseBrowserClient().auth.signOut();
+    } catch {}
     setUser(null);
     setStreakDays(0);
-    try {
-      localStorage.removeItem(STORAGE_KEYS.USER);
-    } catch {}
   }, []);
 
   return (
@@ -215,10 +249,16 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
         user,
         isAuthModalOpen,
         isSearchOpen,
+        isSigningIn,
+        authError,
         toggleComplete,
         toggleBookmark,
         setLastVisited,
-        openAuthModal: () => setIsAuthModalOpen(true),
+        openAuthModal: () => {
+          setAuthError(null);
+          setIsSigningIn(false);
+          setIsAuthModalOpen(true);
+        },
         closeAuthModal: () => setIsAuthModalOpen(false),
         openSearch: () => setIsSearchOpen(true),
         closeSearch: () => setIsSearchOpen(false),
