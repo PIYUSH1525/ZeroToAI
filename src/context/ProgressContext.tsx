@@ -181,7 +181,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       const supabase = getSupabaseBrowserClient();
       const { data, error } = await supabase
         .from(TABLE)
-        .select("completed_slugs, bookmarked_slugs, last_visited_slug, streak_days, last_login_date")
+        .select("completed, bookmarks, last_visited, streak_days, last_login_date")
         .eq("user_id", userId)
         .maybeSingle();
 
@@ -195,9 +195,9 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       const lastDate: string | null = data?.last_login_date ?? null;
       const nextStreak = computeStreak(savedStreak, lastDate);
 
-      applyCompleted(cleanStringArray(data?.completed_slugs));
-      applyBookmarks(cleanStringArray(data?.bookmarked_slugs));
-      applyLastVisited(typeof data?.last_visited_slug === "string" ? data.last_visited_slug : null);
+      applyCompleted(cleanStringArray(data?.completed));
+      applyBookmarks(cleanStringArray(data?.bookmarks));
+      applyLastVisited(typeof data?.last_visited === "string" ? data.last_visited : null);
       setStreakDays(nextStreak);
 
       // Save today's streak (also creates the row for first-time users).
@@ -227,13 +227,13 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       if (document.visibilityState !== "visible" || pendingWrites.current > 0) return;
       const { data, error } = await getSupabaseBrowserClient()
         .from(TABLE)
-        .select("completed_slugs, bookmarked_slugs, last_visited_slug")
+        .select("completed, bookmarks, last_visited")
         .eq("user_id", userId)
         .maybeSingle();
       if (error || !data || pendingWrites.current > 0) return;
-      applyCompleted(cleanStringArray(data.completed_slugs));
-      applyBookmarks(cleanStringArray(data.bookmarked_slugs));
-      applyLastVisited(typeof data.last_visited_slug === "string" ? data.last_visited_slug : null);
+      applyCompleted(cleanStringArray(data.completed));
+      applyBookmarks(cleanStringArray(data.bookmarks));
+      applyLastVisited(typeof data.last_visited === "string" ? data.last_visited : null);
     };
 
     document.addEventListener("visibilitychange", refresh);
