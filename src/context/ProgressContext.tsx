@@ -4,6 +4,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useCallback,
 } from "react";
@@ -27,6 +28,7 @@ interface ProgressContextType {
   isSearchOpen: boolean;
   isSigningIn: boolean;
   authError: string | null;
+  resetProgress: () => void;
   toggleComplete: (slug: string) => void;
   toggleBookmark: (slug: string) => void;
   setLastVisited: (slug: string) => void;
@@ -42,14 +44,31 @@ interface ProgressContextType {
 
 const ProgressContext = createContext<ProgressContextType | undefined>(undefined);
 
-const STORAGE_KEYS = {
-  COMPLETED: "neuralpath_completed_v2",
-  BOOKMARKS: "neuralpath_bookmarks_v2",
-  LAST_VISITED: "neuralpath_last_visited_v2",
-  USER: "neuralpath_user_v2",
-  STREAK: "neuralpath_streak_v2",
-  LAST_LOGIN_DATE: "neuralpath_last_login_date_v2",
-};
+// Old browser-storage keys from earlier versions. Progress is now stored in Supabase,
+// so these are only ever DELETED (never read) to make sure nothing leaks between users.
+const LEGACY_STORAGE_KEYS = [
+  "neuralpath_completed_v2",
+  "neuralpath_bookmarks_v2",
+  "neuralpath_last_visited_v2",
+  "neuralpath_user_v2",
+  "neuralpath_streak_v2",
+  "neuralpath_last_login_date_v2",
+];
+
+function clearLegacyStorage() {
+  try {
+    LEGACY_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // Ignore storage errors (private browsing)
+  }
+}
+
+const TABLE = "user_progress";
+
+function cleanStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === "string");
+}
 
 // Converts a verified Supabase user into the profile shape the UI uses.
 function toProfile(u: User): UserProfile {
@@ -76,24 +95,11 @@ function getYesterdayDateString(): string {
   return getLocalDateString(yesterday);
 }
 
-// Calculates and saves the daily login streak for a signed-in user
-function syncLoginStreak(): number {
+// Works out the new streak from the values saved in the database.
+function computeStreak(savedStreak: number, lastLoginDate: string | null): number {
   const today = getLocalDateString();
-  const yesterday = getYesterdayDateString();
-
-  const savedStreak = Number(localStorage.getItem(STORAGE_KEYS.STREAK)) || 0;
-  const lastLoginDate = localStorage.getItem(STORAGE_KEYS.LAST_LOGIN_DATE);
-
-  if (lastLoginDate === today) {
-    // Already logged in today -> keep current streak
-    return Math.max(1, savedStreak);
-  }
-
-  // Logged in yesterday -> increment streak by 1; otherwise start fresh at 1
-  const nextStreak = lastLoginDate === yesterday ? savedStreak + 1 : 1;
-  localStorage.setItem(STORAGE_KEYS.STREAK, String(nextStreak));
-  localStorage.setItem(STORAGE_KEYS.LAST_LOGIN_DATE, today);
-  return nextStreak;
+  if (lastLoginDate === today) return Math.max(1, savedStreak);
+  return lastLoginDate === getYesterdayDateString() ? savedStreak + 1 : 1;
 }
 
 export function ProgressProvider({ children }: { children: React.ReactNode }) {
@@ -107,34 +113,44 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   const [showToast, setShowToast] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
-// Load saved state on mount via async callback to satisfy react-hooks/set-state-in-effect
+  // Refs always hold the latest values so save functions never use stale data.
+  const completedRef = useRef<string[]>([]);
+  const bookmarksRef = useRef<string[]>([]);
+  const lastVisitedRef = useRef<string | null>(null);
+  const pendingWrites = useRef(0);
+
+  const applyCompleted = useCallback((v: string[]) => {
+    completedRef.current = v;
+    setCompletedSlugs(v);
+  }, []);
+  const applyBookmarks = useCallback((v: string[]) => {
+    bookmarksRef.current = v;
+    setBookmarkedSlugs(v);
+  }, []);
+  const applyLastVisited = useCallback((v: string | null) => {
+    lastVisitedRef.current = v;
+    setLastVisitedSlug(v);
+  }, []);
+
+  // Wipes ALL progress from memory (used on sign-out).
+  const clearAllProgress = useCallback(() => {
+    applyCompleted([]);
+    applyBookmarks([]);
+    applyLastVisited(null);
+    setStreakDays(0);
+  }, [applyCompleted, applyBookmarks, applyLastVisited]);
+
+  const showSyncError = useCallback(() => {
+    setSyncError("Could not save your progress. Check your connection and try again.");
+    setTimeout(() => setSyncError(null), 5000);
+  }, []);
+
+  // Removes progress left in the browser by older versions of the app.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        const savedCompleted = localStorage.getItem(STORAGE_KEYS.COMPLETED);
-        if (savedCompleted) {
-          const parsed = JSON.parse(savedCompleted);
-          if (Array.isArray(parsed)) setCompletedSlugs(parsed);
-        }
-
-        const savedBookmarks = localStorage.getItem(STORAGE_KEYS.BOOKMARKS);
-        if (savedBookmarks) {
-          const parsed = JSON.parse(savedBookmarks);
-          if (Array.isArray(parsed)) setBookmarkedSlugs(parsed);
-        }
-
-        const savedLast = localStorage.getItem(STORAGE_KEYS.LAST_VISITED);
-        if (savedLast) setLastVisitedSlug(savedLast);
-
-        // Remove the old fake "logged-in user" saved by the previous mock login.
-        localStorage.removeItem(STORAGE_KEYS.USER);
-      } catch {
-        // Ignore storage errors in private browsing
-      }
-    }, 0);
-
-    return () => clearTimeout(timer);
+    clearLegacyStorage();
   }, []);
 
   // Keep `user` in sync with the real Supabase session (login, logout, token refresh, other tabs).
@@ -144,17 +160,89 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(toProfile(session.user));
-        try {
-          setStreakDays(syncLoginStreak());
-        } catch {}
+        setUserId((prev) => (prev === session.user.id ? prev : session.user.id));
       } else {
         setUser(null);
-        setStreakDays(0);
+        setUserId(null);
+        clearAllProgress();
+        clearLegacyStorage();
       }
     });
 
     return () => data.subscription.unsubscribe();
-  }, []);
+  }, [clearAllProgress]);
+
+  // Load this user's saved progress from Supabase whenever a user signs in.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
+    const load = async () => {
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from(TABLE)
+        .select("completed_slugs, bookmarked_slugs, last_visited_slug, streak_days, last_login_date")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (error) {
+        showSyncError();
+        return;
+      }
+
+      const savedStreak = Number(data?.streak_days) || 0;
+      const lastDate: string | null = data?.last_login_date ?? null;
+      const nextStreak = computeStreak(savedStreak, lastDate);
+
+      applyCompleted(cleanStringArray(data?.completed_slugs));
+      applyBookmarks(cleanStringArray(data?.bookmarked_slugs));
+      applyLastVisited(typeof data?.last_visited_slug === "string" ? data.last_visited_slug : null);
+      setStreakDays(nextStreak);
+
+      // Save today's streak (also creates the row for first-time users).
+      const today = getLocalDateString();
+      if (lastDate !== today || !data) {
+        const { error: upsertError } = await supabase
+          .from(TABLE)
+          .upsert(
+            { user_id: userId, streak_days: nextStreak, last_login_date: today },
+            { onConflict: "user_id" }
+          );
+        if (upsertError && !cancelled) showSyncError();
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, applyCompleted, applyBookmarks, applyLastVisited, showSyncError]);
+
+  // Refresh from Supabase when the user returns to this tab, so changes made on another device appear.
+  useEffect(() => {
+    if (!userId) return;
+
+    const refresh = async () => {
+      if (document.visibilityState !== "visible" || pendingWrites.current > 0) return;
+      const { data, error } = await getSupabaseBrowserClient()
+        .from(TABLE)
+        .select("completed_slugs, bookmarked_slugs, last_visited_slug")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error || !data || pendingWrites.current > 0) return;
+      applyCompleted(cleanStringArray(data.completed_slugs));
+      applyBookmarks(cleanStringArray(data.bookmarked_slugs));
+      applyLastVisited(typeof data.last_visited_slug === "string" ? data.last_visited_slug : null);
+    };
+
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [userId, applyCompleted, applyBookmarks, applyLastVisited]);
 
   // Global keyboard shortcuts (Ctrl+K / Cmd+K and Escape)
   useEffect(() => {
@@ -171,41 +259,95 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const toggleComplete = useCallback((slug: string) => {
-    setCompletedSlugs((prev) => {
+  // Saves one column to the user's row. Returns true on success.
+  const saveColumn = useCallback(
+    async (column: "completed" | "bookmarks" | "last_visited", value: string[] | string) => {
+      if (!userId) return false;
+      pendingWrites.current += 1;
+      try {
+        const { error } = await getSupabaseBrowserClient()
+          .from(TABLE)
+          .upsert({ user_id: userId, [column]: value }, { onConflict: "user_id" });
+        return !error;
+      } catch {
+        return false;
+      } finally {
+        pendingWrites.current -= 1;
+      }
+    },
+    [userId]
+  );
+
+  const toggleComplete = useCallback(
+    (slug: string) => {
+      if (!userId) {
+        setIsAuthModalOpen(true);
+        return;
+      }
+      const prev = completedRef.current;
       const exists = prev.includes(slug);
       const updated = exists ? prev.filter((s) => s !== slug) : [...prev, slug];
-
-      try {
-        localStorage.setItem(STORAGE_KEYS.COMPLETED, JSON.stringify(updated));
-      } catch {}
+      applyCompleted(updated);
 
       if (!exists) {
         setShowToast(true);
         setTimeout(() => setShowToast(false), 4000);
       }
 
-      return updated;
-    });
-  }, []);
+      void saveColumn("completed", updated).then((ok) => {
+        if (!ok) {
+          applyCompleted(prev);
+          showSyncError();
+        }
+      });
+    },
+    [userId, applyCompleted, saveColumn, showSyncError]
+  );
 
-  const toggleBookmark = useCallback((slug: string) => {
-    setBookmarkedSlugs((prev) => {
+  const toggleBookmark = useCallback(
+    (slug: string) => {
+      if (!userId) {
+        setIsAuthModalOpen(true);
+        return;
+      }
+      const prev = bookmarksRef.current;
       const exists = prev.includes(slug);
       const updated = exists ? prev.filter((s) => s !== slug) : [...prev, slug];
-      try {
-        localStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  }, []);
+      applyBookmarks(updated);
 
-  const setLastVisited = useCallback((slug: string) => {
-    setLastVisitedSlug(slug);
-    try {
-      localStorage.setItem(STORAGE_KEYS.LAST_VISITED, slug);
-    } catch {}
-  }, []);
+      void saveColumn("bookmarks", updated).then((ok) => {
+        if (!ok) {
+          applyBookmarks(prev);
+          showSyncError();
+        }
+      });
+    },
+    [userId, applyBookmarks, saveColumn, showSyncError]
+  );
+
+  // Clears all completed topics in ONE database write.
+  const resetProgress = useCallback(() => {
+    if (!userId) return;
+    const prev = completedRef.current;
+    if (prev.length === 0) return;
+    applyCompleted([]);
+    void saveColumn("completed", []).then((ok) => {
+      if (!ok) {
+        applyCompleted(prev);
+        showSyncError();
+      }
+    });
+  }, [userId, applyCompleted, saveColumn, showSyncError]);
+
+  const setLastVisited = useCallback(
+    (slug: string) => {
+      if (!userId) return; // Logged-out visitors have no saved progress
+      if (lastVisitedRef.current === slug) return;
+      applyLastVisited(slug);
+      void saveColumn("last_visited", slug);
+    },
+    [userId, applyLastVisited, saveColumn]
+  );
 
   const signInWithGoogle = useCallback(async () => {
     setAuthError(null);
@@ -234,9 +376,12 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     try {
       await getSupabaseBrowserClient().auth.signOut();
     } catch {}
+    // Always wipe the screen, even if the network call failed.
     setUser(null);
-    setStreakDays(0);
-  }, []);
+    setUserId(null);
+    clearAllProgress();
+    clearLegacyStorage();
+  }, [clearAllProgress]);
 
   return (
     <ProgressContext.Provider
@@ -251,6 +396,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
         isSearchOpen,
         isSigningIn,
         authError,
+        resetProgress,
         toggleComplete,
         toggleBookmark,
         setLastVisited,
@@ -269,6 +415,15 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+
+      {syncError && (
+        <div
+          role="alert"
+          className="fixed bottom-16 right-4 z-50 rounded-xl border border-rose-500/30 bg-[#0A0E1A]/95 px-4 py-3 text-sm text-rose-300 shadow-lg backdrop-blur-md"
+        >
+          {syncError}
+        </div>
+      )}
 
       {/* Screen 9: Topic Completion Toast Notification */}
       {showToast && (

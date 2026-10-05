@@ -48,6 +48,7 @@ export default function DashboardClientView({
     openAuthModal,
     toggleBookmark,
     toggleComplete,
+    resetProgress,
     isCompleted,
     signOut,
   } = useProgress();
@@ -96,7 +97,13 @@ export default function DashboardClientView({
   );
 
   const handleResetProgress = () => {
-    completedSlugs.forEach((slug) => toggleComplete(slug));
+    if (!user) {
+      openAuthModal();
+      return;
+    }
+    if (window.confirm("Reset all completed topics? This cannot be undone.")) {
+      resetProgress();
+    }
   };
 
   return (

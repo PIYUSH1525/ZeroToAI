@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Privacy Policy | NeuralPath",
-  description: "Privacy Policy and Google OAuth data usage for NeuralPath (mlroadmap.dev).",
+  title: "Privacy Policy | MLRoadmap",
+  description: "Privacy Policy and Google OAuth data usage for MLRoadmap (mlroadmap.dev).",
 };
 
 export default function PrivacyPolicyPage() {
@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="mb-2 text-lg font-semibold text-white">1. Overview</h2>
           <p>
-            <strong>NeuralPath</strong> (<a href="https://mlroadmap.dev" className="text-indigo-400 hover:underline">mlroadmap.dev</a>) is an AI and Machine Learning educational platform. We collect only the minimum information required to provide authentication and track your learning progress.
+            <strong>MLRoadmap</strong> (<a href="https://mlroadmap.dev" className="text-indigo-400 hover:underline">mlroadmap.dev</a>) is an AI and Machine Learning educational platform. We collect only the minimum information required to provide authentication and track your learning progress.
           </p>
         </section>
 

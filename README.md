@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="https://raw.githubusercontent.com/Significant-Gravitas/AutoGPT/master/docs/home/.gitbook/assets/Banner_image.png" alt="NeuralPath Hero Background" width="100%" />
+  <img src="https://raw.githubusercontent.com/Significant-Gravitas/AutoGPT/master/docs/home/.gitbook/assets/Banner_image.png" alt="MLRoadmap Hero Background" width="100%" />
 
   <br />
   <br />
@@ -29,9 +29,9 @@
 
 ---
 
-## 🌌 What Is NeuralPath?
+## 🌌 What Is MLRoadmap?
 
-NeuralPath is an open learning hub for understanding **artificial intelligence, machine learning, deep learning, NLP, transformers, LLMs, retrieval, RAG, and agents** in the order that makes the ideas click.
+MLRoadmap is an open learning hub for understanding **artificial intelligence, machine learning, deep learning, NLP, transformers, LLMs, retrieval, RAG, and agents** in the order that makes the ideas click.
 
 The project is being built around a strict, iterative optimization loop:
 
@@ -210,6 +210,6 @@ Open a new issue from the repository's **Issues** tab with:
 
 ---
 <div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:071D18,50:071B2B,100:040508&height=110&section=footer&animation=twinkling" alt="NeuralPath footer signal" width="100%" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:071D18,50:071B2B,100:040508&height=110&section=footer&animation=twinkling" alt="MLRoadmap footer signal" width="100%" />
   <p><i>Built for future AI engineers. Learn the mechanism. Question the output. Build with intent.</i></p>
 </div>

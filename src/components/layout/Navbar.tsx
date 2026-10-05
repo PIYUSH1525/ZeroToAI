@@ -22,7 +22,7 @@ export default function Navbar() {
           <Link href="/" className="flex items-center gap-2.5">
             <Image
               src="/brand-logo.png"
-              alt="NeuralPath Logo"
+              alt="MLRoadmap Logo"
               width={32}
               height={32}
               style={{ width: "auto", height: "32px" }}
@@ -30,7 +30,7 @@ export default function Navbar() {
               priority
             />
             <span className="text-base font-bold tracking-tight text-white">
-              NeuralPath
+              MLRoadmap
             </span>
           </Link>
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Sign-in failed // NeuralPath" };
+export const metadata = { title: "Sign-in failed // MLRoadmap" };
 
 export default function AuthCodeErrorPage() {
   return (

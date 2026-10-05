@@ -2,7 +2,7 @@ import { getCategoriesWithTopics } from "@/lib/mdx";
 import RoadmapClientView from "@/components/roadmap/RoadmapClientView";
 
 export const metadata = {
-  title: "AI Learning Roadmap // NeuralPath",
+  title: "AI Learning Roadmap // MLRoadmap",
   description:
     "A step-by-step guide to go from complete beginner to AI practitioner.",
 };

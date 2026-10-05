@@ -24,7 +24,7 @@ export default function AuthModal() {
         {/* Brand Header */}
         <div className="mb-5 text-lg font-extrabold tracking-wide">
           <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            NeuralPath
+            MLRoadmap
           </span>
         </div>
 

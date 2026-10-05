@@ -3,7 +3,7 @@ import { getCategoriesWithTopics, getAllConcepts } from "@/lib/mdx";
 import DashboardClientView from "@/components/dashboard/DashboardClientView";
 
 export const metadata = {
-  title: "Dashboard // NeuralPath",
+  title: "Dashboard // MLRoadmap",
   description:
     "Track your AI learning progress, daily streak, and bookmarked topics.",
 };
