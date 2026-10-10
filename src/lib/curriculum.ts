@@ -110,7 +110,7 @@ export const CURRICULUM_CATEGORIES: CategoryConfig[] = [
     description: "Tools, memory, and autonomous agents.",
     longDescription: "Design autonomous systems capable of reasoning, planning, tool execution, and multi-agent collaboration.",
     accentColor: "rose",
-    subcategories: ["All Topics", "Agent Loops", "Tool Use", "Memory Systems"],
+    subcategories: ["All Topics", "Foundations", "Single Agents", "Reasoning", "Reliability", "Multi-Agent", "Frameworks", "Production", "Advanced"],
     aliases: ["ai agents", "agents", "autonomous agents"],
   },
 ];
