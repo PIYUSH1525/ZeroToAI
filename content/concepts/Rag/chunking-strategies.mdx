@@ -1,0 +1,370 @@
+---
+title: "Chunking Strategies"
+slug: "chunking-strategies"
+order: 6
+category: "RAG"
+subcategory: "Data"
+difficulty: "Beginner"
+readTime: "20 min"
+description: "Learn why documents are split into chunks and how fixed-size, sentence, recursive and semantic chunking, overlap and chunk size change retrieval quality."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> A document is too long to embed, search and place in a prompt as one piece, so it is cut into <strong className="text-white">chunks</strong>. A chunk is the unit that RAG indexes, retrieves and shows to the model. Cut too small and the facts lose their context. Cut too large and each chunk mixes many topics and matches nothing precisely. Good chunking is one of the biggest levers on RAG quality.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: Why Documents Must Be Chunked</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Imagine searching a 300-page manual by asking a librarian for the whole book every time. You would rather ask for the exact page. Chunking turns a long document into page-sized pieces so retrieval can return just the part that answers the question.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Embedding limits</div>
+          <div className="text-sm leading-7">Embedding models accept only a limited amount of text, and one vector for a whole book blurs many topics into a single average meaning.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Precision</div>
+          <div className="text-sm leading-7">A small focused chunk matches a specific question strongly. A huge chunk matches weakly because most of it is unrelated.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Prompt budget</div>
+          <div className="text-sm leading-7">The prompt can hold only a few passages. Short relevant chunks fit many sources; long ones crowd each other out.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5"><strong className="text-blue-300">Key point:</strong> the chunk is the unit of retrieval. Whatever you cut at indexing time is exactly what the retriever can find and the model can read later.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: Fixed-Size Chunking and Overlap</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The simplest method cuts the text every N tokens or words, ignoring its meaning. It is fast, predictable and easy to tune. Its weakness is that a cut can land in the middle of a fact, leaving half in one chunk and half in the next.</div>
+      <div><strong className="text-white">Overlap</strong> repeats the last few words of one chunk at the start of the next, so a fact that crosses a boundary still appears whole in at least one chunk. With text length $L$, chunk size $C$ and overlap $O$ (all in the same unit), the number of chunks is about:</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$\left\lceil \dfrac{L - O}{C - O} \right\rceil$$</div>
+      <div>For example, $L = 1000$, $C = 200$ and $O = 50$ gives $\lceil 950 / 150 \rceil = 7$ chunks. Overlap costs extra storage and embedding work, so teams often start with a modest overlap, commonly around 10 to 20 percent of the chunk size, and tune it.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Sentence, Paragraph and Recursive Chunking</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Structure-aware methods cut along natural boundaries instead of a fixed count, so chunks read like complete thoughts.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Strategy</th><th className="px-4 py-3">How it cuts</th><th className="px-4 py-3">Strength</th><th className="px-4 py-3">Weakness</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Sentence</td><td className="px-4 py-3">Groups a few whole sentences</td><td className="px-4 py-3">Never splits a sentence</td><td className="px-4 py-3">Sizes vary a lot</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Paragraph</td><td className="px-4 py-3">One chunk per paragraph</td><td className="px-4 py-3">Keeps a full idea together</td><td className="px-4 py-3">Paragraphs can be tiny or huge</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Recursive</td><td className="px-4 py-3">Tries big separators first, then smaller ones until each piece fits</td><td className="px-4 py-3">Good default; respects structure and size limit</td><td className="px-4 py-3">Needs sensible separators</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">How recursive chunking works:</strong> split on paragraph breaks first. Any piece still too long is split on line breaks, then sentences, then words. Each piece is kept as large as the size limit allows, so structure is preserved wherever possible.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Semantic Chunking</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Semantic chunking</strong> starts a new chunk when the topic changes. The text is split into sentences, each is embedded, and the similarity between neighboring sentences is measured. Where similarity drops below a threshold, a boundary is placed.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Step 1.</strong> Split the document into sentences.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Step 2.</strong> Embed every sentence.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Step 3.</strong> Compare each sentence with the next one.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Step 4.</strong> Cut where the similarity falls sharply, then merge small leftovers.</div>
+      </div>
+      <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5"><strong className="text-orange-300">Trade-off:</strong> semantic chunks follow meaning, but they need an embedding call for every sentence at indexing time and a threshold that must be tuned. Many teams find recursive chunking nearly as good and far cheaper, so measure before you commit.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Choosing a Chunk Size by Measuring</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>There is no universal best size. Small chunks give precise matches but may lack context. Large chunks carry context but dilute the match and use more of the prompt budget.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Aspect</th><th className="px-4 py-3">Small chunks</th><th className="px-4 py-3">Large chunks</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Match precision</td><td className="px-4 py-3 text-emerald-300">High</td><td className="px-4 py-3 text-rose-300">Lower</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Context inside the chunk</td><td className="px-4 py-3 text-rose-300">Often too little</td><td className="px-4 py-3 text-emerald-300">Usually enough</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Prompt space used</td><td className="px-4 py-3 text-emerald-300">Little each</td><td className="px-4 py-3 text-rose-300">Much each</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Index size</td><td className="px-4 py-3 text-rose-300">More vectors</td><td className="px-4 py-3 text-emerald-300">Fewer vectors</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>A common starting point is a few hundred tokens per chunk with light overlap, but treat that as a hypothesis. Build a small set of real questions with known answer locations, try several sizes, and compare how often the right chunk appears in the top results. The number that wins on your data is the right one.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5"><strong className="text-cyan-300">Always keep metadata:</strong> store the source, section and position of every chunk. It makes citations possible, lets you fetch neighboring chunks, and prepares the ground for the parent and child chunks in the next lesson.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Cutting a Document Four Ways</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The figure has three panels: the chunking flow, a comparison of small and large chunks, and an explorer for the four main strategies.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · The Chunking Flow</span><span className="text-xs text-slate-400">Every strategy follows the same path</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Clean document</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Choose a cutting rule</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Add overlap</span><span className="text-blue-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Chunks with metadata</span></div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · Small vs Large Chunks</span><span className="text-xs text-slate-400">Neither is always better</span></div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-violet-300">Small chunks</div>
+              <div><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">About a sentence or two</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Very focused</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Strong match to a precise question</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Risk: missing context</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-cyan-300">Large chunks</div>
+              <div><span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Several paragraphs</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Rich context</div>
+              <div className="text-center text-cyan-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Mixed topics dilute the match</div>
+              <div className="text-center text-cyan-400">↓</div>
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Risk: noisy, uses prompt space</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Strategy Explorer</span><span className="text-xs text-slate-400">Click a strategy to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c06-strat-0" name="c06-strat" type="radio" className="peer sr-only" />
+              <label htmlFor="c06-strat-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">Fixed-size</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-blue-300">Best for:</strong> Quick start, uniform text</div>
+                <div><strong className="text-blue-300">Weakness:</strong> Cuts through facts</div>
+                <div><strong className="text-blue-300">Tip:</strong> Always add overlap</div>
+              </div>
+            </div>
+            <div>
+              <input id="c06-strat-1" name="c06-strat" type="radio" className="peer sr-only" />
+              <label htmlFor="c06-strat-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Sentence or paragraph</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Best for:</strong> Prose with clear structure</div>
+                <div><strong className="text-violet-300">Weakness:</strong> Uneven sizes</div>
+                <div><strong className="text-violet-300">Tip:</strong> Merge tiny pieces</div>
+              </div>
+            </div>
+            <div>
+              <input id="c06-strat-2" name="c06-strat" type="radio" className="peer sr-only" />
+              <label htmlFor="c06-strat-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">Recursive</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-emerald-300">Best for:</strong> A strong general default</div>
+                <div><strong className="text-emerald-300">Weakness:</strong> Needs good separators</div>
+                <div><strong className="text-emerald-300">Tip:</strong> Set a hard size limit</div>
+              </div>
+            </div>
+            <div>
+              <input id="c06-strat-3" name="c06-strat" type="radio" className="peer sr-only" />
+              <label htmlFor="c06-strat-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">Semantic</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Best for:</strong> Long, topic-shifting documents</div>
+                <div><strong className="text-orange-300">Weakness:</strong> Costly and needs tuning</div>
+                <div><strong className="text-orange-300">Tip:</strong> Compare against recursive first</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why overlap helps</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">If a key fact sits across a cut, neither chunk contains it whole. Repeating a few words at the boundary makes sure at least one chunk holds the full fact.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the common path, Panel B shows the central trade-off, and Panel C helps you pick a starting strategy.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Three Chunkers Compared</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program cuts one short policy three ways: fixed-size without overlap, fixed-size with overlap, and one sentence per chunk. It then checks which strategies keep the phrase payment method within 5 business days together in a single chunk, which is the fact a user might ask about.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">chunkers.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">text = (&quot;Returns are accepted within 30 days of purchase. &quot;</span>
+            <span className="block">        &quot;The item must be unused and in its original box. &quot;</span>
+            <span className="block">        &quot;Refunds go to the original payment method within 5 business days. &quot;</span>
+            <span className="block">        &quot;Gift cards cannot be refunded.&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def fixed_chunks(text, size, overlap):</span>
+            <span className="block">    words = text.split()</span>
+            <span className="block">    step = size - overlap</span>
+            <span className="block">    chunks = []</span>
+            <span className="block">    start = 0</span>
+            <span className="block">    while start &lt; len(words):</span>
+            <span className="block">        chunks.append(&quot; &quot;.join(words[start:start + size]))</span>
+            <span className="block">        if start + size &gt;= len(words):</span>
+            <span className="block">            break</span>
+            <span className="block">        start += step</span>
+            <span className="block">    return chunks</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def sentence_chunks(text, per_chunk):</span>
+            <span className="block">    sentences = [s.strip() + &quot;.&quot; for s in text.split(&quot;.&quot;) if s.strip()]</span>
+            <span className="block">    chunks = []</span>
+            <span className="block">    for i in range(0, len(sentences), per_chunk):</span>
+            <span className="block">        chunks.append(&quot; &quot;.join(sentences[i:i + per_chunk]))</span>
+            <span className="block">    return chunks</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def show(title, chunks):</span>
+            <span className="block">    print(title, &quot;-&quot;, len(chunks), &quot;chunks&quot;)</span>
+            <span className="block">    for i, chunk in enumerate(chunks):</span>
+            <span className="block">        print(&quot;  &quot; + str(i + 1) + &quot;.&quot;, chunk)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">target = &quot;payment method within 5 business days&quot;</span>
+            <span className="block">no_overlap = fixed_chunks(text, 13, 0)</span>
+            <span className="block">with_overlap = fixed_chunks(text, 13, 4)</span>
+            <span className="block">by_sentence = sentence_chunks(text, 1)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">show(&quot;Fixed, no overlap&quot;, no_overlap)</span>
+            <span className="block">show(&quot;Fixed, overlap 4&quot;, with_overlap)</span>
+            <span className="block">show(&quot;Sentence&quot;, by_sentence)</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">for name, chunks in [(&quot;Fixed, no overlap&quot;, no_overlap), (&quot;Fixed, overlap 4&quot;, with_overlap), (&quot;Sentence&quot;, by_sentence)]:</span>
+            <span className="block">    held = any(target in chunk for chunk in chunks)</span>
+            <span className="block">    print(name.ljust(18), &quot;keeps the fact whole:&quot;, held)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Fixed, no overlap - 3 chunks</span>
+            <span className="block">  1. Returns are accepted within 30 days of purchase. The item must be unused</span>
+            <span className="block">  2. and in its original box. Refunds go to the original payment method within</span>
+            <span className="block">  3. 5 business days. Gift cards cannot be refunded.</span>
+            <span className="block">Fixed, overlap 4 - 4 chunks</span>
+            <span className="block">  1. Returns are accepted within 30 days of purchase. The item must be unused</span>
+            <span className="block">  2. item must be unused and in its original box. Refunds go to the</span>
+            <span className="block">  3. Refunds go to the original payment method within 5 business days. Gift cards</span>
+            <span className="block">  4. business days. Gift cards cannot be refunded.</span>
+            <span className="block">Sentence - 4 chunks</span>
+            <span className="block">  1. Returns are accepted within 30 days of purchase.</span>
+            <span className="block">  2. The item must be unused and in its original box.</span>
+            <span className="block">  3. Refunds go to the original payment method within 5 business days.</span>
+            <span className="block">  4. Gift cards cannot be refunded.</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Fixed, no overlap  keeps the fact whole: False</span>
+            <span className="block">Fixed, overlap 4   keeps the fact whole: True</span>
+            <span className="block">Sentence           keeps the fact whole: True</span>
+          </code>
+        </pre>
+      </div>
+      <div>Read the result line by line. Cutting every 13 words without overlap splits the key phrase across two chunks, so no single chunk holds the whole fact. Adding an overlap of 4 words, or cutting at sentence boundaries, repairs that. The overlap here is large compared with the chunk size only because the example text is tiny. The exact outcome always depends on where the cuts fall, which is why you should test chunking on your own documents.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. Why is overlap added between fixed-size chunks?</div>
+        <div>
+          <input id="rag6-q1-a" name="rag6-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag6-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) A fact that crosses a boundary still appears whole in at least one chunk</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> That is the purpose: overlap protects facts near a cut.</div>
+        </div>
+        <div>
+          <input id="rag6-q1-b" name="rag6-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag6-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It makes the embeddings smaller</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Overlap adds repeated text, so it does not shrink anything.</div>
+        </div>
+        <div>
+          <input id="rag6-q1-c" name="rag6-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag6-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It removes duplicate documents</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Overlap is about chunk boundaries, not duplicate removal.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. A teammate sets very large chunks. What is the main risk?</div>
+        <div>
+          <input id="rag6-q2-a" name="rag6-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag6-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) The model cannot read them at all</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Models can read long text. The problem is dilution and cost.</div>
+        </div>
+        <div>
+          <input id="rag6-q2-b" name="rag6-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag6-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Each chunk mixes many topics, so matches are diluted and prompt space is wasted</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Large chunks blur topics and use more of the context budget.</div>
+        </div>
+        <div>
+          <input id="rag6-q2-c" name="rag6-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag6-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Metadata can no longer be stored</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Metadata is independent of chunk size.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. What does recursive chunking try first?</div>
+        <div>
+          <input id="rag6-q3-a" name="rag6-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag6-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Splitting every word</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Word splits come last, only if nothing else fits.</div>
+        </div>
+        <div>
+          <input id="rag6-q3-b" name="rag6-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag6-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Embedding every sentence</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That describes semantic chunking.</div>
+        </div>
+        <div>
+          <input id="rag6-q3-c" name="rag6-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag6-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) The biggest separators such as paragraph breaks, then smaller ones</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It keeps structure by cutting big, then small only when needed.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Documents are chunked because embeddings, retrieval precision and the prompt budget all work better with focused pieces.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Fixed-size chunking is simple but can cut through facts; overlap reduces that risk.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Sentence, paragraph and recursive chunking follow structure and read more naturally.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Semantic chunking cuts where meaning shifts, at the price of extra embedding cost and tuning.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Small chunks match precisely but lose context; large chunks keep context but blur the match.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Choose chunk size by testing retrieval on real questions, not by rule of thumb alone.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Keep source, section and position metadata for every chunk.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Chunking decides what the retriever is even able to find. Every later stage, from embeddings to reranking, works on the pieces you create here, so it pays to inspect your chunks with your own eyes and to measure alternatives.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Clean text → Choose a cutting rule → Add overlap → Attach metadata → Index</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Advanced Chunking and Document Structure. You will learn parent and child chunks, hierarchical chunks, structure-aware splitting by headers, and how to handle tables and relationships between sections.</div>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,385 @@
+---
+title: "Vector Databases and Indexing"
+slug: "vector-databases-indexing"
+order: 10
+category: "RAG"
+subcategory: "Embeddings"
+difficulty: "Intermediate"
+readTime: "25 min"
+description: "Learn how vector stores and vector databases save embeddings, why exact search slows down at scale, and how approximate nearest neighbor indexes trade a little accuracy for large speed gains."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> Once every chunk has an embedding, you need somewhere to keep millions of vectors and a way to find the nearest ones in milliseconds. A <strong className="text-white">vector database</strong> stores vectors together with their text and metadata, and builds an <strong className="text-white">index</strong> that makes nearest-neighbor search fast. The central idea of this lesson is a trade: accept a tiny chance of missing the best match in exchange for searching a small fraction of the data.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: What a Vector Store Keeps and Does</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A vector store is built around one record type. Every record holds four things, and all four are needed by RAG.</div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Id</div>
+          <div className="text-sm leading-7">A unique key, such as a chunk id, used to update or delete the record.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Vector</div>
+          <div className="text-sm leading-7">The embedding, which is what similarity search runs on.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Text</div>
+          <div className="text-sm leading-7">The original chunk, which is what the model finally reads.</div>
+        </div>
+        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-orange-300">Metadata</div>
+          <div className="text-sm leading-7">Source, date, version, permissions and other fields for filtering and citations.</div>
+        </div>
+      </div>
+      <div>The basic operations are simple: <strong className="text-white">upsert</strong> (insert or update a record), <strong className="text-white">query</strong> (return the nearest records to a vector, optionally with a metadata filter), and <strong className="text-white">delete</strong>.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: Vector Stores vs Vector Databases</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The words are often used loosely, but a useful distinction exists. A <strong className="text-white">vector store or library</strong> is code that runs inside your own application and mainly handles storage and search. A <strong className="text-white">vector database</strong> is a full database system built around vectors.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Aspect</th><th className="px-4 py-3">Library or embedded store</th><th className="px-4 py-3">Vector database</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Runs</td><td className="px-4 py-3">Inside your application process</td><td className="px-4 py-3">As a service, self-hosted or managed</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Persistence and backups</td><td className="px-4 py-3 text-rose-300">You handle it</td><td className="px-4 py-3 text-emerald-300">Built in</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Many users and updates at once</td><td className="px-4 py-3 text-rose-300">Limited</td><td className="px-4 py-3 text-emerald-300">Designed for it</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Scaling and access control</td><td className="px-4 py-3 text-rose-300">Mostly manual</td><td className="px-4 py-3 text-emerald-300">Provided</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Best for</td><td className="px-4 py-3">Prototypes and small apps</td><td className="px-4 py-3">Production systems</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Exact Search and the Scale Problem</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The simplest search is <strong className="text-white">brute force</strong>, also called a flat index: compare the query with every stored vector and keep the best. It is exact, easy to build and perfectly fine for small collections. The cost grows linearly. With $N$ vectors of dimension $d$, one query needs about $N \times d$ multiplications.</div>
+      <div>For 10 million vectors of 768 dimensions that is $10{,}000{,}000 \times 768 = 7{,}680{,}000{,}000$ operations for a single query. With many users asking at once, that is too slow and too expensive, so large systems search only part of the data.</div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Do not over-engineer:</strong> for a few hundred thousand chunks or fewer, exact search is often fast enough, and it never misses the true best match. Reach for approximate indexes when measurements show you need them.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Approximate Nearest Neighbor Search</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Approximate nearest neighbor (ANN)</strong> indexes organize vectors so a query can skip most of them. They occasionally miss a true neighbor, so quality is measured by <strong className="text-white">recall</strong>, the share of the exact top results that the index finds:</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$\text{recall@}k = \dfrac{\lvert \text{ANN top-}k \cap \text{exact top-}k \rvert}{k}$$</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Index family</th><th className="px-4 py-3">Main idea</th><th className="px-4 py-3">Typical trade-off</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Cluster based (IVF)</td><td className="px-4 py-3">Group vectors into clusters, search only the closest few clusters</td><td className="px-4 py-3">Fast and compact; recall depends on how many clusters you probe</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Graph based (HNSW)</td><td className="px-4 py-3">Link each vector to near neighbors and walk the graph toward the query</td><td className="px-4 py-3">Very good recall and speed; uses more memory</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Compression (quantization)</td><td className="px-4 py-3">Store shortened or lower precision vectors</td><td className="px-4 py-3">Saves memory; slight loss of accuracy</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>These ideas are often combined, for example clusters plus compression. The tuning knobs always trade recall against speed and memory.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Tools, Tuning and Filtering</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>You will meet many options. They differ mainly in how they are run, not in the basic idea.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Tool</th><th className="px-4 py-3">Kind</th><th className="px-4 py-3">Good starting point for</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">FAISS</td><td className="px-4 py-3">Open-source similarity search library</td><td className="px-4 py-3">Fast in-process search and research</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Chroma</td><td className="px-4 py-3">Open-source embedding database, easy to embed in an app</td><td className="px-4 py-3">Prototypes and small projects</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Pinecone</td><td className="px-4 py-3">Managed vector database service</td><td className="px-4 py-3">Teams that want no infrastructure work</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Weaviate</td><td className="px-4 py-3">Open-source vector database</td><td className="px-4 py-3">Search combined with rich filtering</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Milvus</td><td className="px-4 py-3">Open-source vector database built for large scale</td><td className="px-4 py-3">Very large collections</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>Every index has parameters. For cluster indexes you choose how many clusters exist and how many are probed per query. For graph indexes you choose how many links each node keeps and how widely the search explores. More effort per query means higher recall and higher latency.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5"><strong className="text-cyan-300">Remember filtering and updates:</strong> metadata filters interact with the index, since filtering after a search can leave too few results, and some index types are slow to update or delete. Check how your chosen database handles both before you commit.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Searching Everything vs Searching Part</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A compares exact and approximate search. Panel B walks through a cluster-based search. Panel C is an explorer of the tools from the table.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · Exact vs Approximate</span><span className="text-xs text-slate-400">Same question, different effort</span></div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-rose-300">Exact (flat) search</div>
+              <div><span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Checks every vector</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Compare with all N vectors</div>
+              <div className="text-center text-rose-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Sort by similarity</div>
+              <div className="text-center text-rose-400">↓</div>
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Perfect recall, slow at scale</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-300">Approximate (ANN) search</div>
+              <div><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Checks a small part</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Jump to the most promising region</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Compare with only those vectors</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Tiny recall loss, much faster</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · A Cluster Search</span><span className="text-xs text-slate-400">IVF in four moves</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Query vector</span><span className="text-violet-400">→</span><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Find nearest clusters</span><span className="text-violet-400">→</span><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Scan only their members</span><span className="text-violet-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Top-k results</span></div>
+          <div className="text-center text-xs text-slate-300">Probing more clusters raises recall and cost together</div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Tool Explorer</span><span className="text-xs text-slate-400">Click a tool to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c10-tool-0" name="c10-tool" type="radio" className="peer sr-only" />
+              <label htmlFor="c10-tool-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">FAISS</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-blue-300">Type:</strong> Search library</div>
+                <div><strong className="text-blue-300">Strength:</strong> Speed and many index types</div>
+                <div><strong className="text-blue-300">You also need:</strong> Your own storage and metadata handling</div>
+              </div>
+            </div>
+            <div>
+              <input id="c10-tool-1" name="c10-tool" type="radio" className="peer sr-only" />
+              <label htmlFor="c10-tool-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">Chroma</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-emerald-300">Type:</strong> Embedded database</div>
+                <div><strong className="text-emerald-300">Strength:</strong> Simple to start</div>
+                <div><strong className="text-emerald-300">You also need:</strong> A plan for scale later</div>
+              </div>
+            </div>
+            <div>
+              <input id="c10-tool-2" name="c10-tool" type="radio" className="peer sr-only" />
+              <label htmlFor="c10-tool-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Pinecone</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Type:</strong> Managed service</div>
+                <div><strong className="text-violet-300">Strength:</strong> No servers to run</div>
+                <div><strong className="text-violet-300">You also need:</strong> To accept a hosted dependency</div>
+              </div>
+            </div>
+            <div>
+              <input id="c10-tool-3" name="c10-tool" type="radio" className="peer sr-only" />
+              <label htmlFor="c10-tool-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">Weaviate or Milvus</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Type:</strong> Open-source databases</div>
+                <div><strong className="text-orange-300">Strength:</strong> Scale, filtering, self-hosting</div>
+                <div><strong className="text-orange-300">You also need:</strong> Operations skills or a managed plan</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why recall is never exactly guaranteed</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">An approximate index decides where to look using shortcuts. If the true nearest neighbor sits in a region the shortcut skips, it is missed. Tuning raises the chance of finding it but never makes it zero.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the trade, Panel B is one way to make it, and Panel C is the landscape of tools that implement it.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Exact Search vs a Cluster Index</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program generates 2,000 vectors in 20 natural groups, then builds a simple cluster index: it picks 20 centroids, runs three rounds of re-centering, and stores which vectors belong to each cluster. A query is answered by probing only the closest few clusters. For 50 test queries it compares the approximate top 5 with the exact top 5 and reports recall and the number of distance checks.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">ivf_search_demo.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import random</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">random.seed(7)</span>
+            <span className="block">DIM = 8</span>
+            <span className="block">N = 2000</span>
+            <span className="block">K = 20</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">centers = [[random.random() for j in range(DIM)] for i in range(K)]</span>
+            <span className="block">vectors = []</span>
+            <span className="block">for i in range(N):</span>
+            <span className="block">    c = centers[i % K]</span>
+            <span className="block">    vectors.append([x + (random.random() - 0.5) * 0.3 for x in c])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def dist2(a, b):</span>
+            <span className="block">    return sum((x - y) * (x - y) for x, y in zip(a, b))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">centroids = [vectors[i * (N // K)] for i in range(K)]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def assign():</span>
+            <span className="block">    lists = [[] for c in range(K)]</span>
+            <span className="block">    for idx, v in enumerate(vectors):</span>
+            <span className="block">        nearest = min(range(K), key=lambda c: dist2(v, centroids[c]))</span>
+            <span className="block">        lists[nearest].append(idx)</span>
+            <span className="block">    return lists</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for step in range(3):</span>
+            <span className="block">    lists = assign()</span>
+            <span className="block">    for c in range(K):</span>
+            <span className="block">        if lists[c]:</span>
+            <span className="block">            centroids[c] = [sum(vectors[i][j] for i in lists[c]) / len(lists[c]) for j in range(DIM)]</span>
+            <span className="block">lists = assign()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def exact_search(q, k):</span>
+            <span className="block">    return sorted(range(N), key=lambda i: dist2(q, vectors[i]))[:k]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def ivf_search(q, k, nprobe):</span>
+            <span className="block">    order = sorted(range(K), key=lambda c: dist2(q, centroids[c]))[:nprobe]</span>
+            <span className="block">    candidates = [i for c in order for i in lists[c]]</span>
+            <span className="block">    best = sorted(candidates, key=lambda i: dist2(q, vectors[i]))[:k]</span>
+            <span className="block">    return best, K + len(candidates)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">queries = []</span>
+            <span className="block">for i in range(50):</span>
+            <span className="block">    c = centers[random.randrange(K)]</span>
+            <span className="block">    queries.append([x + (random.random() - 0.5) * 0.3 for x in c])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Vectors:&quot;, N, &quot;| lists:&quot;, K, &quot;| exact search checks&quot;, N, &quot;vectors per query&quot;)</span>
+            <span className="block">for nprobe in (1, 2, 4, 8):</span>
+            <span className="block">    recalls = []</span>
+            <span className="block">    work = []</span>
+            <span className="block">    for q in queries:</span>
+            <span className="block">        truth = set(exact_search(q, 5))</span>
+            <span className="block">        found, cost = ivf_search(q, 5, nprobe)</span>
+            <span className="block">        recalls.append(len(truth &amp; set(found)) / 5)</span>
+            <span className="block">        work.append(cost)</span>
+            <span className="block">    print(&quot;nprobe&quot;, nprobe, &quot;| recall@5&quot;, round(sum(recalls) / len(recalls), 2), &quot;| checks per query&quot;, round(sum(work) / len(work)))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Vectors: 2000 | lists: 20 | exact search checks 2000 vectors per query</span>
+            <span className="block">nprobe 1 | recall@5 0.96 | checks per query 177</span>
+            <span className="block">nprobe 2 | recall@5 0.99 | checks per query 302</span>
+            <span className="block">nprobe 4 | recall@5 1.0 | checks per query 523</span>
+            <span className="block">nprobe 8 | recall@5 1.0 | checks per query 780</span>
+          </code>
+        </pre>
+      </div>
+      <div>Probing one cluster out of twenty already finds almost every true neighbor while checking under a tenth of the vectors, and probing four finds all of them with about a quarter of the work. These numbers are so good because the synthetic data is clearly clustered. Real embeddings are less tidy, so expect to probe more clusters for the same recall, and always measure recall on your own data.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. What does an approximate nearest neighbor index give up?</div>
+        <div>
+          <input id="rag10-q1-a" name="rag10-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag10-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) The ability to store metadata</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> ANN indexes work with metadata like any other store.</div>
+        </div>
+        <div>
+          <input id="rag10-q1-b" name="rag10-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag10-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) A small chance of missing the exact nearest vector</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It trades a little recall for large speed gains.</div>
+        </div>
+        <div>
+          <input id="rag10-q1-c" name="rag10-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag10-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The ability to use cosine similarity</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> ANN indexes support the usual metrics.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. Why can exact search be a good choice for a small knowledge base?</div>
+        <div>
+          <input id="rag10-q2-a" name="rag10-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag10-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) It is always faster than ANN</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> At large scale exact search is much slower.</div>
+        </div>
+        <div>
+          <input id="rag10-q2-b" name="rag10-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag10-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It does not need embeddings</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Exact search still compares embeddings.</div>
+        </div>
+        <div>
+          <input id="rag10-q2-c" name="rag10-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag10-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) It is simple and always finds the true best match, and the collection is small enough to be fast</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Complexity is only worth it when scale demands it.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. In a cluster index, what happens when you probe more clusters per query?</div>
+        <div>
+          <input id="rag10-q3-a" name="rag10-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag10-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Recall rises, and so does the work per query</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> More clusters means more candidates to compare.</div>
+        </div>
+        <div>
+          <input id="rag10-q3-b" name="rag10-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag10-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Recall falls and speed rises</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It is the opposite direction.</div>
+        </div>
+        <div>
+          <input id="rag10-q3-c" name="rag10-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag10-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Nothing, it only changes storage</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Probing changes both quality and cost.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>A vector store record holds an id, a vector, the original text and metadata.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>A library runs inside your app; a vector database adds persistence, scaling, access control and concurrency.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Exact search compares the query with every vector, so cost grows with the size of the collection.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Approximate indexes such as IVF and HNSW search only part of the data and are measured by recall.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Compression such as quantization saves memory at a small cost in accuracy.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>FAISS, Chroma, Pinecone, Weaviate and Milvus differ mostly in how they are run and scaled.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Check how filtering, updates and deletes behave before choosing an index.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">With a vector database you can store the knowledge base and search it at the speed users expect. The index is a performance tool: it never makes results more relevant, it only finds the nearest vectors faster. Relevance still depends on chunks, embeddings and everything that follows.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Chunks → Embeddings → Index in a vector database → Fast nearest-neighbor search</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Retrieval Fundamentals. The Embeddings phase is complete. Next you start the Retrieval phase: what retrieval returns, how top-k works, and how recall and precision describe its quality.</div>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,452 @@
+---
+title: "Building Your First AI Agent"
+slug: "05-building-your-first-ai-agent"
+order: 5
+category: "AI Agents"
+subcategory: "Single Agents"
+difficulty: "Beginner"
+readTime: "30 min"
+description: "Build your first AI agent step by step: the basic agent loop, giving the agent a clear goal, adding tools, and running a multi-step task from start to finish, with a complete agent in Python."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Your first agent is only a <strong className="text-white">loop</strong>: send the goal and history to the model, run the tool it asks for, add the result to the history, and repeat until the model gives a <strong className="text-white">final answer</strong> or a <strong className="text-white">step limit</strong> stops it.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: The Basic Agent Loop
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Almost every agent in the world is a variation of this short loop:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Start with messages:</strong> A list that begins with the goal as the first user message.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Ask the model:</strong> Send the messages. The reply is either a tool call or a final answer.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">If it is a tool call:</strong> Validate it, run the tool, and append the result as a tool message.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">If it is a final answer:</strong> Stop and return it.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Safety net:</strong> If the step counter reaches the maximum, stop with a clear message.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Remember:</strong> The <strong className="text-white">history list is the memory</strong> of the run. Each new tool result makes the next model call better informed.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Giving an Agent a Goal
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The goal is the most important input. A clear goal tells the agent what to achieve <strong className="text-white">and</strong> when it is finished.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Weak goal</th>
+              <th className="px-5 py-3">Strong goal</th>
+              <th className="px-5 py-3">Why it is better</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Find me a laptop</td><td className="px-5 py-3">Find a laptop under 1000 that is in stock and give the price with 18% tax</td><td className="px-5 py-3">Has a budget, a condition and an output</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Help with my data</td><td className="px-5 py-3">Report the total sales per customer from the orders table</td><td className="px-5 py-3">Names the source and the result</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Research agents</td><td className="px-5 py-3">Find three recent sources about agents and summarize each in two sentences</td><td className="px-5 py-3">Has a count and a format</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">A good goal has:</strong> a <strong className="text-white">clear outcome</strong>, <strong className="text-white">constraints</strong> (budget, time, allowed tools) and a <strong className="text-white">way to tell when it is done</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Adding Tools
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Start small. Give the first agent <strong className="text-white">two or three</strong> tools that match the goal. In our example the shop agent has exactly three:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Tool</th>
+              <th className="px-5 py-3">Input</th>
+              <th className="px-5 py-3">Output</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">search_products</td><td className="px-5 py-3">max_price</td><td className="px-5 py-3">A list of matching products</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">check_stock</td><td className="px-5 py-3">product_id</td><td className="px-5 py-3">Whether it is in stock</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">calculate_total</td><td className="px-5 py-3">price, tax_percent</td><td className="px-5 py-3">The total with tax</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">How to add a tool safely</div>
+        <div className="text-sm leading-relaxed text-slate-300">Write the function, give it a clear name and description, test it <strong className="text-white">alone</strong> with normal and bad input, then add it to the registry the agent can see. An untested tool makes the agent look broken.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Running Multi-Step Tasks
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The goal in the code needs <strong className="text-white">four steps</strong>, and the agent finds them itself: search, check stock, handle the out-of-stock case by checking the next product, then calculate the total. Each step depends on the one before it, which is the reason an agent is used here instead of one fixed script.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Look at step 3 in the output:</strong> Laptop A was <strong className="text-white">out of stock</strong>, so the agent did not give up. It checked the next product. Reacting to a result is the defining behavior of an agent.
+      </div>
+      <div>
+        Printing every step, as the code does, gives you a <strong className="text-white">trace</strong>. A trace is the best debugging tool you have: when an agent does something strange, read the trace from the top.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Common First-Agent Mistakes
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Mistake</th>
+              <th className="px-5 py-3">What goes wrong</th>
+              <th className="px-5 py-3">Fix</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">No step limit</td><td className="px-5 py-3">Endless loops and big bills</td><td className="px-5 py-3">Always set a maximum number of steps</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Vague goal</td><td className="px-5 py-3">The agent wanders or stops early</td><td className="px-5 py-3">State the outcome and constraints</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Too many tools</td><td className="px-5 py-3">The model picks the wrong one</td><td className="px-5 py-3">Start with a few distinct tools</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Ignoring tool errors</td><td className="px-5 py-3">The agent repeats the same failing call</td><td className="px-5 py-3">Return clear errors into the history</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">No logging</td><td className="px-5 py-3">You cannot see why it failed</td><td className="px-5 py-3">Print or record every step</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Trusting the model blindly</td><td className="px-5 py-3">Wrong or unsafe calls get executed</td><td className="px-5 py-3">Validate every call in code</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Reminder:</strong> The loop in this lesson uses a rule-based stand-in for the model so it runs without an API key. With a real model, <strong className="text-white">nothing about the loop changes</strong>, only the function that decides the next step.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: One Goal, Five Steps
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure follows the run of the shop agent from the code, then lists what a good goal contains.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-emerald-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 1 · The Run in the Code</span>
+        <span className="text-xs text-slate-400">One goal, five steps</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Find</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Steps 1 to 3</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">search_products under 1000</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">check_stock of Laptop A: out of stock</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">check_stock of Laptop B: in stock</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Laptop B is the pick</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Calculate</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Step 4</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">calculate_total for 950 at 18% tax</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Total: 1121.0</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Answer</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Step 5</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Model sees all results</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Writes the final answer</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Laptop B is in stock. Total with tax: 1121.0</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · What a Goal Needs</span>
+        <span className="text-xs text-slate-400">Three parts</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Outcome</div>
+          <div className="mt-2 text-lg font-bold text-white">What to deliver</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Price with tax, a report, three sources.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Constraints</div>
+          <div className="mt-2 text-lg font-bold text-white">Limits</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Budget, time, allowed tools.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Done test</div>
+          <div className="mt-2 text-lg font-bold text-white">How to stop</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">A clear sign the goal is met.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-emerald-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see what the trace is for</span>
+          <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">The trace lists every action and result in order. If the agent behaves strangely, read it from the top and find the first step where reality differed from what you expected.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 groups the five steps into find, calculate and answer. Part 2 lists the three parts of a goal. Open the bar to see why the trace matters.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Complete Multi-Step Agent
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script is a full agent: three tools, a goal, a message history, a loop with a step limit, and a rule-based stand-in for the model. It searches, checks stock, recovers when an item is out of stock, and calculates the final price.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">first_agent.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import json</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">PRODUCTS = &#91;</span>
+            <span className="block">    &#123;&quot;id&quot;: 1, &quot;name&quot;: &quot;Laptop A&quot;, &quot;price&quot;: 800, &quot;stock&quot;: 0&#125;,</span>
+            <span className="block">    &#123;&quot;id&quot;: 2, &quot;name&quot;: &quot;Laptop B&quot;, &quot;price&quot;: 950, &quot;stock&quot;: 4&#125;,</span>
+            <span className="block">    &#123;&quot;id&quot;: 3, &quot;name&quot;: &quot;Laptop C&quot;, &quot;price&quot;: 1200, &quot;stock&quot;: 9&#125;,</span>
+            <span className="block">&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def search&#95;products(max&#95;price):</span>
+            <span className="block">    found = &#91;p for p in PRODUCTS if p&#91;&quot;price&quot;&#93; &lt;= max&#95;price&#93;</span>
+            <span className="block">    return &#91;&#123;&quot;id&quot;: p&#91;&quot;id&quot;&#93;, &quot;name&quot;: p&#91;&quot;name&quot;&#93;, &quot;price&quot;: p&#91;&quot;price&quot;&#93;&#125; for p in sorted(found, key=lambda p: p&#91;&quot;price&quot;&#93;)&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def check&#95;stock(product&#95;id):</span>
+            <span className="block">    product = next(p for p in PRODUCTS if p&#91;&quot;id&quot;&#93; == product&#95;id)</span>
+            <span className="block">    return &#123;&quot;id&quot;: product&#95;id, &quot;in&#95;stock&quot;: product&#91;&quot;stock&quot;&#93; &gt; 0&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def calculate&#95;total(price, tax&#95;percent):</span>
+            <span className="block">    return &#123;&quot;total&quot;: round(price &#42; (1 + tax&#95;percent / 100), 2)&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">TOOLS = &#123;&quot;search&#95;products&quot;: search&#95;products, &quot;check&#95;stock&quot;: check&#95;stock, &quot;calculate&#95;total&quot;: calculate&#95;total&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def fake&#95;llm(messages):</span>
+            <span className="block text-slate-500">    # Stands in for a real model: decides the next step from the conversation so far</span>
+            <span className="block">    tool&#95;msgs = &#91;m for m in messages if m&#91;&quot;role&quot;&#93; == &quot;tool&quot;&#93;</span>
+            <span className="block">    if not tool&#95;msgs:</span>
+            <span className="block">        return &#123;&quot;tool&quot;: &quot;search&#95;products&quot;, &quot;arguments&quot;: &#123;&quot;max&#95;price&quot;: 1000&#125;&#125;</span>
+            <span className="block">    found = json.loads(tool&#95;msgs&#91;0&#93;&#91;&quot;content&quot;&#93;)</span>
+            <span className="block">    stock&#95;checks = &#91;m for m in tool&#95;msgs if m&#91;&quot;name&quot;&#93; == &quot;check&#95;stock&quot;&#93;</span>
+            <span className="block">    if stock&#95;checks and json.loads(stock&#95;checks&#91;-1&#93;&#91;&quot;content&quot;&#93;)&#91;&quot;in&#95;stock&quot;&#93;:</span>
+            <span className="block">        product&#95;id = json.loads(stock&#95;checks&#91;-1&#93;&#91;&quot;content&quot;&#93;)&#91;&quot;id&quot;&#93;</span>
+            <span className="block">        product = next(p for p in found if p&#91;&quot;id&quot;&#93; == product&#95;id)</span>
+            <span className="block">        totals = &#91;m for m in tool&#95;msgs if m&#91;&quot;name&quot;&#93; == &quot;calculate&#95;total&quot;&#93;</span>
+            <span className="block">        if not totals:</span>
+            <span className="block">            return &#123;&quot;tool&quot;: &quot;calculate&#95;total&quot;, &quot;arguments&quot;: &#123;&quot;price&quot;: product&#91;&quot;price&quot;&#93;, &quot;tax&#95;percent&quot;: 18&#125;&#125;</span>
+            <span className="block">        return &#123;&quot;answer&quot;: product&#91;&quot;name&quot;&#93; + &quot; is in stock. Total with tax: &quot; + str(json.loads(totals&#91;-1&#93;&#91;&quot;content&quot;&#93;)&#91;&quot;total&quot;&#93;)&#125;</span>
+            <span className="block">    if len(stock&#95;checks) &gt;= len(found):</span>
+            <span className="block">        return &#123;&quot;answer&quot;: &quot;Nothing under budget is in stock.&quot;&#125;</span>
+            <span className="block">    return &#123;&quot;tool&quot;: &quot;check&#95;stock&quot;, &quot;arguments&quot;: &#123;&quot;product&#95;id&quot;: found&#91;len(stock&#95;checks)&#93;&#91;&quot;id&quot;&#93;&#125;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def run&#95;agent(goal, max&#95;steps=8):</span>
+            <span className="block">    messages = &#91;&#123;&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: goal&#125;&#93;</span>
+            <span className="block">    for step in range(1, max&#95;steps + 1):</span>
+            <span className="block">        decision = fake&#95;llm(messages)</span>
+            <span className="block">        if &quot;answer&quot; in decision:</span>
+            <span className="block">            print(&quot;Step&quot;, step, &quot;| FINAL:&quot;, decision&#91;&quot;answer&quot;&#93;)</span>
+            <span className="block">            return decision&#91;&quot;answer&quot;&#93;</span>
+            <span className="block">        name, args = decision&#91;&quot;tool&quot;&#93;, decision&#91;&quot;arguments&quot;&#93;</span>
+            <span className="block">        result = TOOLS&#91;name&#93;(&#42;&#42;args)</span>
+            <span className="block">        print(&quot;Step&quot;, step, &quot;|&quot;, name, args, &quot;-&gt;&quot;, result)</span>
+            <span className="block">        messages.append(&#123;&quot;role&quot;: &quot;tool&quot;, &quot;name&quot;: name, &quot;content&quot;: json.dumps(result)&#125;)</span>
+            <span className="block">    return &quot;Stopped: step limit reached&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">run&#95;agent(&quot;Find a laptop under 1000 that is in stock and tell me the price with 18% tax.&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Step 1 | search&#95;products &#123;&apos;max&#95;price&apos;: 1000&#125; -&gt; &#91;&#123;&apos;id&apos;: 1, &apos;name&apos;: &apos;Laptop A&apos;, &apos;price&apos;: 800&#125;, &#123;&apos;id&apos;: 2, &apos;name&apos;: &apos;Laptop B&apos;, &apos;price&apos;: 950&#125;&#93;</div>
+          <div>Step 2 | check&#95;stock &#123;&apos;product&#95;id&apos;: 1&#125; -&gt; &#123;&apos;id&apos;: 1, &apos;in&#95;stock&apos;: False&#125;</div>
+          <div>Step 3 | check&#95;stock &#123;&apos;product&#95;id&apos;: 2&#125; -&gt; &#123;&apos;id&apos;: 2, &apos;in&#95;stock&apos;: True&#125;</div>
+          <div>Step 4 | calculate&#95;total &#123;&apos;price&apos;: 950, &apos;tax&#95;percent&apos;: 18&#125; -&gt; &#123;&apos;total&apos;: 1121.0&#125;</div>
+          <div>Step 5 | FINAL: Laptop B is in stock. Total with tax: 1121.0</div>
+        </div>
+      </div>
+      <div>
+        The agent hits an out-of-stock item at step 2, changes course, and still finishes the task. The trace prints each tool call and result, which is exactly what you should read when debugging a real agent.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What makes a goal strong?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag05-q1-a" name="ag05-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag05-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) A clear outcome, constraints and a way to know it is done</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> These let the agent act and stop correctly.</div>
+          </div>
+          <div>
+            <input id="ag05-q1-b" name="ag05-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag05-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It is as short as possible</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Short but vague goals cause wandering.</div>
+          </div>
+          <div>
+            <input id="ag05-q1-c" name="ag05-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag05-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It lists no tools</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The goal is separate from the tools, but constraints help.</div>
+          </div>
+          <div>
+            <input id="ag05-q1-d" name="ag05-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag05-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It never changes</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Goals can change, but clarity is the key.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What did the agent do when the first laptop was out of stock?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag05-q2-a" name="ag05-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag05-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) It checked the next product and continued</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Reacting to a tool result is the core agent behavior.</div>
+          </div>
+          <div>
+            <input id="ag05-q2-b" name="ag05-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag05-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It crashed</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The loop handled the result normally.</div>
+          </div>
+          <div>
+            <input id="ag05-q2-c" name="ag05-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag05-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It ignored the result</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It used the result to change course.</div>
+          </div>
+          <div>
+            <input id="ag05-q2-d" name="ag05-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag05-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It asked the user to try again</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It solved the problem itself.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A first agent is a loop: ask the model, run the tool, append the result, repeat.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The message history is the agent&apos;s working memory for the run.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A strong goal states the outcome, the constraints and how to tell it is done.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Start with two or three clear tools and test each one alone.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Printing a trace of every step is the best debugging tool.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Always set a step limit, validate calls and return clear errors.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Your First Agent in One Line</div>
+        <div className="text-center font-bold text-white">
+          Goal in the history → model picks a tool → run it → append the result → repeat → final answer
+        </div>
+      </div>
+      <div>
+        The same loop powers far more advanced agents. What changes is the quality of the tools, the memory and the reasoning.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Your agent so far uses simple tools. In <strong className="text-white">Agents with External Tools</strong> you will connect it to APIs, databases, web search, code execution and files, safely.
+      </div>
+    </div>
+  </section>
+
+</div>

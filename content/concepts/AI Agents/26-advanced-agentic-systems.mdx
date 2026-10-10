@@ -1,0 +1,471 @@
+---
+title: "Advanced Agentic Systems"
+slug: "26-advanced-agentic-systems"
+order: 26
+category: "AI Agents"
+subcategory: "Advanced"
+difficulty: "Advanced"
+readTime: "30 min"
+description: "Explore advanced agent types: agentic RAG, tool-rich agents that retrieve the tools they need, computer-use and browser agents, multimodal agents and code agents, with working examples of tool retrieval and a browser-style action loop."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Advanced agents extend the same loop with <strong className="text-white">richer inputs and bigger toolboxes</strong>: they <strong className="text-white">retrieve knowledge</strong> and <strong className="text-white">tools</strong> on demand, <strong className="text-white">see and operate screens</strong>, work with <strong className="text-white">images, audio and documents</strong>, and <strong className="text-white">write and run code</strong>. The loop is the same. The observations and actions get richer.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Agentic RAG, Revisited
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        You met agentic RAG earlier: the agent decides when to retrieve, rewrites queries, checks scores and retries. Advanced systems add more control:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Technique</th>
+              <th className="px-5 py-3">Idea</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Multi-hop retrieval</td><td className="px-5 py-3">Use the first answer to form the next search, for questions that need several facts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Source routing</td><td className="px-5 py-3">Choose between several knowledge bases or tools, such as documents, a database or the web</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Relevance and support checks</td><td className="px-5 py-3">Verify that retrieved text really supports the answer before writing it</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Citations</td><td className="px-5 py-3">Attach the source to every claim</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Fallback to the user</td><td className="px-5 py-3">Ask a clarifying question when retrieval keeps failing</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Remember:</strong> Each extra control improves hard questions but adds latency and cost. Add them only where simple retrieval fails.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Tool-Rich Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A real company may have <strong className="text-white">hundreds of tools</strong>. Putting every tool description in the prompt wastes tokens and confuses the model. A <strong className="text-white">tool-rich agent</strong> first <strong className="text-white">retrieves the few tools relevant to the request</strong>, then shows only those.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> 30 tools would need 330 tokens in every prompt. For the request <em>show me the list of orders</em>, the agent retrieves just three order tools and uses 33 tokens, a tenth of the size.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Way to find tools</th>
+              <th className="px-5 py-3">How</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Keyword or embedding search</td><td className="px-5 py-3">Match the request to tool descriptions</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Categories (routing)</td><td className="px-5 py-3">Pick a group such as billing, then show its tools</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Learned from usage</td><td className="px-5 py-3">Prefer tools that worked in similar tasks</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Computer-Use and Browser Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">browser agent</strong> works with web pages, and a <strong className="text-white">computer-use agent</strong> works with a whole desktop. Instead of calling an API, it <strong className="text-white">looks at the screen</strong> and performs actions: click, type, scroll, press a key.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Observe:</strong> Get the page as a screenshot, or as a structured list of elements (an accessibility tree) with ids.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Decide:</strong> The model picks an action, such as type in element 1 or click element 3.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Act:</strong> A controller performs the action in a real or virtual browser.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Observe again:</strong> The new page shows whether it worked.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> The page is a list of elements with ids. The agent types the email, fills the password from a secret store and clicks Sign in. The page then changes to a dashboard.
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Risks:</strong> These agents can click the wrong thing and can be misled by hostile content on a page. Run them in a sandboxed browser, use limited accounts, never expose real passwords to the model and ask for approval before purchases or messages.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Multimodal Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">multimodal</strong> agent understands more than text: images, screenshots, charts, PDFs, audio and sometimes video. This opens new tasks:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Input</th>
+              <th className="px-5 py-3">Example task</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Screenshot</td><td className="px-5 py-3">Operate an app or find a button</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Chart or photo</td><td className="px-5 py-3">Describe a trend or check a damaged product</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">PDF or scanned form</td><td className="px-5 py-3">Extract fields and fill a system</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Audio</td><td className="px-5 py-3">Transcribe a call and create follow-up tasks</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Practical notes</div>
+        <div className="text-sm leading-relaxed text-slate-300">Images use many tokens, so resize and crop where you can. Always verify extracted numbers, because reading text from images can fail in small ways.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Code Agents and Choosing the Design
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">code agent</strong> writes code, runs it and reads the results. This ReAct-and-reflection pattern is why coding assistants work well: the test runner provides <strong className="text-white">exact, objective feedback</strong>.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Code agent ingredient</th>
+              <th className="px-5 py-3">Why</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Repository search and file tools</td><td className="px-5 py-3">Understand a large codebase</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">A sandbox to run code and tests</td><td className="px-5 py-3">Safe execution</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Test results as feedback</td><td className="px-5 py-3">Self-correction with real errors</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Version control</td><td className="px-5 py-3">Review, undo and compare changes</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Human review of the result</td><td className="px-5 py-3">Safety for important changes</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Choosing:</strong> Pick the <strong className="text-white">narrowest</strong> agent type that solves the problem. A plain API tool is faster, cheaper and safer than a browser agent, which is itself safer than controlling a whole computer.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Four Advanced Agents Share One Loop
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows what each advanced agent observes and does, then orders the approaches from the narrowest and safest to the broadest.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-indigo-300">Part 1 · Four Advanced Agents, One Loop</span>
+        <span className="text-xs text-slate-400">Observe, decide, act</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-4">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Agentic RAG</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Knowledge</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Observe: retrieved passages and scores</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Act: rewrite and search again</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Grounded answer</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Tool-rich</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Many tools</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Observe: the request</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Act: retrieve the 3 best tools</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">330 tokens become 33</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Browser</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Screens</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Observe: element list or screenshot</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Act: type, click</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Login becomes dashboard</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Code</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Programs</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Observe: test output</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Act: edit and rerun</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Objective feedback</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Choose the Narrowest Tool</span>
+        <span className="text-xs text-slate-400">From safest to broadest</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">API tool</div>
+          <div className="mt-2 text-lg font-bold text-white">Most reliable</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Structured, fast, cheap.</div>
+        </div>
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Browser agent</div>
+          <div className="mt-2 text-lg font-bold text-white">Flexible</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Works where no API exists.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Computer-use</div>
+          <div className="mt-2 text-lg font-bold text-white">Broadest</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Any app, most risk.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Human check</div>
+          <div className="mt-2 text-lg font-bold text-white">Always</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">For purchases and messages.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why screens are a last resort</span>
+          <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Screen control works with almost any software, but it is slower, costs more tokens and is easier to fool. Use a proper API whenever one exists.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 compares the observations and actions of four agent types. Part 2 is a ladder from API tools up to computer use. Open the bar to see why screens are a last resort.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Tool Retrieval and a Browser-Style Action Loop
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script shows two ideas. First, a tool-rich agent retrieves the three most relevant tools from a catalog of 30 and compares the prompt sizes. Second, a browser-style agent observes a page as a list of elements, acts by typing and clicking, and observes the changed page.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">advanced_agents.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># 1. A tool-rich agent: retrieve only the few relevant tools instead of showing all of them</span>
+            <span className="block">verbs = &#91;&quot;get&quot;, &quot;create&quot;, &quot;delete&quot;, &quot;update&quot;, &quot;list&quot;&#93;</span>
+            <span className="block">nouns = &#91;&quot;invoice&quot;, &quot;ticket&quot;, &quot;customer&quot;, &quot;order&quot;, &quot;report&quot;, &quot;calendar&quot;&#93;</span>
+            <span className="block">TOOLS = &#91;(v + &quot;&#95;&quot; + n, v + &quot; a &quot; + n + &quot; record in the system&quot;) for v in verbs for n in nouns&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def words(text):</span>
+            <span className="block">    return &#123;w.rstrip(&quot;s&quot;) for w in text.lower().replace(&quot;&#95;&quot;, &quot; &quot;).split()&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def select&#95;tools(query, k=3):</span>
+            <span className="block">    q = words(query)</span>
+            <span className="block">    scored = sorted(TOOLS, key=lambda tool: len(q &amp; words(tool&#91;0&#93; + &quot; &quot; + tool&#91;1&#93;)), reverse=True)</span>
+            <span className="block">    return &#91;name for name, &#95; in scored&#91;:k&#93;&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def prompt&#95;tokens(tools):</span>
+            <span className="block">    return sum(round(len((n + &quot; &quot; + d).split()) / 0.75) for n, d in tools)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">query = &quot;show me the list of orders&quot;</span>
+            <span className="block">print(&quot;Tools available:&quot;, len(TOOLS), &quot;| tokens if all are shown:&quot;, prompt&#95;tokens(TOOLS))</span>
+            <span className="block">chosen = select&#95;tools(query)</span>
+            <span className="block">print(&quot;Query:&quot;, query, &quot;-&gt; shown to the model:&quot;, chosen, &quot;| tokens:&quot;, prompt&#95;tokens(&#91;t for t in TOOLS if t&#91;0&#93; in chosen&#93;))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. A browser agent: the page is turned into a list of elements the agent can act on</span>
+            <span className="block">page = &#123;&quot;title&quot;: &quot;Login&quot;, &quot;elements&quot;: &#91;</span>
+            <span className="block">    &#123;&quot;id&quot;: 1, &quot;role&quot;: &quot;input&quot;, &quot;label&quot;: &quot;Email&quot;, &quot;value&quot;: &quot;&quot;&#125;,</span>
+            <span className="block">    &#123;&quot;id&quot;: 2, &quot;role&quot;: &quot;input&quot;, &quot;label&quot;: &quot;Password&quot;, &quot;value&quot;: &quot;&quot;&#125;,</span>
+            <span className="block">    &#123;&quot;id&quot;: 3, &quot;role&quot;: &quot;button&quot;, &quot;label&quot;: &quot;Sign in&quot;&#125;&#93;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def observe(page):</span>
+            <span className="block">    return page&#91;&quot;title&quot;&#93; + &quot;: &quot; + &quot;, &quot;.join(&quot;&#91;&quot; + str(e&#91;&quot;id&quot;&#93;) + &quot;&#93; &quot; + e&#91;&quot;role&quot;&#93; + &quot; &quot; + e&#91;&quot;label&quot;&#93; for e in page&#91;&quot;elements&quot;&#93;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def act(page, action):</span>
+            <span className="block">    if action&#91;&quot;type&quot;&#93; == &quot;type&quot;:</span>
+            <span className="block">        next(e for e in page&#91;&quot;elements&quot;&#93; if e&#91;&quot;id&quot;&#93; == action&#91;&quot;id&quot;&#93;)&#91;&quot;value&quot;&#93; = action&#91;&quot;text&quot;&#93;</span>
+            <span className="block">    elif action&#91;&quot;type&quot;&#93; == &quot;click&quot; and all(e.get(&quot;value&quot;, &quot;x&quot;) for e in page&#91;&quot;elements&quot;&#93;):</span>
+            <span className="block">        return &#123;&quot;title&quot;: &quot;Dashboard&quot;, &quot;elements&quot;: &#91;&#123;&quot;id&quot;: 4, &quot;role&quot;: &quot;text&quot;, &quot;label&quot;: &quot;Welcome, Ana&quot;&#125;&#93;&#125;</span>
+            <span className="block">    return page</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">plan = &#91;&#123;&quot;type&quot;: &quot;type&quot;, &quot;id&quot;: 1, &quot;text&quot;: &quot;ana@example.com&quot;&#125;, &#123;&quot;type&quot;: &quot;type&quot;, &quot;id&quot;: 2, &quot;text&quot;: &quot;(from the secret store)&quot;&#125;, &#123;&quot;type&quot;: &quot;click&quot;, &quot;id&quot;: 3&#125;&#93;</span>
+            <span className="block">print(&quot;Observe:&quot;, observe(page))</span>
+            <span className="block">for action in plan:</span>
+            <span className="block">    page = act(page, action)</span>
+            <span className="block">    print(&quot;Act:&quot;, action, &quot;-&gt;&quot;, observe(page))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Tools available: 30 | tokens if all are shown: 330</div>
+          <div>Query: show me the list of orders -&gt; shown to the model: &#91;&apos;list&#95;order&apos;, &apos;get&#95;order&apos;, &apos;create&#95;order&apos;&#93; | tokens: 33</div>
+          <div>Observe: Login: &#91;1&#93; input Email, &#91;2&#93; input Password, &#91;3&#93; button Sign in</div>
+          <div>Act: &#123;&apos;type&apos;: &apos;type&apos;, &apos;id&apos;: 1, &apos;text&apos;: &apos;ana@example.com&apos;&#125; -&gt; Login: &#91;1&#93; input Email, &#91;2&#93; input Password, &#91;3&#93; button Sign in</div>
+          <div>Act: &#123;&apos;type&apos;: &apos;type&apos;, &apos;id&apos;: 2, &apos;text&apos;: &apos;(from the secret store)&apos;&#125; -&gt; Login: &#91;1&#93; input Email, &#91;2&#93; input Password, &#91;3&#93; button Sign in</div>
+          <div>Act: &#123;&apos;type&apos;: &apos;click&apos;, &apos;id&apos;: 3&#125; -&gt; Dashboard: &#91;4&#93; text Welcome, Ana</div>
+        </div>
+      </div>
+      <div>
+        The retrieval step cuts the tool prompt to one tenth. In the browser loop the observation is a compact text list of elements rather than a picture, which is cheaper and easier for the model, and the final observation shows the dashboard. Real browser agents use a browser automation library for the act step.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Why do tool-rich agents retrieve tools instead of listing all of them?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag26-q1-a" name="ag26-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag26-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Fewer tool descriptions means a smaller prompt and fewer wrong choices</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The model sees only the tools likely to matter.</div>
+          </div>
+          <div>
+            <input id="ag26-q1-b" name="ag26-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag26-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Because tools cannot be listed</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They can be listed, but it is wasteful.</div>
+          </div>
+          <div>
+            <input id="ag26-q1-c" name="ag26-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag26-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) To hide tools from the developer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> This is not the reason.</div>
+          </div>
+          <div>
+            <input id="ag26-q1-d" name="ag26-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag26-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) To make tools slower</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The goal is the opposite.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: When should you prefer an API tool over a browser agent?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag26-q2-a" name="ag26-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag26-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Whenever a reliable API exists, because it is faster, cheaper and safer</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Screen control is a fallback for systems without an API.</div>
+          </div>
+          <div>
+            <input id="ag26-q2-b" name="ag26-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag26-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Never, browser agents are always better</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They are slower and riskier.</div>
+          </div>
+          <div>
+            <input id="ag26-q2-c" name="ag26-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag26-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Only for images</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Image tasks are separate.</div>
+          </div>
+          <div>
+            <input id="ag26-q2-d" name="ag26-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag26-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Only when the page has video</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> This is unrelated.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Advanced agents use the same loop with richer observations and actions.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Agentic RAG can add multi-hop search, source routing, support checks and citations.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Tool-rich agents retrieve only the few relevant tools instead of showing hundreds.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Browser and computer-use agents observe screens and act by clicking and typing. Sandbox them and limit their accounts.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Multimodal agents read images, PDFs and audio, and their extractions need verification.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Code agents rely on test results for objective feedback. Always choose the narrowest agent type that works.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Advanced Agents in One Line</div>
+        <div className="text-center font-bold text-white">
+          Same loop, richer senses and hands, always the narrowest tool that works
+        </div>
+      </div>
+      <div>
+        Each new capability brings new risks, so add power only where it earns its place.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> The last lesson looks at the research frontier. In <strong className="text-white">Advanced and Research-Level Agents</strong> you will see self-improving agents, trajectory optimization, agent fine-tuning, simulation and swarms.
+      </div>
+    </div>
+  </section>
+
+</div>

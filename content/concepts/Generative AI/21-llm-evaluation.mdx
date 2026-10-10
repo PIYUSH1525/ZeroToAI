@@ -1,0 +1,467 @@
+---
+title: "LLM Evaluation: Benchmarks, Metrics, Judges and Statistics"
+slug: "21-llm-evaluation"
+order: 21
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Learn how to measure LLM quality honestly: benchmarks and their pitfalls, accuracy, perplexity and pass@k, pairwise comparison and Elo, LLM-as-judge and its biases, and why confidence intervals matter."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> You cannot improve what you cannot measure. Good LLM evaluation combines <strong className="text-white">automatic metrics, model judges and human review</strong>, built on <strong className="text-white">your own test set</strong>, with honest <strong className="text-white">uncertainty ranges</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why Evaluating LLMs Is Hard
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        For a spam filter, evaluation is easy: count how many emails were labeled correctly. For an LLM that writes essays, answers questions and writes code, there is <strong className="text-white">no single correct answer</strong> to compare against, and quality has many sides: correctness, helpfulness, safety, tone and style.
+      </div>
+      <div>
+        Good <strong className="text-white">evaluation</strong> (often shortened to <em>evals</em>) is how you decide which model to use, whether a prompt change helped, and whether an update broke something. Without it you are guessing.
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Automatic metrics</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Fast and cheap</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Compare the output to a known answer with code.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-violet-300">Model judges</span>
+            <span className="rounded bg-violet-950/80 px-2 py-0.5 font-mono text-xs text-violet-300">Scalable opinions</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Another LLM grades the answers.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Human review</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">The gold standard</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>People rate quality. Slow and expensive but most trusted.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Benchmarks and Their Limits
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">benchmark</strong> is a fixed set of questions with known answers that many models can be tested on, such as multiple-choice exams across school subjects, math word problems or coding challenges. They make models easy to compare.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Problem</th>
+              <th className="px-5 py-3">What it means</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Contamination</td><td className="px-5 py-3">Benchmark questions leaked into the training data, so the model has partly memorized them</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Saturation</td><td className="px-5 py-3">Top models all score near the maximum, so the test no longer separates them</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Narrow coverage</td><td className="px-5 py-3">A benchmark measures only what it contains, not your real task</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Gaming</td><td className="px-5 py-3">Models can be tuned specifically to do well on famous tests</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Golden rule:</strong> Public benchmarks are a <em>starting point</em>. The evaluation that matters most is a <strong className="text-white">small test set built from your own real use cases</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Metrics You Can Compute
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Metric</th>
+              <th className="px-5 py-3">What it measures</th>
+              <th className="px-5 py-3">Use for</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Accuracy / exact match</td><td className="px-5 py-3">Share of answers that match the expected answer</td><td className="px-5 py-3">Classification, short factual answers</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Perplexity</td><td className="px-5 py-3">How surprised the model is by real text. Lower is better</td><td className="px-5 py-3">Comparing language models on the same text</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">pass@k</td><td className="px-5 py-3">Chance that at least one of k tries passes the tests</td><td className="px-5 py-3">Code generation</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">ROUGE / BLEU</td><td className="px-5 py-3">Word overlap with a reference text</td><td className="px-5 py-3">Summaries and translation (weak for meaning)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Elo / win rate</td><td className="px-5 py-3">Ratings from head-to-head comparisons</td><td className="px-5 py-3">Overall chat quality</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        For code, <strong className="text-white">pass@k</strong> is computed from $n$ samples of which $c$ are correct:
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\text{pass@}k = 1 - \frac{\binom{n-c}{k}}{\binom{n}{k}}$$
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Perplexity in one line:</strong> It is $e$ raised to the average negative log-probability of the correct tokens. A perplexity of 3 means the model is as unsure as choosing between 3 equally likely words.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: LLM-as-Judge and Pairwise Comparison
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Humans find it much easier to say which of <strong className="text-white">two answers is better</strong> than to give a score. Two popular methods build on this. In <strong className="text-white">human or AI pairwise comparisons</strong>, a judge sees two answers and picks a winner; many comparisons are combined into <strong className="text-white">Elo-style ratings</strong>. In <strong className="text-white">LLM-as-judge</strong>, a strong model grades answers using a written rubric, which is cheap and fast.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Judge bias</th>
+              <th className="px-5 py-3">What happens</th>
+              <th className="px-5 py-3">Fix</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Position bias</td><td className="px-5 py-3">Prefers the answer shown first (or last)</td><td className="px-5 py-3">Run each pair twice with the order swapped</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Length bias</td><td className="px-5 py-3">Prefers longer answers</td><td className="px-5 py-3">Tell the judge to ignore length, or control for it</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Self-preference</td><td className="px-5 py-3">A model rates its own style higher</td><td className="px-5 py-3">Use a different model as judge</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Vague rubric</td><td className="px-5 py-3">Scores are inconsistent</td><td className="px-5 py-3">Write a clear rubric with examples</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Always check the judge:</strong> Compare the judge&apos;s scores with a small set of human ratings. If they disagree a lot, the judge cannot be trusted.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Statistics and Building an Eval Process
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A score of 80% on 50 questions is <strong className="text-white">not</strong> the same as 80% on 500 questions. With small samples the true accuracy could be far from what you measured, so report an <strong className="text-white">uncertainty range</strong> such as a 95% confidence interval.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Habit</th>
+              <th className="px-5 py-3">Why</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Report confidence intervals</td><td className="px-5 py-3">Small differences between models are often just noise</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Use a fixed, versioned test set</td><td className="px-5 py-3">So results are comparable over time</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Include hard and edge cases</td><td className="px-5 py-3">Averages hide the failures users notice</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Run evals on every prompt or model change</td><td className="px-5 py-3">Catch regressions before users do</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Keep a hidden set</td><td className="px-5 py-3">Never tune on it, so it stays honest</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Review failures by hand</td><td className="px-5 py-3">Numbers tell you <em>how much</em>, reading outputs tells you <em>why</em></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Remember:</strong> A better score is only meaningful if the difference is larger than the uncertainty. Measure honestly, then decide.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Judges and Error Bars
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure compares three kinds of judges, then shows how the same measured score becomes more trustworthy with more test questions.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-amber-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-300">Part 1 · Three Ways to Judge an Answer</span>
+        <span className="text-xs text-slate-400">Pick by speed vs. trust</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Automatic</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Fast, cheap</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Exact match, tests, perplexity</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Runs in seconds</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-300">Great for closed answers</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">LLM judge</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Scalable</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Rubric + two answers</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Judge picks a winner</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Needs bias checks</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Human</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Most trusted</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">People compare or score answers</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Slow and costly</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Gold standard for quality</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · How Much Can You Trust a Score?</span>
+        <span className="text-xs text-slate-400">More questions, tighter range</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">80% on 50 questions</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Wide range</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Measured accuracy: 80%</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">95% interval: about 67% to 89%</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-300">True skill is uncertain</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">80% on 500 questions</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Narrow range</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Measured accuracy: 80%</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">95% interval: about 76% to 83%</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Much more reliable</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-amber-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why sample size matters</span>
+          <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">With few questions, luck matters a lot. The interval shrinks roughly with the square root of the number of questions, so ten times more questions makes the range about three times narrower. The code below computes these intervals.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 reads left to right from fastest to most trusted. Part 2 uses real numbers from the code: the same 80% means very different things on 50 and 500 questions. Open the bar for the square-root rule.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Intervals, pass@k, Elo and Perplexity
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script computes four evaluation tools from scratch: an accuracy confidence interval (Wilson), the pass@k estimator for code, Elo ratings from head-to-head results, and perplexity from token probabilities.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">llm_evaluation.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy and the standard library</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">from math import comb, sqrt</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Accuracy with an honest uncertainty range (Wilson 95% interval)</span>
+            <span className="block text-cyan-300">def accuracy&#95;with&#95;interval(correct, total, z=1.96):</span>
+            <span className="block">    p = correct / total</span>
+            <span className="block">    centre = (p + z &#42; z / (2 &#42; total)) / (1 + z &#42; z / total)</span>
+            <span className="block">    half = z &#42; sqrt(p &#42; (1 - p) / total + z &#42; z / (4 &#42; total &#42; total)) / (1 + z &#42; z / total)</span>
+            <span className="block">    return p, centre - half, centre + half</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for total in &#91;50, 500&#93;:</span>
+            <span className="block">    p, lo, hi = accuracy&#95;with&#95;interval(int(0.8 &#42; total), total)</span>
+            <span className="block">    print(&quot;80% on&quot;, total, &quot;questions -&gt; true accuracy is probably between&quot;, round(lo &#42; 100, 1), &quot;% and&quot;, round(hi &#42; 100, 1), &quot;%&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. pass@k: chance that at least one of k tries solves the problem</span>
+            <span className="block text-cyan-300">def pass&#95;at&#95;k(n, c, k):</span>
+            <span className="block">    if n - c &lt; k:</span>
+            <span className="block">        return 1.0</span>
+            <span className="block">    return 1 - comb(n - c, k) / comb(n, k)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;20 tries, 5 correct -&gt; pass@1:&quot;, round(pass&#95;at&#95;k(20, 5, 1), 3), &quot;| pass@5:&quot;, round(pass&#95;at&#95;k(20, 5, 5), 3), &quot;| pass@10:&quot;, round(pass&#95;at&#95;k(20, 5, 10), 3))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Pairwise comparisons turned into ratings (Elo)</span>
+            <span className="block">ratings = &#123;&quot;model A&quot;: 1000.0, &quot;model B&quot;: 1000.0&#125;</span>
+            <span className="block">matches = &#91;(&quot;model A&quot;, &quot;model B&quot;)&#93; &#42; 7 + &#91;(&quot;model B&quot;, &quot;model A&quot;)&#93; &#42; 3          # (winner, loser)</span>
+            <span className="block">for winner, loser in matches:</span>
+            <span className="block">    expected = 1 / (1 + 10 &#42;&#42; ((ratings&#91;loser&#93; - ratings&#91;winner&#93;) / 400))</span>
+            <span className="block">    ratings&#91;winner&#93; += 16 &#42; (1 - expected)</span>
+            <span className="block">    ratings&#91;loser&#93; -= 16 &#42; (1 - expected)</span>
+            <span className="block">print(&quot;Ratings after 10 judged matches:&quot;, &#123;k: round(v) for k, v in ratings.items()&#125;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 4. Perplexity from the average log-probability of the correct tokens</span>
+            <span className="block">log&#95;probs = np.log(&#91;0.5, 0.25, 0.8, 0.1&#93;)</span>
+            <span className="block">print(&quot;Perplexity:&quot;, round(float(np.exp(-log&#95;probs.mean())), 2))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>80% on 50 questions -&gt; true accuracy is probably between 67.0 % and 88.8 %</div>
+          <div>80% on 500 questions -&gt; true accuracy is probably between 76.3 % and 83.3 %</div>
+          <div>20 tries, 5 correct -&gt; pass@1: 0.25 | pass@5: 0.806 | pass@10: 0.984</div>
+          <div>Ratings after 10 judged matches: &#123;&apos;model A&apos;: 1020, &apos;model B&apos;: 980&#125;</div>
+          <div>Perplexity: 3.16</div>
+        </div>
+      </div>
+      <div>
+        The same 80% gives a range from 67% to 89% on 50 questions but only 76% to 83% on 500. With 5 correct out of 20 tries, pass@1 is 0.25 but pass@10 is already 0.98, which is why the number of tries must always be reported.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: A model scores 80% on only 50 questions. What should you conclude?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="eval-q1-a" name="eval-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="eval-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The true accuracy could be well above or below 80%, so report an uncertainty range</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Small samples give wide intervals, here roughly 67% to 89%.</div>
+          </div>
+          <div>
+            <input id="eval-q1-b" name="eval-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="eval-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The true accuracy is exactly 80%</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A sample score is only an estimate.</div>
+          </div>
+          <div>
+            <input id="eval-q1-c" name="eval-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="eval-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The model is perfect</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> 80% is far from perfect.</div>
+          </div>
+          <div>
+            <input id="eval-q1-d" name="eval-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="eval-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Sample size does not matter</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It matters a great deal.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What is position bias in an LLM judge?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="eval-q2-a" name="eval-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="eval-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Preferring the answer shown first or last, regardless of quality</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Run each pair twice with the order swapped to cancel it out.</div>
+          </div>
+          <div>
+            <input id="eval-q2-b" name="eval-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="eval-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Preferring longer words</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is a different issue, closer to length bias.</div>
+          </div>
+          <div>
+            <input id="eval-q2-c" name="eval-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="eval-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Preferring answers in English</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is not what position bias means.</div>
+          </div>
+          <div>
+            <input id="eval-q2-d" name="eval-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="eval-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Preferring answers with code</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Position bias is about order, not content.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>LLM quality has many sides and often no single right answer, so evaluation needs several methods.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Public benchmarks suffer from contamination, saturation and narrow coverage. Build a test set from your real use cases.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use accuracy for closed answers, perplexity for language modeling and <strong className="text-white">pass@k</strong> for code.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Pairwise comparisons and Elo ratings turn easy judgments (which answer is better?) into rankings.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>LLM judges are cheap but biased (position, length, self-preference), so check them against human ratings.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Report confidence intervals. Differences smaller than the uncertainty are not real.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Evaluation in One Line</div>
+        <div className="text-center font-bold text-white">
+          Real test set + the right metric + a checked judge + error bars = trustworthy decisions
+        </div>
+      </div>
+      <div>
+        Teams that evaluate carefully improve faster, because every change is a measured experiment.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Evaluation also shows where today&apos;s models fall short. In <strong className="text-white">Emerging LLM Techniques</strong> you will see reasoning models, test-time compute, distillation and where the field is heading.
+      </div>
+    </div>
+  </section>
+
+</div>

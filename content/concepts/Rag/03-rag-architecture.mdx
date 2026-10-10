@@ -1,0 +1,488 @@
+---
+title: "RAG Architecture and the End-to-End Pipeline"
+slug: "rag-architecture-end-to-end-pipeline"
+order: 3
+category: "RAG"
+subcategory: "RAG Foundations"
+difficulty: "Beginner"
+readTime: "35 min"
+description: "See the complete RAG system in one picture: the offline indexing pipeline, the online query pipeline, and how retrieval, context and generation connect."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+<section>
+  <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300">
+    <strong className="text-cyan-400">The Core Idea:</strong> Every RAG system is really two pipelines joined by one shared store. An <strong className="text-white">indexing pipeline</strong> runs ahead of time and prepares your documents so they can be searched. A <strong className="text-white">query pipeline</strong> runs every time a user asks a question: it searches the prepared store, builds a prompt from what it finds, and asks the model to answer. Once you can picture these two pipelines, every later lesson is just a closer look at one box.
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: One System, Two Pipelines</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Think of a restaurant. Before opening, the kitchen does the <em>prep</em>: washing, chopping and storing ingredients so they are ready. When a customer orders, the kitchen does the <em>service</em>: it grabs the right prepared ingredients, cooks the dish and serves it fast. Nobody chops onions while the customer waits.</div>
+    <div className="grid gap-5 md:grid-cols-2">
+      <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-blue-300">Indexing pipeline = prep kitchen</div>
+        <div className="text-sm leading-7">Collects documents, cleans them, cuts them into chunks, converts each chunk into numbers, and stores everything in a searchable index. It is <strong className="text-white">offline</strong>: it runs before users ask anything, or in the background when documents change.</div>
+      </div>
+      <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-violet-300">Query pipeline = service</div>
+        <div className="text-sm leading-7">Takes one user question, finds the best chunks in the index, builds a prompt and generates the answer. It is <strong className="text-white">online</strong>: a real person is waiting, so it must be fast.</div>
+      </div>
+    </div>
+    <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5">
+      <strong className="text-blue-300">The meeting point:</strong> the <strong className="text-white">index</strong>. The indexing pipeline writes to it and the query pipeline reads from it. Keeping the heavy work on the writing side is what makes answering quick.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: The Indexing Pipeline (Offline)</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Indexing has five stages. Each one turns the data into a form that is a little more ready for search.</div>
+    <div className="space-y-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-blue-300">Stage 1 · Load.</strong> Read documents from their sources: PDFs, web pages, wikis, databases. The output is raw text plus information about where it came from.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-blue-300">Stage 2 · Clean.</strong> Remove junk such as page headers, menus and duplicate copies, and normalize the text so it is consistent.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-blue-300">Stage 3 · Chunk.</strong> Split long documents into smaller pieces called <strong className="text-white">chunks</strong>. A model cannot search or read a whole book at once, and small focused pieces match questions better. A 3,000-word document cut into pieces of about 200 words gives roughly 15 chunks.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-blue-300">Stage 4 · Embed.</strong> Convert each chunk into an <strong className="text-white">embedding</strong>: a list of numbers that captures its meaning, so that chunks about similar things end up with similar numbers.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-blue-300">Stage 5 · Store.</strong> Save each embedding together with its original chunk text and <strong className="text-white">metadata</strong> (the source file, a document id, a date) in a vector store, so results can later be shown with their sources.</div>
+    </div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Why do it offline?</strong> Embedding thousands of chunks takes time and money. Doing it once, and again only for new or changed documents, means no user ever waits for it.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Beginner: The Query Pipeline (Online)</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>When a user types a question, the system runs six steps, usually in well under a few seconds:</div>
+    <div className="grid gap-4 md:grid-cols-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">1 · Receive</div>
+        <div className="mt-2 text-sm leading-7">Accept the question and any extra information, such as which user is asking.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">2 · Embed the query</div>
+        <div className="mt-2 text-sm leading-7">Turn the question into an embedding, using the same embedding model as the documents.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">3 · Retrieve</div>
+        <div className="mt-2 text-sm leading-7">Search the index and return the top-k chunks whose embeddings are closest to the question.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">4 · Build the prompt</div>
+        <div className="mt-2 text-sm leading-7">Combine instructions, the retrieved chunks and the question into one prompt.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">5 · Generate</div>
+        <div className="mt-2 text-sm leading-7">Send the prompt to the LLM, which writes an answer using the supplied context.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">6 · Return</div>
+        <div className="mt-2 text-sm leading-7">Show the answer to the user, ideally with the sources it came from.</div>
+      </div>
+    </div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <strong className="text-emerald-300">One rule you must never break:</strong> the question and the documents must be embedded by the <strong className="text-white">same embedding model</strong>. Embeddings from two different models live in different number spaces, so comparing them is meaningless.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Offline vs Online Processing</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Because the two pipelines run at different times, they have different goals. Good engineers design them separately.</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Aspect</th>
+            <th className="px-4 py-3">Indexing (offline)</th>
+            <th className="px-4 py-3">Query (online)</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3 font-semibold text-white">When it runs</td><td className="px-4 py-3">Before launch, then on a schedule or when documents change</td><td className="px-4 py-3">Every time a user asks</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Main goal</td><td className="px-4 py-3 text-blue-300">Quality and completeness of the index</td><td className="px-4 py-3 text-violet-300">Low latency and good answers</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Speed pressure</td><td className="px-4 py-3">Low: can take minutes or hours</td><td className="px-4 py-3">High: users wait</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Typical cost</td><td className="px-4 py-3">Embedding every chunk</td><td className="px-4 py-3">One query embedding, one search, one LLM call</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">If it fails</td><td className="px-4 py-3">Index is missing or stale</td><td className="px-4 py-3">User sees an error or a bad answer right now</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Touches the index</td><td className="px-4 py-3">Writes</td><td className="px-4 py-3">Reads</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5">
+      <strong className="text-orange-300">Design consequence:</strong> any step that can be moved from online to offline usually should be. Pre-computing embeddings, cleaning text and attaching metadata all happen in indexing so the query path stays short.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: The Context Budget and Where the Pipeline Grows</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>The heart of the query pipeline is the hand-off <strong className="text-white">retrieval → context → generation</strong>. Retrieval returns a ranked list of chunks with scores. <strong className="text-white">Context construction</strong> decides which chunks to keep, in what order, and how to format them. Generation then reads that context together with the instructions and the question.</div>
+    <div>Everything the model reads, plus the answer it writes, must fit inside the context window. This gives a simple budget rule:</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$T_{prompt} + T_{answer} \le T_{window}$$</div>
+    <div>Here $T$ counts tokens. For example, take 4 chunks of about 300 tokens each, a 100-token instruction and a 30-token question. The prompt is $4 \times 300 + 100 + 30 = 1{,}330$ tokens. If you reserve 500 tokens for the answer, the total is 1,830 tokens, comfortably inside typical windows. The budget matters because retrieving more chunks is not free: extra text costs money, adds delay, and can bury the one passage that matters.</div>
+    <div>The basic pipeline above is the foundation. Real systems add stages around it, and each one has its own lesson later in this course:</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Added stage</th>
+            <th className="px-4 py-3">Where it goes</th>
+            <th className="px-4 py-3">What it improves</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3 font-semibold text-white">Query rewriting</td><td className="px-4 py-3">Before retrieval</td><td className="px-4 py-3">Vague or messy questions</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Metadata filtering</td><td className="px-4 py-3">During retrieval</td><td className="px-4 py-3">Relevance, permissions, freshness</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Hybrid search and reranking</td><td className="px-4 py-3">Retrieval and after it</td><td className="px-4 py-3">Ranking quality</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Citations</td><td className="px-4 py-3">Generation and output</td><td className="px-4 py-3">Trust and checking</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Evaluation and monitoring</td><td className="px-4 py-3">Around the whole system</td><td className="px-4 py-3">Finding and fixing failures</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Two Lanes, One Index, and Where Things Break</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Panel A draws the architecture as two lanes that meet at the index. Panel B shows what the data looks like after each stage. Panel C is a debugging explorer: click a stage to see what goes wrong when it fails and what to check first.</div>
+    <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · The Architecture</span>
+          <span className="text-xs text-slate-400">Both lanes meet at the index</span>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-blue-500/25 bg-blue-500/[0.04] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-300">Offline lane · indexing</span>
+            <span className="text-[11px] text-slate-500">Runs ahead of time, nobody waits</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">Load</span><span className="text-blue-400">→</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">Clean</span><span className="text-blue-400">→</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">Chunk</span><span className="text-blue-400">→</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">Embed</span><span className="text-blue-400">→</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">Store</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
+          <span className="text-blue-400">↓ write</span>
+          <span className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 font-semibold text-amber-300">Vector index + chunk text + metadata</span>
+          <span className="text-violet-400">↑ read</span>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Online lane · query</span>
+            <span className="text-[11px] text-slate-500">Runs per question, user is waiting</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-violet-200">Question</span><span className="text-violet-400">→</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-violet-200">Embed</span><span className="text-violet-400">→</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-violet-200">Retrieve</span><span className="text-violet-400">→</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-violet-200">Prompt</span><span className="text-violet-400">→</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-violet-200">LLM</span><span className="text-violet-400">→</span>
+            <span className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-emerald-300">Answer + sources</span>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Panel B · The Data at Each Stage</span>
+          <span className="text-xs text-slate-400">Follow one fact through the system</span>
+        </div>
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-white/[0.04] text-slate-300">
+              <tr>
+                <th className="px-4 py-3">Stage</th>
+                <th className="px-4 py-3">What the data looks like</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-slate-300">
+              <tr><td className="px-4 py-3 text-blue-300">Load</td><td className="px-4 py-3">handbook.txt, a whole file of text</td></tr>
+              <tr><td className="px-4 py-3 text-blue-300">Chunk</td><td className="px-4 py-3">Employees get 20 vacation days per year.</td></tr>
+              <tr><td className="px-4 py-3 text-blue-300">Embed and store</td><td className="px-4 py-3">A list of numbers, saved with the text and source name</td></tr>
+              <tr><td className="px-4 py-3 text-violet-300">Question</td><td className="px-4 py-3">How many vacation days do employees get?</td></tr>
+              <tr><td className="px-4 py-3 text-violet-300">Retrieve</td><td className="px-4 py-3">The best chunks with similarity scores</td></tr>
+              <tr><td className="px-4 py-3 text-violet-300">Prompt</td><td className="px-4 py-3">Instruction, then context chunks, then the question</td></tr>
+              <tr><td className="px-4 py-3 text-emerald-300">Answer</td><td className="px-4 py-3">20 vacation days per year, source: handbook.txt</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-rose-300">Panel C · If This Stage Breaks</span>
+          <span className="text-xs text-slate-400">Click a stage to open it</span>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <input id="rag3-f-chunk" name="rag3-fail" type="radio" className="peer sr-only" />
+            <label htmlFor="rag3-f-chunk" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">Chunking is poor</label>
+            <div className="mt-2 hidden space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-sm leading-7 text-slate-300 peer-checked:block">
+              <div><strong className="text-rose-300">Symptom:</strong> Answers are half right because a fact was cut in two, or retrieved chunks are full of unrelated text.</div>
+              <div><strong className="text-emerald-300">Check first:</strong> Print a few chunks and read them as a human would.</div>
+            </div>
+          </div>
+          <div>
+            <input id="rag3-f-embed" name="rag3-fail" type="radio" className="peer sr-only" />
+            <label htmlFor="rag3-f-embed" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Embedding models do not match</label>
+            <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-sm leading-7 text-slate-300 peer-checked:block">
+              <div><strong className="text-rose-300">Symptom:</strong> Retrieval returns random-looking results even for easy questions.</div>
+              <div><strong className="text-emerald-300">Check first:</strong> Confirm documents and queries use the same model and settings.</div>
+            </div>
+          </div>
+          <div>
+            <input id="rag3-f-retrieve" name="rag3-fail" type="radio" className="peer sr-only" />
+            <label htmlFor="rag3-f-retrieve" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-cyan-400/50 peer-checked:bg-cyan-500/10 peer-checked:text-cyan-300">Retrieval misses the right chunk</label>
+            <div className="mt-2 hidden space-y-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-4 text-sm leading-7 text-slate-300 peer-checked:block">
+              <div><strong className="text-rose-300">Symptom:</strong> The model says it does not know, or guesses, even though the answer is in the documents.</div>
+              <div><strong className="text-emerald-300">Check first:</strong> Look at the top-k chunks for that question. Is the answer in them?</div>
+            </div>
+          </div>
+          <div>
+            <input id="rag3-f-context" name="rag3-fail" type="radio" className="peer sr-only" />
+            <label htmlFor="rag3-f-context" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">The prompt is badly built</label>
+            <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-sm leading-7 text-slate-300 peer-checked:block">
+              <div><strong className="text-rose-300">Symptom:</strong> The right chunk was retrieved but the answer ignores it, or the request fails for being too long.</div>
+              <div><strong className="text-emerald-300">Check first:</strong> Read the final prompt and count its tokens against the budget.</div>
+            </div>
+          </div>
+          <div>
+            <input id="rag3-f-stale" name="rag3-fail" type="radio" className="peer sr-only" />
+            <label htmlFor="rag3-f-stale" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">The index is stale</label>
+            <div className="mt-2 hidden space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-sm leading-7 text-slate-300 peer-checked:block">
+              <div><strong className="text-rose-300">Symptom:</strong> Answers quote old versions of documents that have since been updated.</div>
+              <div><strong className="text-emerald-300">Check first:</strong> Compare the index timestamp with the document version date.</div>
+            </div>
+          </div>
+        </div>
+        <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+            <span>Click to see the golden debugging rule</span>
+            <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-300">Explain <span className="inline-block transition group-open:rotate-180">▼</span></span>
+          </summary>
+          <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Always debug from the left. If retrieval did not find the right chunk, no amount of prompt tuning will fix the answer. Check the chunks first, then retrieval, then the prompt, and only then blame the model.</div>
+        </details>
+      </div>
+    </div>
+    <div>How to read it: Panel A is the map, Panel B is one fact walking along that map, and Panel C is the list of places where the walk can go wrong.</div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: A Complete Two-Pipeline RAG System</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>The program below follows the architecture exactly. <code>build_index</code> is the offline pipeline: it chunks documents by sentence, vectorizes each chunk with word counts, and stores the source name next to it. <code>retrieve</code>, <code>build_prompt</code> and <code>generate</code> form the online pipeline. A real system would send the prompt to an LLM; here <code>generate</code> is a simple stand-in that reads the first context line from the prompt, so the whole program runs with the standard library only.</div>
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+        <span className="font-mono text-xs font-semibold text-teal-400">rag_pipeline.py</span>
+        <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span>
+      </div>
+      <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block text-cyan-300">import math</span>
+          <span className="block text-cyan-300">from collections import Counter</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">documents = [</span>
+          <span className="block">    (&quot;handbook.txt&quot;, &quot;Employees get 20 vacation days per year. Unused days can be carried over for 3 months. Remote work is allowed on Tuesdays and Thursdays.&quot;),</span>
+          <span className="block">    (&quot;pricing.txt&quot;, &quot;The Basic plan costs 10 dollars per month. The Pro plan costs 25 dollars per month. Annual billing gives a 15 percent discount.&quot;),</span>
+          <span className="block">    (&quot;support.txt&quot;, &quot;Support is available Monday to Friday. Premium customers get a reply within 4 hours. Standard customers get a reply within 24 hours.&quot;),</span>
+          <span className="block">]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">stop_words = set([&quot;the&quot;, &quot;is&quot;, &quot;a&quot;, &quot;of&quot;, &quot;how&quot;, &quot;many&quot;, &quot;much&quot;, &quot;does&quot;, &quot;do&quot;, &quot;per&quot;, &quot;to&quot;, &quot;can&quot;, &quot;for&quot;, &quot;on&quot;, &quot;get&quot;, &quot;gets&quot;])</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Shared tools: used by BOTH pipelines (same vectorizer for docs and queries)</span>
+          <span className="block text-cyan-300">def vectorize(text):</span>
+          <span className="block">    cleaned = &quot;&quot;.join(ch for ch in text.lower() if ch.isalnum() or ch == &quot; &quot;)</span>
+          <span className="block">    return Counter(w for w in cleaned.split() if w not in stop_words)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def cosine(a, b):</span>
+          <span className="block">    dot = sum(a[w] * b[w] for w in set(a) &amp; set(b))</span>
+          <span className="block">    norm_a = math.sqrt(sum(v * v for v in a.values()))</span>
+          <span className="block">    norm_b = math.sqrt(sum(v * v for v in b.values()))</span>
+          <span className="block">    if norm_a == 0 or norm_b == 0:</span>
+          <span className="block">        return 0.0</span>
+          <span className="block">    return dot / (norm_a * norm_b)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># ===== OFFLINE PIPELINE: chunk, embed, store =====</span>
+          <span className="block text-violet-300">def chunk(text):</span>
+          <span className="block">    return [s.strip() + &quot;.&quot; for s in text.split(&quot;.&quot;) if s.strip()]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-violet-300">def build_index(documents):</span>
+          <span className="block">    index = []</span>
+          <span className="block">    for source, text in documents:</span>
+          <span className="block">        for piece in chunk(text):</span>
+          <span className="block">            index.append((source, piece, vectorize(piece)))</span>
+          <span className="block">    return index</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># ===== ONLINE PIPELINE: retrieve, build prompt, generate =====</span>
+          <span className="block text-emerald-300">def retrieve(question, index, k=2):</span>
+          <span className="block">    q = vectorize(question)</span>
+          <span className="block">    scored = [(cosine(q, vec), source, piece) for source, piece, vec in index]</span>
+          <span className="block">    scored.sort(reverse=True)</span>
+          <span className="block">    return scored[:k]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-emerald-300">def build_prompt(question, hits):</span>
+          <span className="block">    lines = [&quot;Answer using ONLY the context.&quot;, &quot;Context:&quot;]</span>
+          <span className="block">    for score, source, piece in hits:</span>
+          <span className="block">        lines.append(&quot;- &quot; + piece + &quot; (&quot; + source + &quot;)&quot;)</span>
+          <span className="block">    lines.append(&quot;Question: &quot; + question)</span>
+          <span className="block">    return lines</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Stand-in for the LLM call: it just reads the first context line</span>
+          <span className="block text-emerald-300">def generate(prompt):</span>
+          <span className="block">    first = prompt[2]</span>
+          <span className="block">    text, source = first[2:].rsplit(&quot; (&quot;, 1)</span>
+          <span className="block">    return text + &quot; [source: &quot; + source.rstrip(&quot;)&quot;) + &quot;]&quot;</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Run the offline pipeline once</span>
+          <span className="block">index = build_index(documents)</span>
+          <span className="block">print(&quot;Chunks in index:&quot;, len(index))</span>
+          <span className="block">print(&quot;&quot;)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Run the online pipeline for each question</span>
+          <span className="block">questions = [</span>
+          <span className="block">    &quot;How many vacation days do employees get?&quot;,</span>
+          <span className="block">    &quot;How fast do Premium customers get a reply?&quot;,</span>
+          <span className="block">]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">for question in questions:</span>
+          <span className="block">    hits = retrieve(question, index, k=2)</span>
+          <span className="block">    print(&quot;Question:&quot;, question)</span>
+          <span className="block">    for score, source, piece in hits:</span>
+          <span className="block">        print(&quot;  hit&quot;, round(score, 3), source, &quot;|&quot;, piece)</span>
+          <span className="block">    prompt = build_prompt(question, hits)</span>
+          <span className="block">    print(&quot;  Prompt:&quot;)</span>
+          <span className="block">    for line in prompt:</span>
+          <span className="block">        print(&quot;    &quot; + line)</span>
+          <span className="block">    print(&quot;  Answer:&quot;, generate(prompt))</span>
+          <span className="block">    print(&quot;&quot;)</span>
+        </code>
+      </pre>
+    </div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+      <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block">Chunks in index: 9</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">Question: How many vacation days do employees get?</span>
+          <span className="block">  hit 0.775 handbook.txt | Employees get 20 vacation days per year.</span>
+          <span className="block">  hit 0.218 handbook.txt | Unused days can be carried over for 3 months.</span>
+          <span className="block">  Prompt:</span>
+          <span className="block">    Answer using ONLY the context.</span>
+          <span className="block">    Context:</span>
+          <span className="block">    - Employees get 20 vacation days per year. (handbook.txt)</span>
+          <span className="block">    - Unused days can be carried over for 3 months. (handbook.txt)</span>
+          <span className="block">    Question: How many vacation days do employees get?</span>
+          <span className="block">  Answer: Employees get 20 vacation days per year. [source: handbook.txt]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">Question: How fast do Premium customers get a reply?</span>
+          <span className="block">  hit 0.612 support.txt | Premium customers get a reply within 4 hours.</span>
+          <span className="block">  hit 0.408 support.txt | Standard customers get a reply within 24 hours.</span>
+          <span className="block">  Prompt:</span>
+          <span className="block">    Answer using ONLY the context.</span>
+          <span className="block">    Context:</span>
+          <span className="block">    - Premium customers get a reply within 4 hours. (support.txt)</span>
+          <span className="block">    - Standard customers get a reply within 24 hours. (support.txt)</span>
+          <span className="block">    Question: How fast do Premium customers get a reply?</span>
+          <span className="block">  Answer: Premium customers get a reply within 4 hours. [source: support.txt]</span>
+        </code>
+      </pre>
+    </div>
+    <div>Notice that <code>build_index</code> ran once and was never called again, while <code>retrieve</code>, <code>build_prompt</code> and <code>generate</code> ran for every question. That is the offline and online split in code form. Also notice that the metadata (the file name) travels with every chunk from the index into the prompt and finally into the answer, which is what makes citations possible.</div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+  <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q1. Which of these steps belongs to the offline indexing pipeline?</div>
+      <div>
+        <input id="rag3-q1-a" name="rag3-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag3-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Building the prompt for a user question</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The prompt depends on the question, so it is built online, per request.</div>
+      </div>
+      <div>
+        <input id="rag3-q1-b" name="rag3-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag3-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Splitting documents into chunks and embedding them</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Chunking and embedding documents happen ahead of time, so users never wait for them.</div>
+      </div>
+      <div>
+        <input id="rag3-q1-c" name="rag3-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag3-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Generating the final answer</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Generation answers a specific question, so it is part of the online pipeline.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q2. Why must the question and the documents use the same embedding model?</div>
+      <div>
+        <input id="rag3-q2-a" name="rag3-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag3-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Different models place meaning in different number spaces, so their vectors cannot be compared</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Similarity is only meaningful between vectors from the same embedding space.</div>
+      </div>
+      <div>
+        <input id="rag3-q2-b" name="rag3-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag3-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It makes the LLM answer faster</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The reason is correctness of search, not speed of generation.</div>
+      </div>
+      <div>
+        <input id="rag3-q2-c" name="rag3-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag3-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It is only a naming convention</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Mixing models produces unreliable retrieval, so this is a hard requirement.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q3. The right chunk was retrieved, but the final answer is still wrong. Where should you look first?</div>
+      <div>
+        <input id="rag3-q3-a" name="rag3-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag3-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) The document loading step</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The correct chunk reached retrieval, so loading evidently worked.</div>
+      </div>
+      <div>
+        <input id="rag3-q3-b" name="rag3-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag3-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The vector index size</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Retrieval already succeeded, so index size is not the likely cause.</div>
+      </div>
+      <div>
+        <input id="rag3-q3-c" name="rag3-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag3-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) The prompt: how the context was ordered, formatted and instructed</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Debug from left to right. With retrieval working, read the final prompt and the model response next.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+  <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>A RAG system is two pipelines, indexing (offline) and query (online), connected by a shared index.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Indexing: load, clean, chunk, embed, store. The index keeps vectors, chunk text and metadata.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Query: receive, embed the question, retrieve top-k, build the prompt, generate, return with sources.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Heavy work goes offline so the online path stays fast for waiting users.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Queries and documents must use the same embedding model.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>The prompt plus the answer must fit the context window, so retrieving more is not always better.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Debug from left to right: chunks, retrieval, prompt, and only then the model.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">You now have the map for the whole RAG track. The foundations are done: what RAG is, why it exists, and how the pieces fit. The next lessons walk the offline lane stage by stage, then the online lane, then the improvements and the production concerns that surround both.</div>
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Documents → Chunks → Embeddings → Index → Retrieve → Prompt → Answer</div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Up Next:</strong> Data Sources and Document Processing. You will start at the very beginning of the offline lane: how to load PDFs, web pages, Markdown, HTML, CSV, JSON and databases, and how to extract clean text from them.
+    </div>
+  </div>
+</section>
+
+</div>

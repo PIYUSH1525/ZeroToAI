@@ -1,0 +1,487 @@
+---
+title: "Agent Performance and Cost Optimization"
+slug: "24-agent-performance-and-cost-optimization"
+order: 24
+category: "AI Agents"
+subcategory: "Production"
+difficulty: "Advanced"
+readTime: "28 min"
+description: "Learn how to make agents faster and cheaper: understanding latency and token usage, choosing models per step, caching, parallel execution, tool optimization and cost controls, with a worked cost model."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Agent costs grow quickly because <strong className="text-white">every step re-sends the whole history</strong>. The main levers are <strong className="text-white">fewer tokens</strong>, <strong className="text-white">cheaper models for easy steps</strong>, <strong className="text-white">caching</strong>, <strong className="text-white">parallel tool calls</strong> and <strong className="text-white">hard budgets</strong>. Measure first, then optimize the biggest cost.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Where Time and Money Go
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        An agent run is many model calls plus tool calls. You pay for <strong className="text-white">tokens</strong> (input and output) and wait for <strong className="text-white">latency</strong> (model time plus tool time). Both grow with the number of steps.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Cost driver</th>
+              <th className="px-5 py-3">Why it grows</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Input tokens</td><td className="px-5 py-3">Every step re-sends instructions, tool descriptions and the growing history</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Output tokens</td><td className="px-5 py-3">Long reasoning and long answers (output tokens usually cost more than input)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Number of steps</td><td className="px-5 py-3">More loops mean more calls</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Model size</td><td className="px-5 py-3">Larger models cost more per token and are slower</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Tool time</td><td className="px-5 py-3">Slow APIs add waiting time</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Rule:</strong> <strong className="text-white">Measure before you optimize.</strong> Log tokens, cost, latency and step count for every run, and fix the biggest item first.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Latency and Token Usage
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        To cut latency, reduce the number of <strong className="text-white">sequential</strong> model calls and the time spent waiting on tools. To cut tokens, send <strong className="text-white">less</strong> to the model:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Technique</th>
+              <th className="px-5 py-3">Effect</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Shorter, sharper instructions</td><td className="px-5 py-3">Fewer tokens on every call</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Fewer, better tools</td><td className="px-5 py-3">Smaller tool descriptions</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Compact tool results</td><td className="px-5 py-3">Return only needed fields</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Trim or summarize history</td><td className="px-5 py-3">Stops quadratic growth</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Concise output formats</td><td className="px-5 py-3">Fewer output tokens</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Why history matters:</strong> In a 12-step run, step 12 sends the system prompt plus 11 steps of history. The total input grows roughly with the <strong className="text-white">square</strong> of the number of steps, which is why long runs get expensive fast.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Model Selection
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Not every step needs the strongest model. A common design uses <strong className="text-white">different models for different jobs</strong>:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Step type</th>
+              <th className="px-5 py-3">Model choice</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Planning and hard reasoning</td><td className="px-5 py-3">Larger, stronger model</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Routine tool calls and formatting</td><td className="px-5 py-3">Smaller, cheaper, faster model</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Classification and routing</td><td className="px-5 py-3">Very small model</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Final answer quality</td><td className="px-5 py-3">Stronger model if quality matters</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Be careful:</strong> Test a cheaper model with your <strong className="text-white">evaluation set</strong> before switching. A saving that lowers success rate is not a saving.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> Using a model that costs a tenth for half of the steps cuts the run cost to about 67% of the baseline.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Caching and Parallel Execution
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Caching</strong> avoids paying twice for the same work. <strong className="text-white">Prompt caching</strong> discounts a repeated prefix, such as instructions and earlier history. <strong className="text-white">Result caching</strong> stores tool results for identical calls.
+      </div>
+      <div>
+        <strong className="text-white">Parallel execution</strong> runs independent tool calls at the same time. In the code, four 1.5-second calls take 6.0 seconds one after another but only 1.5 seconds in parallel.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Technique</th>
+              <th className="px-5 py-3">Saving</th>
+              <th className="px-5 py-3">Condition</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Prompt caching</td><td className="px-5 py-3">Large (34% of baseline cost in the code, with an example 90% discount)</td><td className="px-5 py-3">Stable prefix at the start of the prompt</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Result caching</td><td className="px-5 py-3">Time and tool cost</td><td className="px-5 py-3">Same arguments, data not stale</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Parallel tool calls</td><td className="px-5 py-3">Latency</td><td className="px-5 py-3">Independent calls</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Prompt layout</div>
+        <div className="text-sm leading-relaxed text-slate-300">Put the stable parts first (instructions, tools, older history) and the changing parts last, so the cache can match the beginning.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Tool Optimization and Cost Control
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Tools are a hidden cost. A search tool that returns a whole web page can flood the context, and each extra call adds a model round trip.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Tool optimization</th>
+              <th className="px-5 py-3">Why</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Return compact, structured results</td><td className="px-5 py-3">Saves input tokens on every later step</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Merge tiny tools into one</td><td className="px-5 py-3">Fewer round trips</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Batch calls (look up ten IDs at once)</td><td className="px-5 py-3">Fewer steps</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Truncate and say so</td><td className="px-5 py-3">Controls size without confusing the model</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Cache slow, stable lookups</td><td className="px-5 py-3">Saves time and money</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        Finally, add <strong className="text-white">cost controls</strong> so a bad run cannot become a bad bill:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Control</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Per-run budget</td><td className="px-5 py-3">Stop after a maximum number of tokens or dollars</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Step limit</td><td className="px-5 py-3">Hard cap on loops</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Per-user quotas</td><td className="px-5 py-3">Limit usage per account</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Alerts</td><td className="px-5 py-3">Notify on unusual spend</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Cost in your logs</td><td className="px-5 py-3">Know the cost per task type</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Do not forget quality:</strong> Always measure success rate next to cost. Cheaper but wrong is not an optimization.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: What Each Optimization Saves
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure compares the cost of one run under each optimization using the example prices in the code, then lists the biggest levers.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-amber-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-300">Part 1 · Cost of One 12-Step Run</span>
+        <span className="text-xs text-slate-400">Example prices, from the code</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-5">
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Baseline</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">100%</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Every step re-sends the history</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">USD 0.157 per run</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Prompt caching</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">34%</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Repeated prefix at a discount</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">USD 0.053 per run</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Summarize history</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">66%</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">History capped at 800 tokens</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">USD 0.103 per run</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Cheap model, half the steps</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">67%</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">A tenth of the price for easy steps</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">USD 0.106 per run</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">All three together</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">17%</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Combined savings</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">USD 0.026 per run</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Where to Save</span>
+        <span className="text-xs text-slate-400">Biggest levers first</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Tokens</div>
+          <div className="mt-2 text-lg font-bold text-white">Send less</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Trim and summarize history.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Models</div>
+          <div className="mt-2 text-lg font-bold text-white">Right size</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Cheap model for easy steps.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Caching</div>
+          <div className="mt-2 text-lg font-bold text-white">Pay once</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Prefix and results.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Parallel</div>
+          <div className="mt-2 text-lg font-bold text-white">Wait less</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">4 calls: 6 s becomes 1.5 s.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-amber-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see the cost for 10,000 runs</span>
+          <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">With the example prices, 10,000 baseline runs would cost about USD 1,566, while all three optimizations together cost about USD 263. Provider caching rules and prices differ, so recompute with your own numbers.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows each variant as a share of the baseline cost. Part 2 groups the savings by lever. Open the bar for the cost of 10,000 runs.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Cost Model for a 12-Step Agent Run
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script models the input and output cost of a 12-step run where every step re-sends the history. It compares the baseline with prompt caching, history summarization, a cheaper model for half of the steps, and all three together, and shows the latency gain of parallel tool calls. The prices are made-up examples.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">agent_cost_model.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># Cost of one agent run: every step re-sends the growing history</span>
+            <span className="block">IN&#95;PRICE, OUT&#95;PRICE = 3.0, 15.0            # example prices in USD per million tokens (not real quotes)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def run&#95;cost(steps=12, system=1000, per&#95;step=400, output=150, cached=False, summarize&#95;cap=None, cheap&#95;share=0.0):</span>
+            <span className="block">    total = 0.0</span>
+            <span className="block">    for i in range(1, steps + 1):</span>
+            <span className="block">        history = (i - 1) &#42; per&#95;step</span>
+            <span className="block">        if summarize&#95;cap:</span>
+            <span className="block">            history = min(history, summarize&#95;cap)             # old steps are compressed into a short summary</span>
+            <span className="block">        prefix = system + history</span>
+            <span className="block">        if cached:</span>
+            <span className="block">            input&#95;cost = prefix &#42; IN&#95;PRICE &#42; 0.1 + per&#95;step &#42; IN&#95;PRICE      # repeated prefix at an example 90% discount</span>
+            <span className="block">        else:</span>
+            <span className="block">            input&#95;cost = (prefix + per&#95;step) &#42; IN&#95;PRICE</span>
+            <span className="block">        step&#95;cost = (input&#95;cost + output &#42; OUT&#95;PRICE) / 1&#95;000&#95;000</span>
+            <span className="block">        if i / steps &lt;= cheap&#95;share:</span>
+            <span className="block">            step&#95;cost &#42;= 0.1                                  # easy steps use a model that costs a tenth</span>
+            <span className="block">        total += step&#95;cost</span>
+            <span className="block">    return total</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">baseline = run&#95;cost()</span>
+            <span className="block">variants = &#91;</span>
+            <span className="block">    (&quot;baseline&quot;, baseline),</span>
+            <span className="block">    (&quot;+ prompt caching&quot;, run&#95;cost(cached=True)),</span>
+            <span className="block">    (&quot;+ summarize history (cap 800)&quot;, run&#95;cost(summarize&#95;cap=800)),</span>
+            <span className="block">    (&quot;+ cheap model for 50% of steps&quot;, run&#95;cost(cheap&#95;share=0.5)),</span>
+            <span className="block">    (&quot;all three together&quot;, run&#95;cost(cached=True, summarize&#95;cap=800, cheap&#95;share=0.5)),</span>
+            <span className="block">&#93;</span>
+            <span className="block">for name, cost in variants:</span>
+            <span className="block">    print(name.ljust(32), &quot;USD&quot;, round(cost, 4), &quot;per run |&quot;, round(cost / baseline &#42; 100), &quot;% of baseline | USD&quot;, round(cost &#42; 10000, 2), &quot;per 10,000 runs&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Latency: independent tool calls can run in parallel</span>
+            <span className="block">tool&#95;seconds = &#91;1.5, 1.5, 1.5, 1.5&#93;</span>
+            <span className="block">print(&quot;4 tool calls one after another:&quot;, sum(tool&#95;seconds), &quot;s | in parallel:&quot;, max(tool&#95;seconds), &quot;s&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>baseline                         USD 0.1566 per run | 100 % of baseline | USD 1566.0 per 10,000 runs</div>
+          <div>+ prompt caching                 USD 0.0529 per run | 34 % of baseline | USD 529.2 per 10,000 runs</div>
+          <div>+ summarize history (cap 800)    USD 0.1026 per run | 66 % of baseline | USD 1026.0 per 10,000 runs</div>
+          <div>+ cheap model for 50% of steps   USD 0.1056 per run | 67 % of baseline | USD 1055.7 per 10,000 runs</div>
+          <div>all three together               USD 0.0263 per run | 17 % of baseline | USD 262.98 per 10,000 runs</div>
+          <div>4 tool calls one after another: 6.0 s | in parallel: 1.5 s</div>
+        </div>
+      </div>
+      <div>
+        Caching gives the largest single saving in this model, and combining all three cuts the cost to about one sixth. The model is simplified, because real providers have their own caching rules, so use it to build intuition and then measure your own runs.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Why do long agent runs get expensive so quickly?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag24-q1-a" name="ag24-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag24-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Every step re-sends the growing history, so total input grows roughly with the square of the steps</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> More steps means longer history on every later call.</div>
+          </div>
+          <div>
+            <input id="ag24-q1-b" name="ag24-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag24-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Tools are always expensive</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Tool cost varies.</div>
+          </div>
+          <div>
+            <input id="ag24-q1-c" name="ag24-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag24-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Models charge more at night</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> This is not how pricing works.</div>
+          </div>
+          <div>
+            <input id="ag24-q1-d" name="ag24-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag24-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) The goal gets longer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The goal stays the same length.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What should you check before switching a step to a cheaper model?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag24-q2-a" name="ag24-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag24-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) That the success rate on your evaluation set does not drop</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A saving that harms quality is not a saving.</div>
+          </div>
+          <div>
+            <input id="ag24-q2-b" name="ag24-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag24-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) That the model has a shorter name</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The name is irrelevant.</div>
+          </div>
+          <div>
+            <input id="ag24-q2-c" name="ag24-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag24-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Nothing, cheaper is always fine</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Always test quality.</div>
+          </div>
+          <div>
+            <input id="ag24-q2-d" name="ag24-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag24-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) That it has more tools</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Tools are unrelated.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Cost and latency come from tokens, steps, model size and tool time. Measure them first.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>History is re-sent every step, so trim, summarize and cap it.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use stronger models only where needed and test cheaper ones with your evaluation set.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Cache stable prefixes and tool results, and run independent tool calls in parallel.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Make tools return compact results and merge or batch calls.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Add per-run budgets, step limits, quotas and alerts, and always track quality with cost.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Optimization in One Line</div>
+        <div className="text-center font-bold text-white">
+          Measure → send fewer tokens → route to cheaper models → cache → parallelize → cap the budget
+        </div>
+      </div>
+      <div>
+        Cheaper agents are not just a nicety. They decide whether a product is affordable to run.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Now push agents further. In <strong className="text-white">Autonomous and Long-Horizon Agents</strong> you will see how agents run for hours, remember across steps and recover from failure.
+      </div>
+    </div>
+  </section>
+
+</div>

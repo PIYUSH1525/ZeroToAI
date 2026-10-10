@@ -1,0 +1,423 @@
+---
+title: "Agent Reasoning and Decision Making"
+slug: "09-agent-reasoning-and-decision-making"
+order: 9
+category: "AI Agents"
+subcategory: "Reasoning"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Learn how agents reason and decide: common reasoning patterns, how an agent chooses its next action, a simple expected-value model of decision-making, and how to improve tool selection."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> At every step an agent must <strong className="text-white">choose</strong>: answer now, call a tool, ask the user, or stop. Good decisions weigh the <strong className="text-white">chance of success</strong>, the <strong className="text-white">value</strong> of the result and the <strong className="text-white">cost</strong> of trying, and they know when to <strong className="text-white">ask for help</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Reasoning Patterns
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Reasoning</strong> is how the model works out what to do before it acts. Several patterns are common, each trading cost for care:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Pattern</th>
+              <th className="px-5 py-3">Idea</th>
+              <th className="px-5 py-3">Best for</th>
+              <th className="px-5 py-3">Cost</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Direct answer</td><td className="px-5 py-3">Answer immediately</td><td className="px-5 py-3">Simple, familiar questions</td><td className="px-5 py-3">Lowest</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Step-by-step (chain of thought)</td><td className="px-5 py-3">Write out the reasoning before the answer</td><td className="px-5 py-3">Math, logic, multi-step questions</td><td className="px-5 py-3">More tokens</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Decomposition</td><td className="px-5 py-3">Split the problem into smaller parts</td><td className="px-5 py-3">Complex tasks</td><td className="px-5 py-3">More calls</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Reason + act (ReAct)</td><td className="px-5 py-3">Alternate thinking and tool use</td><td className="px-5 py-3">Tasks that need outside information</td><td className="px-5 py-3">Many steps</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Multiple attempts</td><td className="px-5 py-3">Try several times and compare or vote</td><td className="px-5 py-3">Hard problems with checkable answers</td><td className="px-5 py-3">Several times more</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Tip:</strong> Match the pattern to the problem. Using the heaviest pattern for every question wastes time and money.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Choosing Actions
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        At each step the agent&apos;s menu of possible actions is short. Naming them clearly makes the behavior easier to control:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Action</th>
+              <th className="px-5 py-3">When it is right</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Answer now</td><td className="px-5 py-3">The agent already has enough reliable information</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Call a tool</td><td className="px-5 py-3">It needs data or must do something</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Ask the user</td><td className="px-5 py-3">The request is ambiguous or a risky choice needs approval</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Retry or change approach</td><td className="px-5 py-3">The last attempt failed</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Stop</td><td className="px-5 py-3">The goal is met, or no safe path remains</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Remember:</strong> <em>Ask the user</em> and <em>stop</em> are real actions. An agent that can never ask or stop will guess instead.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Decision-Making With Expected Value
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A simple way to think about choosing is <strong className="text-white">expected utility</strong>: how likely is the action to work, how valuable is success, and what does it cost (time, money, risk)?
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\text{utility} = P(\text{success}) \times \text{value} - \text{cost}$$
+      </div>
+      <div>
+        In the code, four options for the same question are scored. The database query wins because it is both reliable and cheap, even though asking the user is the most likely to succeed.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Why this matters:</strong> Real agents do not compute numbers like these, but the model is implicitly weighing the same factors. You can <strong className="text-white">shape its choices</strong> by changing tool descriptions, adding costs to your policy or setting rules such as <em>ask when unsure</em>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Tool Selection
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Choosing the right tool is the most common decision an agent makes. Wrong choices usually come from <strong className="text-white">unclear tools</strong>, not from a weak model.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Problem</th>
+              <th className="px-5 py-3">Fix</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Two tools sound alike</td><td className="px-5 py-3">Merge them or write descriptions that say when to use each</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Too many tools (dozens)</td><td className="px-5 py-3">Show only a relevant subset, found by search or by routing</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">The model skips a tool it needs</td><td className="px-5 py-3">State in the instructions when a tool is required</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">The model overuses an expensive tool</td><td className="px-5 py-3">Describe the cost and give a cheaper first option</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">A tool fails</td><td className="px-5 py-3">Offer a fallback tool and explain it in the error message</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Routing</div>
+        <div className="text-sm leading-relaxed text-slate-300">For large systems, a first small step picks a <em>category</em> of tools (for example billing, search, files) and then only those tools are shown to the model.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: When Decisions Go Wrong
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Failure</th>
+              <th className="px-5 py-3">Symptom</th>
+              <th className="px-5 py-3">Mitigation</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Overconfidence</td><td className="px-5 py-3">Answers without checking</td><td className="px-5 py-3">Require a tool or a source for factual claims</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Wrong tool</td><td className="px-5 py-3">Repeated irrelevant calls</td><td className="px-5 py-3">Better descriptions, fewer tools, retries with feedback</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Analysis paralysis</td><td className="px-5 py-3">Endless reasoning, no action</td><td className="px-5 py-3">Limit reasoning steps, set a deadline</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Loops</td><td className="px-5 py-3">Same action again and again</td><td className="px-5 py-3">Detect repeats and force a different action</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Acting when it should ask</td><td className="px-5 py-3">Risky guesses</td><td className="px-5 py-3">A confidence threshold: ask if nothing looks reliable</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">In the code:</strong> When every option has a low chance of success, the agent chooses <strong className="text-white">ask_user</strong> instead of guessing. A confidence threshold like this is one of the cheapest safety features you can add.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Scoring Options and Switching When Things Change
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows how the best action changes when conditions change, then lists the four factors behind every decision.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-violet-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Part 1 · Scoring Four Options</span>
+        <span className="text-xs text-slate-400">Same question, three situations</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Normal day</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Database works</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Memory 5.4, web 7.5, database 8.5, ask 6.5</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Best: run_database_query</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Database down</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Success chance 0</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Database drops out of the ranking</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Best: search_web (7.5)</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Nothing reliable</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">All chances are low</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">No option is above the confidence threshold</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Best: ask the user</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Four Factors in Every Decision</span>
+        <span className="text-xs text-slate-400">What the agent weighs</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Chance</div>
+          <div className="mt-2 text-lg font-bold text-white">Will it work?</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Reliability of the action.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Value</div>
+          <div className="mt-2 text-lg font-bold text-white">Is it worth it?</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">How useful success is.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Cost</div>
+          <div className="mt-2 text-lg font-bold text-white">What does it take?</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Time, money, tokens.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Risk</div>
+          <div className="mt-2 text-lg font-bold text-white">What if wrong?</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Harm if it fails.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-violet-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why asking the user can be the best action</span>
+          <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If every automatic option is unreliable, a quick question to the user is cheaper than a wrong action. The code returns ask_user when the best success chance is below the threshold.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 reads left to right as three situations for the same question. Part 2 lists the factors. Open the bar to see when asking the user is the best move.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Choosing an Action by Expected Value
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script scores four possible actions with expected utility, picks the best, switches when the database is down, and asks the user when no option is reliable enough.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">choose_action.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># Choosing an action: expected value of success minus the cost of trying</span>
+            <span className="block text-cyan-300">def utility(option):</span>
+            <span className="block">    return option&#91;&quot;p&#95;success&quot;&#93; &#42; option&#91;&quot;value&quot;&#93; - option&#91;&quot;cost&quot;&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def choose(options, min&#95;confidence=0.5):</span>
+            <span className="block">    best = max(options, key=utility)</span>
+            <span className="block">    if best&#91;&quot;p&#95;success&quot;&#93; &lt; min&#95;confidence:</span>
+            <span className="block">        return &quot;ask&#95;user (nothing looks reliable enough)&quot;, None</span>
+            <span className="block">    return best&#91;&quot;action&quot;&#93;, round(utility(best), 2)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">options = &#91;</span>
+            <span className="block">    &#123;&quot;action&quot;: &quot;answer&#95;from&#95;memory&quot;, &quot;p&#95;success&quot;: 0.55, &quot;value&quot;: 10, &quot;cost&quot;: 0.1&#125;,</span>
+            <span className="block">    &#123;&quot;action&quot;: &quot;search&#95;web&quot;, &quot;p&#95;success&quot;: 0.85, &quot;value&quot;: 10, &quot;cost&quot;: 1.0&#125;,</span>
+            <span className="block">    &#123;&quot;action&quot;: &quot;run&#95;database&#95;query&quot;, &quot;p&#95;success&quot;: 0.90, &quot;value&quot;: 10, &quot;cost&quot;: 0.5&#125;,</span>
+            <span className="block">    &#123;&quot;action&quot;: &quot;ask&#95;user&quot;, &quot;p&#95;success&quot;: 0.95, &quot;value&quot;: 10, &quot;cost&quot;: 3.0&#125;,</span>
+            <span className="block">&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Scores:&quot;, &#123;o&#91;&quot;action&quot;&#93;: round(utility(o), 2) for o in options&#125;)</span>
+            <span className="block">print(&quot;Normal day:     &quot;, choose(options))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">down = &#91;dict(o, p&#95;success=0.0) if o&#91;&quot;action&quot;&#93; == &quot;run&#95;database&#95;query&quot; else o for o in options&#93;</span>
+            <span className="block">print(&quot;Database down:  &quot;, choose(down))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">hopeless = &#91;dict(o, p&#95;success=0.3) for o in options if o&#91;&quot;action&quot;&#93; != &quot;ask&#95;user&quot;&#93;</span>
+            <span className="block">print(&quot;Nothing reliable:&quot;, choose(hopeless))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Scores: &#123;&apos;answer&#95;from&#95;memory&apos;: 5.4, &apos;search&#95;web&apos;: 7.5, &apos;run&#95;database&#95;query&apos;: 8.5, &apos;ask&#95;user&apos;: 6.5&#125;</div>
+          <div>Normal day:      (&apos;run&#95;database&#95;query&apos;, 8.5)</div>
+          <div>Database down:   (&apos;search&#95;web&apos;, 7.5)</div>
+          <div>Nothing reliable: (&apos;ask&#95;user (nothing looks reliable enough)&apos;, None)</div>
+        </div>
+      </div>
+      <div>
+        The ranking changes with the situation: the database query is chosen normally, web search takes over when the database is down, and the agent asks the user when nothing is reliable. Choosing among options with a clear rule is the heart of decision-making.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What does expected utility combine?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag09-q1-a" name="ag09-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag09-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Chance of success, value of success and cost</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Utility is probability times value, minus cost.</div>
+          </div>
+          <div>
+            <input id="ag09-q1-b" name="ag09-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag09-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Only the cost</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A cheap but useless action is not good.</div>
+          </div>
+          <div>
+            <input id="ag09-q1-c" name="ag09-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag09-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Only the speed</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Speed is one part of cost.</div>
+          </div>
+          <div>
+            <input id="ag09-q1-d" name="ag09-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag09-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) The length of the prompt</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Prompt length is not the measure.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: When is asking the user the right action?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag09-q2-a" name="ag09-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag09-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) When the request is ambiguous or no automatic option is reliable</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A question is cheaper than a wrong or risky action.</div>
+          </div>
+          <div>
+            <input id="ag09-q2-b" name="ag09-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag09-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Always, to be safe</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Asking too often makes the agent useless.</div>
+          </div>
+          <div>
+            <input id="ag09-q2-c" name="ag09-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag09-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Never, agents should never ask</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Asking is a valid and important action.</div>
+          </div>
+          <div>
+            <input id="ag09-q2-d" name="ag09-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag09-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Only after the agent has failed ten times</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Ask early when uncertainty is high.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Reasoning patterns trade cost for care: direct, step by step, decomposition, ReAct and multiple attempts.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>An agent&apos;s actions are: answer, call a tool, ask the user, retry, or stop.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Expected utility is chance of success times value, minus cost.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Most tool-selection mistakes come from unclear or overlapping tools.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Large tool sets need routing so only relevant tools are shown.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A confidence threshold lets the agent ask instead of guessing.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Decisions in One Line</div>
+        <div className="text-center font-bold text-white">
+          Weigh chance, value, cost and risk → pick the best action → ask when unsure
+        </div>
+      </div>
+      <div>
+        Better decisions come from clear options, clear tools and clear rules about when to stop or ask.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Many tasks are too big to decide step by step. In <strong className="text-white">Planning and Task Decomposition</strong> you will see how agents break big goals into subtasks and plan their order.
+      </div>
+    </div>
+  </section>
+
+</div>

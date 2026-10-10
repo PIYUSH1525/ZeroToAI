@@ -1,0 +1,429 @@
+---
+title: "Prompt Engineering: Writing Instructions That Work"
+slug: "15-prompt-engineering"
+order: 15
+category: "Generative AI"
+subcategory: "Prompting & Alignment"
+difficulty: "Beginner"
+readTime: "25 min"
+description: "Learn how to write clear prompts: role, task, context, format, constraints and examples, few-shot prompting, delimiters, step-by-step reasoning, testing and iterating, and basic protection against prompt injection."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A model only knows what is in your prompt. <strong className="text-white">Prompt engineering</strong> means giving a clear brief: <strong className="text-white">role, task, context, format, constraints and examples</strong>, then testing and improving it like code.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: What Is Prompt Engineering?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">prompt</strong> is the text you send to a model. <strong className="text-white">Prompt engineering</strong> is the skill of writing prompts so that the model gives the answer you actually want. The model cannot read your mind. It only sees the words you give it, so missing details are filled in with guesses.
+      </div>
+      <div>
+        Think of a prompt as instructions for a very capable new colleague who knows a lot in general but knows <strong className="text-white">nothing about your situation</strong>. The clearer your brief, the better the result.
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-rose-300">Vague prompt</span>
+            <span className="rounded bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">Gets a vague answer</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Example:</strong> <em>Tell me about this review.</em></div>
+            <div><strong className="text-white">Result:</strong> The model must guess what you want.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Clear prompt</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Gets a useful answer</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Example:</strong> <em>Classify this review as positive, neutral or negative. Reply with one word.</em></div>
+            <div><strong className="text-white">Result:</strong> Short, predictable, easy to use.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: The Parts of a Good Prompt
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Part</th>
+              <th className="px-5 py-3">Question it answers</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Role</td><td className="px-5 py-3">Who should the model act as?</td><td className="px-5 py-3">You are a customer-support analyst.</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Task</td><td className="px-5 py-3">What exactly should it do?</td><td className="px-5 py-3">Classify the review below.</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Context</td><td className="px-5 py-3">What material should it use?</td><td className="px-5 py-3">Review: &quot;The battery died after two days.&quot;</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Format</td><td className="px-5 py-3">How should the answer look?</td><td className="px-5 py-3">Reply with JSON only.</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Constraints</td><td className="px-5 py-3">What must or must not happen?</td><td className="px-5 py-3">At most 12 words. Do not add other text.</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Examples</td><td className="px-5 py-3">What does a good answer look like?</td><td className="px-5 py-3">Two or three sample inputs and outputs.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Remember:</strong> You do not need all six parts every time. Add the ones that remove guesswork for <em>your</em> task.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Few-Shot Examples and Delimiters
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Zero-shot</strong> means asking with no examples. <strong className="text-white">Few-shot</strong> means showing the model a few input and output pairs first. Examples are often the strongest way to communicate a style or format, because the model copies the pattern.
+      </div>
+      <div>
+        Use <strong className="text-white">delimiters</strong>, clear separators such as triple quotes or tags, to keep your instructions apart from the data. This also makes the prompt easier to read and safer against text in the data that looks like instructions.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Technique</th>
+              <th className="px-5 py-3">When to use it</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Zero-shot</td><td className="px-5 py-3">Simple, common tasks</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Few-shot (2 to 5 examples)</td><td className="px-5 py-3">You need a specific format, tone or label set</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Delimiters around data</td><td className="px-5 py-3">Always, when you paste documents or user text</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Ask for a format</td><td className="px-5 py-3">Whenever another program will read the answer</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Tip:</strong> Make examples <strong className="text-white">diverse</strong> and <strong className="text-white">correct</strong>. A wrong example teaches the wrong pattern.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Reasoning, Step by Step
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        For multi-step problems such as math, logic or planning, asking the model to <strong className="text-white">show its reasoning</strong> before the final answer often improves accuracy. This is called <strong className="text-white">chain-of-thought</strong> prompting. A simple version is to add a line such as <em>Think step by step, then give the final answer on its own line.</em>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Newer reasoning models:</strong> Some models already reason internally before answering. For them, a simple clear question often works best and extra instructions to think step by step may not be needed. Test both ways on your task.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Breaking big tasks up</div>
+        <div className="text-sm leading-relaxed text-slate-300">Instead of one huge prompt, split the work: first extract the facts, then write the summary, then check it. Each step is easier to get right and easier to debug.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Testing, Iterating and Staying Safe
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Prompts are small programs, so treat them like code: <strong className="text-white">test</strong> them on a set of real examples, change <strong className="text-white">one thing</strong> at a time, and keep a record of what worked.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Habit</th>
+              <th className="px-5 py-3">Why it matters</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Keep a test set of 20+ real inputs</td><td className="px-5 py-3">A prompt that works on one example may fail on others</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Change one thing at a time</td><td className="px-5 py-3">So you know what caused the improvement</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Version your prompts</td><td className="px-5 py-3">You can go back when a change makes things worse</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Watch for prompt injection</td><td className="px-5 py-3">Text in user data may say <em>ignore previous instructions</em>. Keep untrusted text clearly separated and never give the model power you would not give a stranger</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Ask for uncertainty</td><td className="px-5 py-3">Allow answers like <em>I do not know</em> to reduce invented facts</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Security note:</strong> Never put secrets, passwords or API keys inside a prompt. Assume anything in the prompt could be revealed.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: From Vague to Precise
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure contrasts a weak prompt with a strong one and shows the loop used to improve prompts.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-amber-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-300">Part 1 · Weak vs. Strong Prompt</span>
+        <span className="text-xs text-slate-400">Same model, different brief</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Weak prompt</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Vague</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Tell me about this review.</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-300">Unpredictable answer, hard to use</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Strong prompt</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Structured</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Role + task + input</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Format + constraints</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">One example</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Short, consistent, machine-readable answer</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 2 · The Improvement Loop</span>
+        <span className="text-xs text-slate-400">Prompts are tested like code</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Step 1 · Write</div>
+          <div className="mt-2 text-lg font-bold text-white">First draft</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Role, task, context, format.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Step 2 · Test</div>
+          <div className="mt-2 text-lg font-bold text-white">Real inputs</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Run on 20 or more examples.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Step 3 · Improve</div>
+          <div className="mt-2 text-lg font-bold text-white">One change</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Fix the biggest failure, then repeat.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-amber-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see the six-part checklist</span>
+          <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Role, task, context, format, constraints, examples. The linter in the code below scores a prompt out of six by looking for each part.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 compares what each prompt contains and what you get back. Part 2 shows the write, test and improve cycle. Open the bar to see the checklist the code uses.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Prompt Linter and a Few-Shot Builder
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script does two practical things. It scores a prompt on the six parts of a good prompt (a simple linter), and it builds a few-shot prompt from a list of examples so you never have to type it by hand.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">prompt_tools.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># A small &quot;prompt linter&quot;: checks whether a prompt contains the parts of a good prompt</span>
+            <span className="block">CHECKS = &#123;</span>
+            <span className="block">    &quot;role&quot;: &#91;&quot;you are&quot;, &quot;act as&quot;&#93;,</span>
+            <span className="block">    &quot;task&quot;: &#91;&quot;summarize&quot;, &quot;classify&quot;, &quot;explain&quot;, &quot;write&quot;, &quot;extract&quot;, &quot;translate&quot;&#93;,</span>
+            <span className="block">    &quot;context&quot;: &#91;&quot;context:&quot;, &quot;text:&quot;, &quot;document:&quot;, &quot;input:&quot;&#93;,</span>
+            <span className="block">    &quot;format&quot;: &#91;&quot;format&quot;, &quot;json&quot;, &quot;bullet&quot;, &quot;table&quot;, &quot;words&quot;, &quot;sentences&quot;&#93;,</span>
+            <span className="block">    &quot;constraints&quot;: &#91;&quot;do not&quot;, &quot;only&quot;, &quot;must&quot;, &quot;at most&quot;, &quot;never&quot;&#93;,</span>
+            <span className="block">    &quot;examples&quot;: &#91;&quot;example&quot;, &quot;for instance&quot;&#93;,</span>
+            <span className="block">&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def lint(prompt):</span>
+            <span className="block">    text = prompt.lower()</span>
+            <span className="block">    found = &#91;name for name, words in CHECKS.items() if any(w in text for w in words)&#93;</span>
+            <span className="block">    return found, &#91;name for name in CHECKS if name not in found&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">weak = &quot;Tell me about this review.&quot;</span>
+            <span className="block">strong = (</span>
+            <span className="block">    &quot;You are a customer-support analyst.&#92;n&quot;</span>
+            <span className="block">    &quot;Task: classify the review below as positive, neutral or negative.&#92;n&quot;</span>
+            <span className="block">    &quot;Input: &apos;The battery died after two days.&apos;&#92;n&quot;</span>
+            <span className="block">    &quot;Format: answer with JSON only, like &#123;&#92;&quot;label&#92;&quot;: &#92;&quot;...&#92;&quot;, &#92;&quot;reason&#92;&quot;: &#92;&quot;...&#92;&quot;&#125;.&#92;n&quot;</span>
+            <span className="block">    &quot;Constraints: the reason must be at most 12 words. Do not add any other text.&#92;n&quot;</span>
+            <span className="block">    &quot;Example: Input: &apos;Great screen!&apos; -&gt; &#123;&#92;&quot;label&#92;&quot;: &#92;&quot;positive&#92;&quot;, &#92;&quot;reason&#92;&quot;: &#92;&quot;praises the screen&#92;&quot;&#125;&quot;</span>
+            <span className="block">)</span>
+            <span className="block">for name, prompt in &#91;(&quot;weak prompt&quot;, weak), (&quot;strong prompt&quot;, strong)&#93;:</span>
+            <span className="block">    found, missing = lint(prompt)</span>
+            <span className="block">    print(name, &quot;-&gt; score&quot;, len(found), &quot;/&quot;, len(CHECKS), &quot;| missing:&quot;, missing)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Build a few-shot prompt from data instead of typing it by hand</span>
+            <span className="block">examples = &#91;(&quot;I love it&quot;, &quot;positive&quot;), (&quot;It broke at once&quot;, &quot;negative&quot;), (&quot;It is okay&quot;, &quot;neutral&quot;)&#93;</span>
+            <span className="block text-cyan-300">def few&#95;shot(examples, new&#95;text):</span>
+            <span className="block">    lines = &#91;&quot;Classify the sentiment as positive, neutral or negative.&quot;&#93;</span>
+            <span className="block">    for text, label in examples:</span>
+            <span className="block">        lines.append(&quot;Text: &quot; + text + &quot;&#92;nSentiment: &quot; + label)</span>
+            <span className="block">    lines.append(&quot;Text: &quot; + new&#95;text + &quot;&#92;nSentiment:&quot;)</span>
+            <span className="block">    return &quot;&#92;n&#92;n&quot;.join(lines)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">prompt = few&#95;shot(examples, &quot;Delivery was slow but the product is great&quot;)</span>
+            <span className="block">print(&quot;Few-shot prompt has&quot;, len(prompt.split()), &quot;words and ends with:&quot;, repr(prompt.split(&quot;&#92;n&quot;)&#91;-1&#93;))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>weak prompt -&gt; score 0 / 6 | missing: &#91;&apos;role&apos;, &apos;task&apos;, &apos;context&apos;, &apos;format&apos;, &apos;constraints&apos;, &apos;examples&apos;&#93;</div>
+          <div>strong prompt -&gt; score 6 / 6 | missing: &#91;&#93;</div>
+          <div>Few-shot prompt has 37 words and ends with: &apos;Sentiment:&apos;</div>
+        </div>
+      </div>
+      <div>
+        The weak prompt scores 0 out of 6 and the strong one scores 6. The few-shot builder always ends with <em>Sentiment:</em> so the model knows exactly what to complete.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What is few-shot prompting?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="prompt-q1-a" name="prompt-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="prompt-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Showing the model a few input and output examples before the real task</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The model copies the pattern shown in the examples.</div>
+          </div>
+          <div>
+            <input id="prompt-q1-b" name="prompt-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="prompt-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Asking the model the same question five times</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is repeated sampling, not few-shot.</div>
+          </div>
+          <div>
+            <input id="prompt-q1-c" name="prompt-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="prompt-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Using a very short prompt</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Length is not what defines few-shot.</div>
+          </div>
+          <div>
+            <input id="prompt-q1-d" name="prompt-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="prompt-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Fine-tuning on five examples</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Few-shot prompting does not change the weights.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Why use delimiters around pasted text?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="prompt-q2-a" name="prompt-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="prompt-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) They keep instructions separate from data and reduce confusion and injection risk</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Clear boundaries show the model which part is data.</div>
+          </div>
+          <div>
+            <input id="prompt-q2-b" name="prompt-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="prompt-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) They make the model run faster</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Delimiters do not change speed.</div>
+          </div>
+          <div>
+            <input id="prompt-q2-c" name="prompt-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="prompt-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) They are required by every model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They are good practice, not a rule.</div>
+          </div>
+          <div>
+            <input id="prompt-q2-d" name="prompt-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="prompt-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) They translate the text</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Delimiters do not change the content.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A prompt is a brief for a capable colleague who knows nothing about your situation.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Good prompts include role, task, context, format, constraints and examples, as needed.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Few-shot</strong> examples are one of the strongest ways to set format and style.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use <strong className="text-white">delimiters</strong> to separate instructions from data and to reduce injection risk.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Step-by-step reasoning helps on multi-step problems, but test it, especially on reasoning models.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Test on real examples, change one thing at a time, and never put secrets in a prompt.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Prompting in One Line</div>
+        <div className="text-center font-bold text-white">
+          Clear role + clear task + the right context + a format + an example → predictable answers
+        </div>
+      </div>
+      <div>
+        Better prompts are the cheapest improvement you can make. Before fine-tuning or switching models, improve the prompt.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You now know how to write the prompt. In <strong className="text-white">LLM APIs and Open-Source Models</strong> you will learn how to send it from your own code and how to choose between hosted and local models.
+      </div>
+    </div>
+  </section>
+
+</div>

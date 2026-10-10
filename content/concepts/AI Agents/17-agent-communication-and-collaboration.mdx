@@ -1,0 +1,476 @@
+---
+title: "Agent Communication and Collaboration"
+slug: "17-agent-communication-and-collaboration"
+order: 17
+category: "AI Agents"
+subcategory: "Multi-Agent"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Learn how agents work together: agent-to-agent communication, message passing, shared context such as a blackboard, and collaborative problem solving with roles like researcher, writer and reviewer."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Agents on a team cooperate by <strong className="text-white">passing messages</strong> and by sharing a <strong className="text-white">common context</strong>. A clear <strong className="text-white">message format</strong>, a shared <strong className="text-white">blackboard</strong> and defined <strong className="text-white">roles</strong> let agents solve problems together instead of repeating or contradicting each other.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Agent-to-Agent Communication
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When several agents work together, they need a way to <strong className="text-white">talk</strong>. In most systems an agent&apos;s output simply becomes another agent&apos;s input. There are two common ways:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Style</th>
+              <th className="px-5 py-3">How it works</th>
+              <th className="px-5 py-3">Good for</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Direct messages</td><td className="px-5 py-3">One agent sends a message to a named agent</td><td className="px-5 py-3">Clear handoffs</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Shared context (blackboard)</td><td className="px-5 py-3">Agents read and write a common workspace</td><td className="px-5 py-3">Many agents using the same facts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Broadcast</td><td className="px-5 py-3">One message goes to everyone</td><td className="px-5 py-3">Announcements, status updates</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Remember:</strong> Agents do not understand each other by magic. Everything they know about the others is <strong className="text-white">what is written in messages and shared context</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Message Passing
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A good message is <strong className="text-white">structured</strong> so the receiver knows what to do with it:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Field</th>
+              <th className="px-5 py-3">Example from the code</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">from</td><td className="px-5 py-3">researcher</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">to</td><td className="px-5 py-3">writer</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">kind</td><td className="px-5 py-3">notes, draft, revise, approved</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">content</td><td className="px-5 py-3">The text or data being passed</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Send:</strong> An agent puts a message on the bus.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Deliver:</strong> The system routes it to the named agent.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Handle:</strong> The receiver reads the kind and reacts.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Reply:</strong> It may send a new message, or finish.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">In the code:</strong> The reviewer rejects the first draft with a <em>revise</em> message. The writer then sends a second draft, and the reviewer approves. Six messages in total.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Shared Context
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Sending big documents in every message is wasteful. Instead, agents write large or shared information to a <strong className="text-white">blackboard</strong> (a shared store) and pass only a short pointer in messages.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">On the blackboard</th>
+              <th className="px-5 py-3">In a message</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">The 3 collected facts</td><td className="px-5 py-3">3 facts saved on the blackboard</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">The full draft</td><td className="px-5 py-3">The short draft text for the reviewer</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Benefits:</strong> Less duplicated text, a single source of truth, and an easy record of the work.
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Risks:</strong> Two agents can overwrite each other, and wrong information on the blackboard spreads to everyone. Use version checks and validate what is written.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Collaborative Problem Solving
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Teams solve problems best when roles are clear and <strong className="text-white">each agent checks another agent&apos;s work</strong>:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Role</th>
+              <th className="px-5 py-3">Job</th>
+              <th className="px-5 py-3">Hands over</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Researcher</td><td className="px-5 py-3">Collects facts and sources</td><td className="px-5 py-3">Notes to the writer</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Writer</td><td className="px-5 py-3">Turns notes into a draft</td><td className="px-5 py-3">Draft to the reviewer</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Reviewer</td><td className="px-5 py-3">Checks quality and accuracy</td><td className="px-5 py-3">Approval or a revision request</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Why a reviewer helps:</strong> A separate agent with a different instruction is more likely to catch mistakes than the writer re-reading its own work. Give the reviewer concrete criteria, not just <em>check it</em>.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Debate and critique</div>
+        <div className="text-sm leading-relaxed text-slate-300">Another pattern has agents argue for different answers, and a judge picks the best. It can improve difficult reasoning at a higher cost.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Making Communication Reliable
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Problem</th>
+              <th className="px-5 py-3">Fix</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Vague messages</td><td className="px-5 py-3">Use a fixed format with a kind field</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Endless back-and-forth</td><td className="px-5 py-3">Limit rounds, as the reviewer loop did</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Lost messages</td><td className="px-5 py-3">Keep a log and acknowledge important ones</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Wrong handoff</td><td className="px-5 py-3">Validate each message before it is used</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Too much chatter</td><td className="px-5 py-3">Send only what the receiver needs</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Conflicting facts</td><td className="px-5 py-3">One source of truth, with version checks</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Reminder:</strong> Every message costs tokens and adds a possible error. Agents should communicate <strong className="text-white">as little as possible, but as clearly as necessary</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Six Messages and a Shared Blackboard
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure follows the six messages exchanged in the code, then shows how messages and the shared blackboard divide the work.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-violet-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Part 1 · The Message Flow in the Code</span>
+        <span className="text-xs text-slate-400">Six messages</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Research</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Messages 1 and 2</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">User gives the task</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Researcher saves 3 facts on the blackboard</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Researcher tells the writer</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Notes ready</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Write and review</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Messages 3 and 4</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Writer drafts</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Reviewer asks for a summary</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Revision requested</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Revise and approve</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Messages 5 and 6</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Writer adds the summary</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Reviewer approves</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Report delivered</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Messages vs. the Blackboard</span>
+        <span className="text-xs text-slate-400">Where information lives</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Message</div>
+          <div className="mt-2 text-lg font-bold text-white">Short</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Who, what kind, a pointer.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Blackboard</div>
+          <div className="mt-2 text-lg font-bold text-white">Shared</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Facts, drafts, results.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Roles</div>
+          <div className="mt-2 text-lg font-bold text-white">Clear</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Researcher, writer, reviewer.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Limit</div>
+          <div className="mt-2 text-lg font-bold text-white">Rounds</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Stop endless back and forth.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-violet-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why a separate reviewer helps</span>
+          <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">A reviewer with its own criteria looks at the draft fresh. In the code, it catches a missing summary that the writer left out and sends a precise revision request.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 groups the six messages into research, write and review, and revise and approve. Part 2 compares messages with the blackboard. Open the bar for the value of a separate reviewer.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Message Passing and a Shared Blackboard
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script runs three agents (researcher, writer, reviewer) that communicate only by messages and a shared blackboard. The reviewer rejects the first draft, the writer revises it, and the reviewer approves it. A log shows every message.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">message_passing.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">from collections import deque</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">blackboard = &#123;&#125;                               # shared context every agent can read</span>
+            <span className="block">messages = deque()                            # the message bus</span>
+            <span className="block">log = &#91;&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def send(sender, to, kind, content):</span>
+            <span className="block">    messages.append(&#123;&quot;from&quot;: sender, &quot;to&quot;: to, &quot;kind&quot;: kind, &quot;content&quot;: content&#125;)</span>
+            <span className="block">    log.append(sender + &quot; -&gt; &quot; + to + &quot; &#91;&quot; + kind + &quot;&#93;: &quot; + str(content))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def researcher(msg):</span>
+            <span className="block">    if msg&#91;&quot;kind&quot;&#93; == &quot;task&quot;:</span>
+            <span className="block">        blackboard&#91;&quot;facts&quot;&#93; = &#91;&quot;agents use tools&quot;, &quot;agents loop&quot;, &quot;agents need limits&quot;&#93;</span>
+            <span className="block">        send(&quot;researcher&quot;, &quot;writer&quot;, &quot;notes&quot;, &quot;3 facts saved on the blackboard&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def writer(msg):</span>
+            <span className="block">    if msg&#91;&quot;kind&quot;&#93; == &quot;notes&quot;:</span>
+            <span className="block">        blackboard&#91;&quot;draft&quot;&#93; = &quot;Report using &quot; + str(len(blackboard&#91;&quot;facts&quot;&#93;)) + &quot; facts&quot;</span>
+            <span className="block">        send(&quot;writer&quot;, &quot;reviewer&quot;, &quot;draft&quot;, blackboard&#91;&quot;draft&quot;&#93;)</span>
+            <span className="block">    elif msg&#91;&quot;kind&quot;&#93; == &quot;revise&quot;:</span>
+            <span className="block">        blackboard&#91;&quot;draft&quot;&#93; += &quot; plus a summary&quot;</span>
+            <span className="block">        send(&quot;writer&quot;, &quot;reviewer&quot;, &quot;draft&quot;, blackboard&#91;&quot;draft&quot;&#93;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def reviewer(msg):</span>
+            <span className="block">    if msg&#91;&quot;kind&quot;&#93; == &quot;draft&quot;:</span>
+            <span className="block">        if &quot;summary&quot; in msg&#91;&quot;content&quot;&#93;:</span>
+            <span className="block">            send(&quot;reviewer&quot;, &quot;user&quot;, &quot;approved&quot;, msg&#91;&quot;content&quot;&#93;)</span>
+            <span className="block">        else:</span>
+            <span className="block">            send(&quot;reviewer&quot;, &quot;writer&quot;, &quot;revise&quot;, &quot;please add a summary&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">AGENTS = &#123;&quot;researcher&quot;: researcher, &quot;writer&quot;: writer, &quot;reviewer&quot;: reviewer&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">send(&quot;user&quot;, &quot;researcher&quot;, &quot;task&quot;, &quot;Write a short report about agents&quot;)</span>
+            <span className="block">while messages:</span>
+            <span className="block">    message = messages.popleft()</span>
+            <span className="block">    if message&#91;&quot;to&quot;&#93; in AGENTS:</span>
+            <span className="block">        AGENTS&#91;message&#91;&quot;to&quot;&#93;&#93;(message)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&#92;n&quot;.join(log))</span>
+            <span className="block">print(&quot;Messages exchanged:&quot;, len(log), &quot;| blackboard keys:&quot;, sorted(blackboard))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>user -&gt; researcher &#91;task&#93;: Write a short report about agents</div>
+          <div>researcher -&gt; writer &#91;notes&#93;: 3 facts saved on the blackboard</div>
+          <div>writer -&gt; reviewer &#91;draft&#93;: Report using 3 facts</div>
+          <div>reviewer -&gt; writer &#91;revise&#93;: please add a summary</div>
+          <div>writer -&gt; reviewer &#91;draft&#93;: Report using 3 facts plus a summary</div>
+          <div>reviewer -&gt; user &#91;approved&#93;: Report using 3 facts plus a summary</div>
+          <div>Messages exchanged: 6 | blackboard keys: &#91;&apos;draft&apos;, &apos;facts&apos;&#93;</div>
+        </div>
+      </div>
+      <div>
+        The log shows the entire collaboration. Facts live on the blackboard, while the messages stay short. The review loop ends after one revision. In real systems each agent would be a model call with its own instructions, but the communication pattern is the same.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Why use a shared blackboard in addition to messages?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag17-q1-a" name="ag17-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag17-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Agents can share large information once instead of copying it in every message</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The blackboard avoids duplicated text and gives one source of truth.</div>
+          </div>
+          <div>
+            <input id="ag17-q1-b" name="ag17-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag17-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Because messages are not allowed</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Messages are still useful for handoffs.</div>
+          </div>
+          <div>
+            <input id="ag17-q1-c" name="ag17-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag17-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) To make agents slower</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The goal is efficiency.</div>
+          </div>
+          <div>
+            <input id="ag17-q1-d" name="ag17-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag17-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) To avoid roles</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Roles remain important.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Why limit the number of back-and-forth rounds between agents?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag17-q2-a" name="ag17-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag17-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) To prevent endless loops that waste tokens</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Without a limit, two agents can keep revising forever.</div>
+          </div>
+          <div>
+            <input id="ag17-q2-b" name="ag17-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag17-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Because agents cannot read more than two messages</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Agents can read many messages.</div>
+          </div>
+          <div>
+            <input id="ag17-q2-c" name="ag17-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag17-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) To remove the reviewer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The reviewer stays, with a limit.</div>
+          </div>
+          <div>
+            <input id="ag17-q2-d" name="ag17-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag17-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) To hide errors</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Limits do not hide errors.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Agents cooperate through message passing, a shared context, or both.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use a structured message format with from, to, kind and content.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A blackboard stores shared facts and drafts, and messages carry short pointers.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Clear roles and a separate reviewer improve quality.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Limit rounds, log messages and validate handoffs.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Communicate as little as possible but as clearly as necessary.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Collaboration in One Line</div>
+        <div className="text-center font-bold text-white">
+          Clear roles + structured messages + a shared blackboard + a reviewer + a round limit
+        </div>
+      </div>
+      <div>
+        Good communication design is what separates a team of agents from a crowd of agents.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Teams need a shape. In <strong className="text-white">Multi-Agent Architectures</strong> you will compare supervisor, hierarchical, sequential, parallel and peer-to-peer designs.
+      </div>
+    </div>
+  </section>
+
+</div>

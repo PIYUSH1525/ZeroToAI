@@ -1,0 +1,334 @@
+---
+title: "Embeddings for RAG"
+slug: "embeddings-for-rag"
+order: 8
+category: "RAG"
+subcategory: "Embeddings"
+difficulty: "Beginner"
+readTime: "20 min"
+description: "Understand what embeddings are, how they turn meaning into numbers, why similar texts land close together, and how queries and documents are embedded."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> Computers cannot compare meanings directly, but they can compare numbers. An <strong className="text-white">embedding</strong> is a list of numbers that represents the meaning of a piece of text, learned so that texts with similar meaning get similar numbers. RAG uses embeddings to find passages that mean the same thing as the question, even when they share none of its words.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: From Words to Coordinates</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Think of a map. Every city has coordinates, and cities that are close together have similar coordinates. You can find the nearest city to any point just by comparing numbers. An embedding does the same for text: it gives every sentence a position in a space of meaning, and sentences about similar things sit near each other.</div>
+      <div>A map needs 2 numbers per place. An embedding needs many more, often hundreds or thousands, because meaning has far more directions than north-south and east-west.</div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5"><strong className="text-blue-300">Key point:</strong> an embedding is not a summary and not a code you can read. It is a position. Its only job is to make similar meanings close and different meanings far apart.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: Meaning Beyond Keywords</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Keyword search looks for the same words. Embedding search looks for the same meaning. Consider a user asking about a puppy while the document talks about a young dog: the two texts share no important word, yet they are about the same thing.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Question</th><th className="px-4 py-3">Document</th><th className="px-4 py-3">Keyword search</th><th className="px-4 py-3">Embedding search</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">How do I train a puppy?</td><td className="px-4 py-3">Teaching a young dog basic commands</td><td className="px-4 py-3 text-rose-300">Weak match, few shared words</td><td className="px-4 py-3 text-emerald-300">Strong match by meaning</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">car will not start</td><td className="px-4 py-3">automobile engine troubleshooting</td><td className="px-4 py-3 text-rose-300">No shared words</td><td className="px-4 py-3 text-emerald-300">Strong match by meaning</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>Embedding models learn this from huge amounts of text. They are trained so that texts used in similar contexts, or that answer one another, end up with nearby vectors.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Embedding Space and Dimensions</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The number of values in an embedding is its <strong className="text-white">dimension</strong>. Common models produce vectors with a few hundred to a few thousand dimensions. You cannot read a single dimension as a human concept like animal or vehicle. Meaning is spread across all of them together.</div>
+      <div>More dimensions can store finer distinctions, but they cost memory and search time. Storage is easy to estimate. If each number takes 4 bytes (a 32-bit float), then $N$ chunks of dimension $d$ need about:</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$N \times d \times 4 \text{ bytes}$$</div>
+      <div>For example, 1,000,000 chunks with 768 dimensions need $1{,}000{,}000 \times 768 \times 4 = 3{,}072{,}000{,}000$ bytes, about 3 gigabytes, before any index structures. This is why dimension and storage format matter in production.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Similarity Intuition</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Once texts are vectors, similarity is geometry. Two vectors pointing in nearly the same direction represent similar meanings. The most common score, <strong className="text-white">cosine similarity</strong>, measures the angle between vectors: 1 means same direction, 0 means unrelated, negative values mean opposite directions.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">High score</div>
+          <div className="text-sm leading-7">The texts are about the same thing and are good retrieval candidates.</div>
+        </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-amber-300">Middling score</div>
+          <div className="text-sm leading-7">Related but not the same, or only partly overlapping topics.</div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-rose-300">Low score</div>
+          <div className="text-sm leading-7">Probably unrelated. The retriever should not return this text.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5"><strong className="text-orange-300">Careful:</strong> a similarity score is not a probability or a measure of correctness. A score of 0.8 from one model can mean something different from 0.8 from another, so thresholds must be tuned for each model.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Query vs Document Embeddings and Their Limits</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Questions and passages look different. A question is short and asks, a passage is long and states. Many retrieval models are trained for this asymmetry, and some expect a short prefix or instruction that tells them whether the text is a query or a document. Always follow the model documentation, and always use the <strong className="text-white">same model</strong> for both sides.</div>
+      <div>Embeddings also have known weaknesses you should test for:</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Limitation</th><th className="px-4 py-3">Example</th><th className="px-4 py-3">What to do</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Negation</td><td className="px-4 py-3">Refunds allowed and Refunds not allowed look similar</td><td className="px-4 py-3">Verify with the generator or a reranker</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Exact identifiers</td><td className="px-4 py-3">Order codes and rare product names</td><td className="px-4 py-3">Add keyword search (hybrid retrieval)</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Numbers and dates</td><td className="px-4 py-3">30 days and 60 days embed almost the same</td><td className="px-4 py-3">Use metadata filters</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Long inputs</td><td className="px-4 py-3">Text beyond the model limit is cut off</td><td className="px-4 py-3">Chunk before embedding</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: A Map of Meaning</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A draws a tiny two-dimensional map of meaning. Panel B shows what happens to a query. Panel C is an explorer of common misunderstandings.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · The Map</span><span className="text-xs text-slate-400">Close together means similar meaning</span></div>
+          <div className="relative mx-auto h-64 w-full max-w-lg rounded-2xl border border-white/10 bg-black/30">
+            <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: "18%", top: "22%" }}><span className="h-3 w-3 rounded-full bg-emerald-400" /><span className="mt-1 text-[10px] text-emerald-300">cat</span></div>
+            <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: "26%", top: "32%" }}><span className="h-3 w-3 rounded-full bg-emerald-400" /><span className="mt-1 text-[10px] text-emerald-300">kitten</span></div>
+            <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: "14%", top: "38%" }}><span className="h-3 w-3 rounded-full bg-emerald-400" /><span className="mt-1 text-[10px] text-emerald-300">dog</span></div>
+            <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: "74%", top: "24%" }}><span className="h-3 w-3 rounded-full bg-violet-400" /><span className="mt-1 text-[10px] text-violet-300">car</span></div>
+            <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: "84%", top: "34%" }}><span className="h-3 w-3 rounded-full bg-violet-400" /><span className="mt-1 text-[10px] text-violet-300">truck</span></div>
+            <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: "72%", top: "40%" }}><span className="h-3 w-3 rounded-full bg-violet-400" /><span className="mt-1 text-[10px] text-violet-300">automobile</span></div>
+            <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: "30%", top: "78%" }}><span className="h-3 w-3 rounded-full bg-amber-400" /><span className="mt-1 text-[10px] text-amber-300">banana</span></div>
+            <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: "42%", top: "84%" }}><span className="h-3 w-3 rounded-full bg-amber-400" /><span className="mt-1 text-[10px] text-amber-300">apple</span></div>
+            <div className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center" style={{ left: "22%", top: "46%" }}><span className="h-3 w-3 rounded-full bg-rose-400" /><span className="mt-1 text-[10px] text-rose-300">your query: puppy</span></div>
+          </div>
+          <div className="text-center text-xs text-slate-300">The query lands near the animals, so animal passages win, even without shared words</div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · Embedding a Query</span><span className="text-xs text-slate-400">Same model for queries and documents</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Question</span><span className="text-violet-400">→</span><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Embedding model</span><span className="text-violet-400">→</span><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Vector of numbers</span><span className="text-violet-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Nearest document vectors</span></div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Myths</span><span className="text-xs text-slate-400">Click a myth to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c08-myth-0" name="c08-myth" type="radio" className="peer sr-only" />
+              <label htmlFor="c08-myth-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">An embedding stores the text</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-rose-300">Truth:</strong> It stores a position, not the words. Keep the original text beside it.</div>
+              </div>
+            </div>
+            <div>
+              <input id="c08-myth-1" name="c08-myth" type="radio" className="peer sr-only" />
+              <label htmlFor="c08-myth-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">Each dimension has a meaning</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Truth:</strong> Meaning is spread across all dimensions together.</div>
+              </div>
+            </div>
+            <div>
+              <input id="c08-myth-2" name="c08-myth" type="radio" className="peer sr-only" />
+              <label htmlFor="c08-myth-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-amber-400/50 peer-checked:bg-amber-500/10 peer-checked:text-amber-300">A high score means a correct answer</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-amber-300">Truth:</strong> It means similar, not true. Wrong but similar passages exist.</div>
+              </div>
+            </div>
+            <div>
+              <input id="c08-myth-3" name="c08-myth" type="radio" className="peer sr-only" />
+              <label htmlFor="c08-myth-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-cyan-400/50 peer-checked:bg-cyan-500/10 peer-checked:text-cyan-300">Any model can embed queries</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-cyan-300">Truth:</strong> Queries and documents must use the same model and settings.</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why the original text is stored too</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">The vector is only used to find the chunk. The model needs the actual words to read, so the vector store keeps the chunk text and metadata next to every vector.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the idea, Panel B is the mechanism, and Panel C removes the most common wrong assumptions.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Toy Embeddings and Semantic Search</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Real embeddings come from a trained neural network. To see the idea without any download, this program uses a tiny hand-made word vector table with four dimensions (animal, vehicle, food, technology). A sentence embedding is the average of its known word vectors. The search then ranks documents by cosine similarity. The last lines recompute the storage estimate from the lesson.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">toy_embeddings.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import math</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">word_vectors = dict([</span>
+            <span className="block">    (&quot;cat&quot;, [0.9, 0.0, 0.0, 0.0]), (&quot;kitten&quot;, [0.85, 0.0, 0.0, 0.0]), (&quot;dog&quot;, [0.9, 0.0, 0.05, 0.0]), (&quot;puppy&quot;, [0.85, 0.0, 0.05, 0.0]),</span>
+            <span className="block">    (&quot;car&quot;, [0.0, 0.9, 0.0, 0.1]), (&quot;automobile&quot;, [0.0, 0.9, 0.0, 0.1]), (&quot;engine&quot;, [0.0, 0.7, 0.0, 0.3]),</span>
+            <span className="block">    (&quot;banana&quot;, [0.0, 0.0, 0.9, 0.0]), (&quot;apple&quot;, [0.0, 0.0, 0.9, 0.05]),</span>
+            <span className="block">    (&quot;laptop&quot;, [0.0, 0.1, 0.0, 0.9]), (&quot;phone&quot;, [0.0, 0.1, 0.0, 0.9]),</span>
+            <span className="block">])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def embed(text):</span>
+            <span className="block">    known = [word_vectors[w] for w in text.lower().split() if w in word_vectors]</span>
+            <span className="block">    if not known:</span>
+            <span className="block">        return [0.0, 0.0, 0.0, 0.0]</span>
+            <span className="block">    return [sum(v[i] for v in known) / len(known) for i in range(4)]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def cosine(a, b):</span>
+            <span className="block">    dot = sum(x * y for x, y in zip(a, b))</span>
+            <span className="block">    na = math.sqrt(sum(x * x for x in a))</span>
+            <span className="block">    nb = math.sqrt(sum(y * y for y in b))</span>
+            <span className="block">    if na == 0 or nb == 0:</span>
+            <span className="block">        return 0.0</span>
+            <span className="block">    return dot / (na * nb)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">documents = [</span>
+            <span className="block">    &quot;the kitten sleeps&quot;,</span>
+            <span className="block">    &quot;an automobile engine&quot;,</span>
+            <span className="block">    &quot;a ripe banana&quot;,</span>
+            <span className="block">    &quot;new laptop and phone&quot;,</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for query in [&quot;my puppy&quot;, &quot;car trouble&quot;, &quot;apple pie&quot;]:</span>
+            <span className="block">    q = embed(query)</span>
+            <span className="block">    scored = sorted(((cosine(q, embed(d)), d) for d in documents), reverse=True)</span>
+            <span className="block">    best_score, best_doc = scored[0]</span>
+            <span className="block">    shared = set(query.split()) &amp; set(best_doc.split())</span>
+            <span className="block">    print(query.ljust(12), &quot;-&gt;&quot;, best_doc.ljust(24), round(best_score, 2), &quot;shared words:&quot;, len(shared))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">chunks = 1000000</span>
+            <span className="block">dimensions = 768</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">print(&quot;Storage for&quot;, chunks, &quot;chunks:&quot;, chunks * dimensions * 4 / 1000000000, &quot;GB&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">my puppy     -&gt; the kitten sleeps        1.0 shared words: 0</span>
+            <span className="block">car trouble  -&gt; an automobile engine     0.99 shared words: 0</span>
+            <span className="block">apple pie    -&gt; a ripe banana            1.0 shared words: 0</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Storage for 1000000 chunks: 3.072 GB</span>
+          </code>
+        </pre>
+      </div>
+      <div>The query my puppy finds the kitten sentence although the two share no word, and car trouble finds the automobile sentence for the same reason. That is semantic search in miniature. Real models do this with hundreds of dimensions learned from data, and they cope with far more words and phrasing than any table could. The storage line confirms the roughly 3 gigabyte estimate.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. What is an embedding?</div>
+        <div>
+          <input id="rag8-q1-a" name="rag8-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag8-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) A short summary of the text</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It is not readable text at all.</div>
+        </div>
+        <div>
+          <input id="rag8-q1-b" name="rag8-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag8-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) A copy of the document in compressed form</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> You cannot reconstruct the text from it. It is a position, not storage.</div>
+        </div>
+        <div>
+          <input id="rag8-q1-c" name="rag8-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag8-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) A list of numbers placing a text in a space where similar meanings are close</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> That is the definition used throughout RAG.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. A query and a document share no words yet are close in embedding space. What does this show?</div>
+        <div>
+          <input id="rag8-q2-a" name="rag8-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag8-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Embeddings capture meaning, not only matching words</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Semantic search can bridge different wording.</div>
+        </div>
+        <div>
+          <input id="rag8-q2-b" name="rag8-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag8-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The embedding model is broken</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> This is exactly what a good model should do.</div>
+        </div>
+        <div>
+          <input id="rag8-q2-c" name="rag8-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag8-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The document must be a duplicate</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Closeness reflects meaning, not duplication.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. Why must queries and documents use the same embedding model?</div>
+        <div>
+          <input id="rag8-q3-a" name="rag8-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag8-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) To save storage space</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Storage is not the reason.</div>
+        </div>
+        <div>
+          <input id="rag8-q3-b" name="rag8-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag8-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Different models use different spaces, so their vectors cannot be compared</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Similarity only makes sense inside one shared space.</div>
+        </div>
+        <div>
+          <input id="rag8-q3-c" name="rag8-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag8-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Because models refuse mixed input</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Nothing stops you, but the results become meaningless.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>An embedding is a list of numbers that places text in a space of meaning.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Similar meanings get nearby vectors, which lets retrieval work even when wording differs.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Dimensions are not individually interpretable, and more dimensions cost more storage.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Storage is roughly chunks times dimensions times 4 bytes for 32-bit numbers.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Cosine similarity compares directions; its values are not probabilities and thresholds depend on the model.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Queries and documents must use the same model, following its query and document conventions.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Embeddings struggle with negation, exact identifiers, numbers and very long input, so combine them with other tools.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Embeddings are the bridge between human language and fast computation. Everything in retrieval, from vector databases to reranking, assumes that you can ask how close two meanings are. Now you know what is being measured and where the measurement can fail.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Text → Embedding model → Vector → Compare with other vectors → Nearest meanings</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Embedding Models and Similarity. You will compare the main types of embedding models, work with cosine similarity, dot product and Euclidean distance, and learn how to choose a model for your data.</div>
+    </div>
+  </section>
+</div>

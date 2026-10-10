@@ -1,0 +1,565 @@
+---
+title: "Transformer Architecture for LLMs"
+slug: "transformer-architecture-for-llms"
+order: 5
+category: "Generative AI / LLMs"
+subcategory: "LLM Foundations"
+difficulty: "Beginner"
+readTime: "35 min"
+description: "Understand the architecture of decoder-only Transformers used by modern LLMs, from token embeddings and attention to feed-forward networks, residual connections, normalization, and next-token prediction."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5">
+        <strong className="text-cyan-400">The Core Idea:</strong> A modern decoder-only LLM is built by stacking Transformer blocks. Each block uses <strong>causal self-attention</strong> to mix information across token positions and an <strong>MLP</strong> to transform the resulting representations. Residual connections and normalization help make the deep network trainable and stable.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: What Is a Transformer?</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A <strong className="text-cyan-300">Transformer</strong> is a neural-network architecture built around attention. It allows token representations to interact with one another and has become the foundation of most modern large language models.</div>
+
+      <div>For a decoder-only LLM, the high-level pipeline is:</div>
+
+      <div className="rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">INPUT TEXT<div className="mt-1 text-xs text-slate-400">"The cat sat on the mat"</div></div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center text-violet-200">TOKENIZATION<div className="mt-1 text-xs text-slate-400">Text → token IDs</div></div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">TOKEN EMBEDDINGS + POSITIONAL INFORMATION</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center text-indigo-200">TRANSFORMER BLOCKS<div className="mt-1 text-xs text-slate-400">Attention + MLP + residual connections + normalization</div></div>
+          <div className="text-center text-indigo-400">↓</div>
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200">FINAL HIDDEN REPRESENTATIONS</div>
+          <div className="text-center text-amber-400">↓</div>
+          <div className="rounded-xl border border-pink-500/30 bg-pink-500/10 p-4 text-center text-pink-200">LANGUAGE MODEL HEAD<div className="mt-1 text-xs text-slate-400">Hidden state → vocabulary logits</div></div>
+        </div>
+      </div>
+
+      <div>The Transformer does not directly store a sentence as a fixed symbolic representation. Instead, it repeatedly transforms vectors so that each position contains increasingly useful contextual information.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: Understanding Transformer Model Families</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The original Transformer architecture introduced both an <strong className="text-violet-300">encoder</strong> and a <strong className="text-cyan-300">decoder</strong>. Different model families use these components differently.</div>
+
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-cyan-300">Encoder-only</div>
+          <div className="text-sm leading-relaxed text-slate-300">Primarily designed to build contextual representations of an input sequence.</div>
+          <div className="mt-3 text-xs font-semibold text-slate-500">Example: BERT</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-violet-300">Encoder-decoder</div>
+          <div className="text-sm leading-relaxed text-slate-300">Uses one network to encode an input and another to generate an output sequence.</div>
+          <div className="mt-3 text-xs font-semibold text-slate-500">Example: T5</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-emerald-300">Decoder-only</div>
+          <div className="text-sm leading-relaxed text-slate-300">Generates tokens autoregressively while attending to the available context.</div>
+          <div className="mt-3 text-xs font-semibold text-slate-500">Example: GPT-style LLMs</div>
+        </div>
+      </div>
+
+      <div>For modern text-generation LLMs, the architecture you should understand first is the <strong className="text-white">decoder-only Transformer</strong>. It uses causal self-attention so a position cannot use information from future tokens.</div>
+
+      <div className="rounded-xl border border-amber-500/25 bg-[#0A0D16] p-5"><strong className="text-amber-300">Important:</strong><span className="text-slate-300"> "Decoder-only" does not mean the model is incomplete. It means the model uses the decoder-style stack without a separate encoder stack.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Beginner: What Is a Transformer Block?</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A Transformer is not one single attention operation. It is usually a stack of repeated <strong className="text-emerald-300">Transformer blocks</strong>.</div>
+
+      <div>A simplified decoder-only block contains:</div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5"><div className="font-bold text-cyan-300">1. Normalization</div><div className="mt-1 text-sm text-slate-400">Often pre-normalization in modern LLMs.</div></div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5"><div className="font-bold text-violet-300">2. Causal Self-Attention</div><div className="mt-1 text-sm text-slate-400">Mixes information across allowed token positions.</div></div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5"><div className="font-bold text-emerald-300">3. Residual Connection</div><div className="mt-1 text-sm text-slate-400">Adds the attention update back to the stream.</div></div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5"><div className="font-bold text-amber-300">4. MLP / FFN</div><div className="mt-1 text-sm text-slate-400">Transforms each contextualized token representation.</div></div>
+        <div className="rounded-xl border border-pink-500/25 bg-pink-500/[0.04] p-5"><div className="font-bold text-pink-300">5. Another Residual Connection</div><div className="mt-1 text-sm text-slate-400">Combines the MLP output with the existing stream.</div></div>
+        <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/[0.04] p-5"><div className="font-bold text-indigo-300">6. Normalization</div><div className="mt-1 text-sm text-slate-400">The exact placement depends on the architecture.</div></div>
+      </div>
+
+      <div className="rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">INPUT REPRESENTATIONS</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center text-violet-200">NORMALIZATION</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center text-indigo-200">CAUSAL SELF-ATTENTION</div>
+          <div className="text-center text-indigo-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">RESIDUAL ADDITION</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200">MLP / FEED-FORWARD NETWORK</div>
+          <div className="text-center text-amber-400">↓</div>
+          <div className="rounded-xl border border-pink-500/30 bg-pink-500/10 p-4 text-center text-pink-200">RESIDUAL ADDITION</div>
+          <div className="text-center text-pink-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">OUTPUT REPRESENTATIONS</div>
+        </div>
+      </div>
+
+      <div>The exact ordering varies across model families. Modern LLMs commonly use <strong className="text-white">pre-normalization</strong> and may use <strong className="text-white">RMSNorm</strong> and gated MLPs such as SwiGLU.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Beginner: Causal Self-Attention</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-indigo-300">Self-attention</strong> allows token representations to use information from other positions in the sequence. In an autoregressive LLM, the attention must be <strong className="text-white">causal</strong>.</div>
+
+      <div>For the sequence:</div>
+
+      <div className="rounded-2xl border border-indigo-500/25 bg-indigo-500/[0.04] p-6">
+        <div className="mb-5 text-center font-mono text-sm text-indigo-200">The cat sat on the mat</div>
+        <div className="space-y-2 font-mono text-xs">
+          <div className="grid grid-cols-6 gap-2">
+            <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-center">The</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+          </div>
+          <div className="grid grid-cols-6 gap-2">
+            <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-center">The</div>
+            <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-center">cat</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+          </div>
+          <div className="grid grid-cols-6 gap-2">
+            <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-center">The</div>
+            <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-center">cat</div>
+            <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-center">sat</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center text-slate-600">×</div>
+          </div>
+        </div>
+        <div className="mt-5 text-center text-sm text-slate-400">Each position can use itself and earlier positions, but not future positions.</div>
+      </div>
+
+      <div>This restriction is implemented with a <strong className="text-indigo-300">causal attention mask</strong>. Without it, a training example could allow the model to see the token it is supposed to predict, which would break the autoregressive learning objective.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Intermediate: Query, Key, and Value</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Self-attention creates three learned projections from the input representations: <strong className="text-cyan-300">Query</strong>, <strong className="text-violet-300">Key</strong>, and <strong className="text-emerald-300">Value</strong>.</div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6"><div className="mb-2 font-bold text-cyan-300">Query</div><div className="text-sm leading-relaxed text-slate-300">Represents what information the current position is looking for.</div></div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6"><div className="mb-2 font-bold text-violet-300">Key</div><div className="text-sm leading-relaxed text-slate-300">Represents what each position offers for matching against a query.</div></div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6"><div className="mb-2 font-bold text-emerald-300">Value</div><div className="text-sm leading-relaxed text-slate-300">Contains the information that is actually combined when attention is applied.</div></div>
+      </div>
+
+      <div>A simplified attention calculation is:</div>
+
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-6 text-center font-mono text-sm text-cyan-200">
+        Attention = softmax of (Q × K-transpose divided by square-root of d-k) × V
+      </div>
+
+      <div>The query-key interaction determines how strongly positions relate to one another. The resulting weights are then used to combine the value vectors.</div>
+
+      <div className="rounded-xl border border-amber-500/25 bg-[#0A0D16] p-5"><strong className="text-amber-300">Why scale by square-root of d-k?</strong><span className="text-slate-300"> The scaling helps prevent attention scores from becoming excessively large as the key/query dimensionality increases.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Intermediate: Multi-Head Attention</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Transformers normally use multiple attention heads instead of one large attention operation. Each head works in a learned subspace and can capture different relationships.</div>
+
+      <div className="rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">INPUT REPRESENTATIONS</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center text-violet-200">HEAD 1<div className="mt-1 text-xs text-slate-400">Attention pattern</div></div>
+            <div className="rounded-xl border border-pink-500/30 bg-pink-500/10 p-4 text-center text-pink-200">HEAD 2<div className="mt-1 text-xs text-slate-400">Attention pattern</div></div>
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">HEAD N<div className="mt-1 text-xs text-slate-400">Attention pattern</div></div>
+          </div>
+          <div className="text-center text-indigo-400">↓ concatenate</div>
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center text-indigo-200">OUTPUT PROJECTION</div>
+          <div className="text-center text-indigo-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">ATTENTION OUTPUT</div>
+        </div>
+      </div>
+
+      <div>Different heads can learn to emphasize different relationships, such as local dependencies, long-range relationships, syntactic patterns, or references between entities.</div>
+
+      <div>Modern LLMs can also use attention variants such as <strong className="text-white">Multi-Query Attention</strong> and <strong className="text-white">Grouped-Query Attention</strong>. These reduce key/value memory requirements during inference while retaining multiple query heads.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Intermediate: Feed-Forward Network / MLP</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Attention mixes information across token positions. The <strong className="text-amber-300">feed-forward network</strong>, commonly called the MLP, then transforms the representation at each position.</div>
+
+      <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-6">
+        <div className="mb-4 text-center font-mono text-xs font-bold uppercase tracking-widest text-amber-300">Simplified MLP</div>
+        <div className="grid gap-3 md:grid-cols-5 md:items-center">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">INPUT</div>
+          <div className="text-center text-amber-400">→</div>
+          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center text-violet-200">EXPANSION + ACTIVATION</div>
+          <div className="text-center text-amber-400">→</div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">PROJECTION</div>
+        </div>
+      </div>
+
+      <div>A simplified form is:</div>
+
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-6 text-center font-mono text-sm text-amber-200">
+        MLP of x = W2 × activation of (W1 × x + b1) + b2
+      </div>
+
+      <div>The MLP is applied independently at each position, but the input representation already contains contextual information produced by attention.</div>
+
+      <div>Modern LLMs often use gated MLP variants such as <strong className="text-white">SwiGLU</strong> instead of a simple activation function. The exact dimensions and activation design vary across model families.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">8. Intermediate: Residual Connections</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A residual connection adds a layer's output back to the representation that entered the layer.</div>
+
+      <div className="rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">INPUT x</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center text-indigo-200">ATTENTION OR MLP: f of x</div>
+          <div className="text-center text-indigo-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">ADD x + f of x</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">UPDATED REPRESENTATION</div>
+        </div>
+      </div>
+
+      <div>In simplified mathematical notation, the idea is:</div>
+
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center font-mono text-sm text-emerald-200">x-new = x + f of x</div>
+
+      <div>Residual pathways help information and gradients travel through very deep networks. Instead of forcing every layer to completely replace the existing representation, each sub-layer can learn an update to it.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">9. Intermediate: Layer Normalization and RMSNorm</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Normalization helps control the scale of activations and makes optimization more stable.</div>
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-teal-500/25 bg-teal-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-teal-300">LayerNorm</div>
+          <div className="text-sm leading-relaxed text-slate-300">Normalizes activations using statistics based on the mean and variance of the features.</div>
+        </div>
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-cyan-300">RMSNorm</div>
+          <div className="text-sm leading-relaxed text-slate-300">Uses the root-mean-square magnitude of the activations without explicitly centering by the mean.</div>
+        </div>
+      </div>
+
+      <div>Many modern decoder-only LLMs use RMSNorm. The exact normalization design is architecture-specific.</div>
+
+      <div className="rounded-xl border border-amber-500/25 bg-[#0A0D16] p-5"><strong className="text-amber-300">Pre-norm vs post-norm:</strong><span className="text-slate-300"> The position of normalization relative to attention, MLP, and residual operations is an architectural choice. Modern LLMs commonly use a pre-norm style.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">10. Intermediate: One Token's Representation Through a Block</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Consider the token <strong className="text-cyan-300">"cat"</strong> in the sequence:</div>
+
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center font-mono text-sm text-slate-200">The cat sat on the mat</div>
+
+      <div>Its initial representation comes from its token embedding plus positional information. Inside a Transformer block, that representation is repeatedly updated.</div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5"><div className="font-bold text-cyan-300">Step 1</div><div className="mt-1 text-sm text-slate-300">Normalize the representation.</div></div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5"><div className="font-bold text-violet-300">Step 2</div><div className="mt-1 text-sm text-slate-300">Use causal self-attention to retrieve useful context.</div></div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5"><div className="font-bold text-emerald-300">Step 3</div><div className="mt-1 text-sm text-slate-300">Add the attention update through the residual path.</div></div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5"><div className="font-bold text-amber-300">Step 4</div><div className="mt-1 text-sm text-slate-300">Normalize before the MLP in a pre-norm architecture.</div></div>
+        <div className="rounded-xl border border-pink-500/25 bg-pink-500/[0.04] p-5"><div className="font-bold text-pink-300">Step 5</div><div className="mt-1 text-sm text-slate-300">Transform the representation through the MLP.</div></div>
+        <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/[0.04] p-5"><div className="font-bold text-indigo-300">Step 6</div><div className="mt-1 text-sm text-slate-300">Add the MLP update through another residual path.</div></div>
+      </div>
+
+      <div>After many Transformer blocks, the representation of "cat" is no longer simply the original embedding. It contains information shaped by the surrounding context and by the computations performed throughout the network.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">11. Intermediate: Stacking Transformer Blocks</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Large language models stack many Transformer blocks. The output of one block becomes the input to the next.</div>
+
+      <div className="rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">TOKEN EMBEDDINGS</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center text-violet-200">TRANSFORMER BLOCK 1</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center text-indigo-200">TRANSFORMER BLOCK 2</div>
+          <div className="text-center text-indigo-400">↓</div>
+          <div className="rounded-xl border border-pink-500/30 bg-pink-500/10 p-4 text-center text-pink-200">TRANSFORMER BLOCK 3</div>
+          <div className="text-center text-pink-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center text-slate-400">⋮</div>
+          <div className="text-center text-slate-500">↓</div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">TRANSFORMER BLOCK N</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200">FINAL NORMALIZATION</div>
+        </div>
+      </div>
+
+      <div>Depth gives the network repeated opportunities to transform the representation. The exact number of blocks differs substantially between model families and sizes.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">12. Intermediate: The Language Model Head</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>After the final Transformer block, the model has a hidden representation for each token position. For next-token prediction, the representation at the relevant position is projected into the vocabulary space.</div>
+
+      <div className="rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center text-indigo-200">FINAL HIDDEN STATE</div>
+          <div className="text-center text-indigo-400">↓</div>
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200">LINEAR PROJECTION</div>
+          <div className="text-center text-amber-400">↓</div>
+          <div className="rounded-xl border border-pink-500/30 bg-pink-500/10 p-4 text-center text-pink-200">VOCABULARY LOGITS<div className="mt-1 text-xs text-slate-400">one score for every vocabulary token</div></div>
+          <div className="text-center text-pink-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">SOFTMAX / DECODING</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">NEXT TOKEN</div>
+        </div>
+      </div>
+
+      <div>A simplified projection can be written as:</div>
+
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center font-mono text-sm text-orange-200">logits = hidden-state × output-weights-transpose + bias</div>
+
+      <div>The resulting logits are then passed to the decoding process you learned in the previous module: probabilities are formed and a token is selected using greedy decoding or a sampling strategy.</div>
+
+      <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5"><strong className="text-cyan-300">Connection to Module 04:</strong><span className="text-slate-300"> The Transformer architecture computes the hidden representations and logits. The generation algorithm then turns those logits into the next token.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">13. Visual Explanation: Complete LLM Architecture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The complete decoder-only architecture can be viewed as a sequence of transformations from text to contextual representations and finally to vocabulary logits.</div>
+
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">INPUT TEXT</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center text-violet-200">TOKENIZATION</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">TOKEN EMBEDDINGS + POSITIONAL INFORMATION</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-2xl border border-indigo-500/30 bg-indigo-500/5 p-5">
+            <div className="mb-3 text-center font-bold text-indigo-200">TRANSFORMER BLOCK</div>
+            <div className="space-y-2">
+              <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center">Normalization</div>
+              <div className="text-center text-slate-500">↓</div>
+              <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-center">Causal Self-Attention</div>
+              <div className="text-center text-slate-500">↓</div>
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-center">Residual Connection</div>
+              <div className="text-center text-slate-500">↓</div>
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-center">MLP / Feed-Forward Network</div>
+              <div className="text-center text-slate-500">↓</div>
+              <div className="rounded-lg border border-pink-500/30 bg-pink-500/10 p-3 text-center">Residual Connection</div>
+            </div>
+          </div>
+          <div className="text-center text-indigo-400">↓ repeat many times</div>
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center text-indigo-200">TRANSFORMER BLOCK N</div>
+          <div className="text-center text-indigo-400">↓</div>
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200">FINAL NORMALIZATION</div>
+          <div className="text-center text-amber-400">↓</div>
+          <div className="rounded-xl border border-pink-500/30 bg-pink-500/10 p-4 text-center text-pink-200">LANGUAGE MODEL HEAD</div>
+          <div className="text-center text-pink-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">VOCABULARY LOGITS</div>
+          <div className="text-center text-slate-500">↓</div>
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">NEXT TOKEN</div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/[0.04] p-5"><div className="mb-2 font-bold text-indigo-300">Attention</div><div className="text-sm leading-relaxed text-slate-300">Moves information between token positions.</div></div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5"><div className="mb-2 font-bold text-amber-300">MLP</div><div className="text-sm leading-relaxed text-slate-300">Transforms each contextualized token representation.</div></div>
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5"><div className="mb-2 font-bold text-cyan-300">LM Head</div><div className="text-sm leading-relaxed text-slate-300">Maps hidden representations to vocabulary scores.</div></div>
+      </div>
+
+      <div>One important distinction is that the <strong className="text-white">Transformer blocks</strong> produce contextual representations, while the <strong className="text-white">language model head</strong> converts those representations into scores used for next-token prediction.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">14. Code: Inspect a Transformer Architecture with Python</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The Hugging Face Transformers library lets you inspect the configuration and components of a pretrained causal language model. The example below uses GPT-2 because its architecture is small enough to inspect while still demonstrating the same core Transformer ideas.</div>
+
+      <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+        <div className="mb-2 font-bold text-cyan-300">Install the library</div>
+        <pre className="overflow-x-auto rounded-xl border border-white/10 bg-[#050811] p-4 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">pip install transformers torch</span>
+          </code>
+        </pre>
+      </div>
+
+      <div>
+        <div className="mb-3 font-bold text-white">Example: Inspect Model Configuration</div>
+        <pre className="overflow-x-auto rounded-2xl border border-white/10 bg-[#050811] p-5 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">from transformers import AutoConfig, AutoModelForCausalLM</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">model_name = "gpt2"</span>
+            <span className="block">config = AutoConfig.from_pretrained(model_name)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print("Hidden size:", config.n_embd)</span>
+            <span className="block">print("Number of layers:", config.n_layer)</span>
+            <span className="block">print("Attention heads:", config.n_head)</span>
+            <span className="block">print("Vocabulary size:", config.vocab_size)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">model = AutoModelForCausalLM.from_pretrained(model_name)</span>
+            <span className="block">print("Model loaded:", type(model).__name__)</span>
+          </code>
+        </pre>
+      </div>
+
+      <div className="mt-5 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+        <div className="mb-3 font-bold text-emerald-300">Output</div>
+        <pre className="overflow-x-auto rounded-xl border border-white/10 bg-[#050811] p-4 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Hidden size: 768</span>
+            <span className="block">Number of layers: 12</span>
+            <span className="block">Attention heads: 12</span>
+            <span className="block">Vocabulary size: 50257</span>
+            <span className="block">Model loaded: GPT2LMHeadModel</span>
+          </code>
+        </pre>
+        <div className="mt-4 text-sm leading-relaxed text-slate-300"><strong className="text-emerald-300">What to notice:</strong> The configuration exposes important architectural dimensions. Hidden size describes the width of token representations, the layer count describes how many Transformer blocks are stacked, attention heads describe the parallel attention subspaces, and vocabulary size determines how many token scores the language model head produces.</div>
+      </div>
+
+      <div>
+        <div className="mb-3 font-bold text-white">Example: Inspect the Model Structure</div>
+        <pre className="overflow-x-auto rounded-2xl border border-white/10 bg-[#050811] p-5 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">print(model.transformer)</span>
+          </code>
+        </pre>
+      </div>
+
+      <div className="rounded-xl border border-amber-500/25 bg-[#0A0D16] p-5"><strong className="text-amber-300">What you should look for:</strong><span className="text-slate-300"> GPT-2 exposes a stack of Transformer blocks, attention modules, feed-forward modules, normalization components, token embeddings, positional embeddings, and a final language-model projection.</span></div>
+
+      <div>The exact class names and internal attributes vary across model families. Do not assume that every modern LLM uses the same module names or the same normalization and MLP implementation.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">15. Intermediate: Putting the Architecture Together</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>It helps to separate the Transformer into three conceptual responsibilities.</div>
+
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-indigo-300">Context Mixing</div>
+          <div className="text-sm leading-relaxed text-slate-300">Causal self-attention determines which earlier positions can contribute information to each current position.</div>
+        </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-amber-300">Representation Transformation</div>
+          <div className="text-sm leading-relaxed text-slate-300">The MLP transforms the contextualized representation at each position.</div>
+        </div>
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-cyan-300">Prediction</div>
+          <div className="text-sm leading-relaxed text-slate-300">The final hidden state is projected into vocabulary logits for next-token prediction.</div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">TOKENS</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">EMBEDDINGS</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center text-indigo-200">ATTENTION: MIX CONTEXT</div>
+          <div className="text-center text-indigo-400">↓</div>
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200">MLP: TRANSFORM REPRESENTATIONS</div>
+          <div className="text-center text-amber-400">↓ repeat across blocks</div>
+          <div className="rounded-xl border border-pink-500/30 bg-pink-500/10 p-4 text-center text-pink-200">FINAL HIDDEN STATE</div>
+          <div className="text-center text-pink-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">VOCABULARY LOGITS</div>
+        </div>
+      </div>
+
+      <div>This architecture is the computational foundation underneath the generation loop from the previous lesson. Generation repeatedly feeds the growing context through this stack and uses the resulting logits to select the next token.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">16. Key Architecture Terms to Remember</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="my-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white"><tr><th className="border-b border-white/10 px-5 py-4 font-semibold">Term</th><th className="border-b border-white/10 px-5 py-4 font-semibold">Meaning</th></tr></thead>
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10"><td className="px-5 py-3.5 font-semibold text-cyan-300">Transformer</td><td className="px-5 py-3.5">Neural architecture centered around attention and repeated representation transformations.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-3.5 font-semibold text-indigo-300">Causal Self-Attention</td><td className="px-5 py-3.5">Self-attention restricted so each position cannot use future tokens.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-3.5 font-semibold text-violet-300">Query</td><td className="px-5 py-3.5">Represents what information a position is looking for.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-3.5 font-semibold text-pink-300">Key</td><td className="px-5 py-3.5">Represents what information a position offers for matching.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-3.5 font-semibold text-emerald-300">Value</td><td className="px-5 py-3.5">The information combined according to attention weights.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-3.5 font-semibold text-pink-300">Attention Head</td><td className="px-5 py-3.5">One learned attention subspace within multi-head attention.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-3.5 font-semibold text-amber-300">MLP / FFN</td><td className="px-5 py-3.5">Position-wise network that transforms contextualized token representations.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-3.5 font-semibold text-emerald-300">Residual Connection</td><td className="px-5 py-3.5">Adds a sub-layer update back to the existing representation.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-3.5 font-semibold text-teal-300">LayerNorm / RMSNorm</td><td className="px-5 py-3.5">Normalization methods used to stabilize Transformer computations.</td></tr>
+            <tr className="border-b border-white/10"><td className="px-5 py-3.5 font-semibold text-violet-300">Transformer Block</td><td className="px-5 py-3.5">Repeated unit containing attention, MLP, residual paths, and normalization.</td></tr>
+            <tr><td className="px-5 py-3.5 font-semibold text-cyan-300">Language Model Head</td><td className="px-5 py-3.5">Projection from hidden representations into vocabulary logits.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5"><strong className="text-cyan-300">The complete picture:</strong><span className="text-slate-300"> Tokenization produces token IDs. Embeddings create vectors. Transformer blocks repeatedly mix context and transform representations. The final hidden states are projected into vocabulary logits. The generation process then selects the next token and repeats.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6">
+      <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400"><span>⚡ Knowledge Check</span></div>
+      <div className="mb-5 text-base font-semibold text-white">Which component allows a token representation to incorporate information from other token positions?</div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <details className="group">
+          <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 marker:content-['']"><span>A) MLP only</span><span className="text-amber-400 transition group-open:rotate-180">▼</span></summary>
+          <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-slate-300"><strong className="text-rose-400">✕ Incorrect.</strong> The MLP transforms each position independently.</div>
+        </details>
+        <details className="group">
+          <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 marker:content-['']"><span>B) Self-attention</span><span className="text-amber-400 transition group-open:rotate-180">▼</span></summary>
+          <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-slate-300"><strong className="text-emerald-400">✓ Correct!</strong> Self-attention allows information to be mixed across the permitted token positions.</div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+      <div className="mb-2 text-xs font-bold uppercase tracking-widest text-cyan-400">Module Complete</div>
+      <div className="text-xl font-bold text-white">You now understand the core architecture behind decoder-only LLMs.</div>
+      <div className="mt-3 text-sm leading-relaxed text-slate-300">You should now be comfortable with decoder-only Transformers, Transformer blocks, causal self-attention, Query-Key-Value attention, multi-head attention, MLPs, residual connections, normalization, stacked blocks, and the language model head.</div>
+    </div>
+  </section>
+
+</div>

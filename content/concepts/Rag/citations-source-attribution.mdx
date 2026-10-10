@@ -1,0 +1,346 @@
+---
+title: "Citations and Source Attribution"
+slug: "citations-source-attribution"
+order: 18
+category: "RAG"
+subcategory: "Query & Context"
+difficulty: "Intermediate"
+readTime: "20 min"
+description: "Learn how to track sources through the pipeline, generate citations, build evidence-based answers with provenance, and detect unsupported claims."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> An answer without a source asks the reader to trust the system. An answer with <strong className="text-white">citations</strong> lets the reader check it. In RAG you already know which chunks the model was given, so you can show where each claim came from. Good attribution also exposes failures: a claim with no matching source is a warning sign you can detect automatically.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: Why Citations Matter</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Citations are not decoration. They serve four jobs.</div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Trust</div>
+          <div className="text-sm leading-7">Readers can verify an answer instead of believing it.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Debugging</div>
+          <div className="text-sm leading-7">A wrong answer with a visible source shows whether retrieval or generation failed.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Compliance</div>
+          <div className="text-sm leading-7">Regulated fields such as legal, medical and finance often require a traceable basis for every statement.</div>
+        </div>
+        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-orange-300">Learning</div>
+          <div className="text-sm leading-7">Users discover the underlying documents, not only the summary.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: Source Tracking Through the Pipeline</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A citation is only possible if the source information survives every step. That is why metadata matters from the first ingestion lesson. Each chunk should carry these fields from the moment it is created until the answer is displayed.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Field</th><th className="px-4 py-3">Example</th><th className="px-4 py-3">Used to</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Chunk id</td><td className="px-4 py-3">c-2041</td><td className="px-4 py-3">Link a claim to the exact passage</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Document id and title</td><td className="px-4 py-3">Employee Handbook</td><td className="px-4 py-3">Show a readable source name</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Location</td><td className="px-4 py-3">page 4, section 2</td><td className="px-4 py-3">Let the reader find the passage</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">URL or path</td><td className="px-4 py-3">A link to the file or page</td><td className="px-4 py-3">Open the source</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Version and date</td><td className="px-4 py-3">v3, 2025-06-10</td><td className="px-4 py-3">Show how current the source is</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Do not lose it:</strong> any step that rewrites, merges or compresses chunks must keep the ids of the chunks it came from.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Generating Citations</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The usual method gives each context passage a short number in the prompt and asks the model to attach the numbers of the passages it used to each statement. After generation, the system replaces the numbers with titles and links.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Label.</strong> Add numbers such as 1 and 2 to the passages in the prompt.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Instruct.</strong> Ask for the supporting numbers after every claim.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Validate.</strong> Reject any number that does not exist in the context, because models sometimes invent citations.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Render.</strong> Convert numbers to readable source names and links.</div>
+      </div>
+      <div>A stricter form asks the model to <strong className="text-white">quote</strong> the exact supporting sentence. Quotes are easy to verify mechanically by checking that the quoted text really appears in the cited chunk.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Evidence-Based Answers and Provenance</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>An <strong className="text-white">evidence-based answer</strong> makes only claims that some retrieved passage supports. <strong className="text-white">Provenance</strong> is the recorded history behind the answer: which question was asked, which chunks were retrieved and with what scores, which prompt was built, and which answer came out.</div>
+      <div>Storing that trail for every answer costs little and pays back quickly. It lets you reproduce a bad answer, audit sensitive uses, and learn from user feedback. It also means that when a document is corrected you can find every answer that relied on the old version.</div>
+      <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5"><strong className="text-orange-300">Show uncertainty honestly:</strong> if only some claims in an answer are supported, show the supported ones with their sources, and say clearly that the rest could not be verified.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Preventing Unsupported Claims</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Asking for citations does not guarantee faithful answers. A model can attach a real source number to a statement the source never made. So add a <strong className="text-white">verification step</strong> that checks every sentence against the passages it cites.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Verification method</th><th className="px-4 py-3">How it works</th><th className="px-4 py-3">Trade-off</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Word overlap</td><td className="px-4 py-3">Share of the claim content words found in the cited passage</td><td className="px-4 py-3">Cheap, but fooled by paraphrases and negations</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Entailment model</td><td className="px-4 py-3">A trained model judges whether the passage supports the claim</td><td className="px-4 py-3">More accurate, extra model to run</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Language model judge</td><td className="px-4 py-3">A model is asked to verify each claim against its source</td><td className="px-4 py-3">Flexible, costs a call per answer</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>Citation quality can be measured. <strong className="text-white">Citation precision</strong> is the share of citations that really support their claim, and <strong className="text-white">citation recall</strong> is the share of claims that have a supporting citation:</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$\text{citation precision} = \dfrac{\text{supported citations}}{\text{all citations}} \qquad \text{citation recall} = \dfrac{\text{claims with a supporting citation}}{\text{all claims}}$$</div>
+      <div>When a claim fails verification, the options are to remove it, to flag it, or to regenerate the answer with a stricter instruction. In high-stakes settings, prefer removing or abstaining.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: From Chunk to Checked Claim</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A follows source information through the pipeline. Panel B shows the verification results from the code below. Panel C is an explorer of citation failures.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · The Provenance Chain</span><span className="text-xs text-slate-400">Ids travel from chunk to answer</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Chunk with id</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Prompt label [1]</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Claim cites [1]</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Verify the claim</span><span className="text-blue-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Show source link</span></div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · Verification Results</span><span className="text-xs text-slate-400">From the code in section 7</span></div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-white/[0.04] text-slate-300">
+                <tr><th className="px-4 py-3 text-center">Claim</th><th className="px-4 py-3 text-center">Citation</th><th className="px-4 py-3 text-center">Result</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300">
+                <tr><td className="px-4 py-3 text-center">You receive 20 vacation days per year</td><td className="px-4 py-3 text-center">[1]</td><td className="px-4 py-3 text-center text-emerald-300">supported, 0.83</td></tr>
+                <tr><td className="px-4 py-3 text-center">Unused days carry over for 3 months</td><td className="px-4 py-3 text-center">[2]</td><td className="px-4 py-3 text-center text-emerald-300">supported, 1.00</td></tr>
+                <tr><td className="px-4 py-3 text-center">Managers must approve every request in writing</td><td className="px-4 py-3 text-center">[1]</td><td className="px-4 py-3 text-center text-rose-300">unsupported, 0.00</td></tr>
+                <tr><td className="px-4 py-3 text-center">Remote work is allowed on Fridays</td><td className="px-4 py-3 text-center">none</td><td className="px-4 py-3 text-center text-amber-300">uncited</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Citation Failures</span><span className="text-xs text-slate-400">Click a failure to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c18-fail-0" name="c18-fail" type="radio" className="peer sr-only" />
+              <label htmlFor="c18-fail-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A citation points to a source that does not exist</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-rose-300">Fix:</strong> Validate ids against the context</div>
+              </div>
+            </div>
+            <div>
+              <input id="c18-fail-1" name="c18-fail" type="radio" className="peer sr-only" />
+              <label htmlFor="c18-fail-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-amber-400/50 peer-checked:bg-amber-500/10 peer-checked:text-amber-300">A real source is cited but does not say that</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-amber-300">Fix:</strong> Verify every claim against its cited text</div>
+              </div>
+            </div>
+            <div>
+              <input id="c18-fail-2" name="c18-fail" type="radio" className="peer sr-only" />
+              <label htmlFor="c18-fail-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">A claim has no citation at all</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Fix:</strong> Require citations and flag or remove the claim</div>
+              </div>
+            </div>
+            <div>
+              <input id="c18-fail-3" name="c18-fail" type="radio" className="peer sr-only" />
+              <label htmlFor="c18-fail-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-cyan-400/50 peer-checked:bg-cyan-500/10 peer-checked:text-cyan-300">The source is old or superseded</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-cyan-300">Fix:</strong> Show the date and filter by status</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why citations can still mislead</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">A citation shows where to look, not that the statement is true. The source itself may be wrong or outdated, and the model may have misread it, so verification and source quality both matter.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A shows how a citation is made, Panel B shows how it is checked, and Panel C lists what can go wrong anyway.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Citing Sources and Verifying Claims</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program holds two numbered sources with their labels. A scripted answer plays the part of a model output: each sentence lists the source numbers it relies on, and one sentence has none. A simple verifier measures the share of the content words of each claim that appear in the cited source, and labels the claim as supported, unsupported or uncited. The program then prints a source list for the reader.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">verify_citations.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">sources = [</span>
+            <span className="block">    (&quot;1&quot;, &quot;handbook.pdf, page 4&quot;, &quot;Employees receive 20 vacation days per year.&quot;),</span>
+            <span className="block">    (&quot;2&quot;, &quot;faq.md, section 2&quot;, &quot;Unused vacation days carry over for 3 months.&quot;),</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">stop_words = set([&quot;the&quot;, &quot;a&quot;, &quot;an&quot;, &quot;of&quot;, &quot;for&quot;, &quot;per&quot;, &quot;in&quot;, &quot;is&quot;, &quot;are&quot;, &quot;to&quot;, &quot;they&quot;, &quot;can&quot;, &quot;after&quot;, &quot;your&quot;])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def content_words(text):</span>
+            <span className="block">    cleaned = &quot;&quot;.join(ch if ch.isalnum() else &quot; &quot; for ch in text.lower())</span>
+            <span className="block">    return set(w for w in cleaned.split() if w not in stop_words)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def support(claim, source_text):</span>
+            <span className="block">    claim_words = content_words(claim)</span>
+            <span className="block">    return len(claim_words &amp; content_words(source_text)) / len(claim_words)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># A pretend model answer: every sentence ends with the source numbers it relies on</span>
+            <span className="block">answer = [</span>
+            <span className="block">    (&quot;You receive 20 vacation days per year.&quot;, [&quot;1&quot;]),</span>
+            <span className="block">    (&quot;Unused days carry over for 3 months.&quot;, [&quot;2&quot;]),</span>
+            <span className="block">    (&quot;Managers must approve every request in writing.&quot;, [&quot;1&quot;]),</span>
+            <span className="block">    (&quot;Remote work is allowed on Fridays.&quot;, []),</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">lookup = dict((number, text) for number, label, text in sources)</span>
+            <span className="block">labels = dict((number, label) for number, label, text in sources)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for claim, cited in answer:</span>
+            <span className="block">    if not cited:</span>
+            <span className="block">        print(&quot;UNCITED     :&quot;, claim)</span>
+            <span className="block">        continue</span>
+            <span className="block">    best = max(support(claim, lookup[n]) for n in cited)</span>
+            <span className="block">    status = &quot;SUPPORTED  &quot; if best &gt;= 0.6 else &quot;UNSUPPORTED&quot;</span>
+            <span className="block">    print(status, &quot;:&quot;, claim, &quot;[&quot; + &quot;,&quot;.join(cited) + &quot;]&quot;, &quot;support&quot;, round(best, 2))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">print(&quot;Sources:&quot;)</span>
+            <span className="block">for number, label, text in sources:</span>
+            <span className="block">    print(&quot;  [&quot; + number + &quot;]&quot;, label)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">SUPPORTED   : You receive 20 vacation days per year. [1] support 0.83</span>
+            <span className="block">SUPPORTED   : Unused days carry over for 3 months. [2] support 1.0</span>
+            <span className="block">UNSUPPORTED : Managers must approve every request in writing. [1] support 0.0</span>
+            <span className="block">UNCITED     : Remote work is allowed on Fridays.</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Sources:</span>
+            <span className="block">  [1] handbook.pdf, page 4</span>
+            <span className="block">  [2] faq.md, section 2</span>
+          </code>
+        </pre>
+      </div>
+      <div>Two claims pass. The claim about managers approving requests cites source 1 but shares no content words with it, so it is marked unsupported. The remote work claim has no citation at all. Word overlap is only a rough check, since it can be fooled by paraphrases and by negations, which is why production systems use entailment models or a language model judge. The structure, however, is the same: cite, verify, and then show, fix or remove.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. Why must a system validate citation numbers returned by a model?</div>
+        <div>
+          <input id="rag18-q1-a" name="rag18-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag18-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Numbers are always correct</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Models can invent them.</div>
+        </div>
+        <div>
+          <input id="rag18-q1-b" name="rag18-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag18-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Models sometimes cite sources that were never in the context</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Validation rejects invented citations.</div>
+        </div>
+        <div>
+          <input id="rag18-q1-c" name="rag18-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag18-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) To make citations shorter</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Validation checks correctness, not length.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. A claim cites source 1, but source 1 does not say it. What kind of error is this?</div>
+        <div>
+          <input id="rag18-q2-a" name="rag18-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag18-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) A retrieval error only</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Retrieval worked; the generation misrepresented the source.</div>
+        </div>
+        <div>
+          <input id="rag18-q2-b" name="rag18-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag18-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) An indexing error</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The source is indexed correctly.</div>
+        </div>
+        <div>
+          <input id="rag18-q2-c" name="rag18-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag18-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) An unsupported claim with a real citation, which verification should catch</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A real citation does not prove the statement.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. What does citation precision measure?</div>
+        <div>
+          <input id="rag18-q3-a" name="rag18-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag18-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The share of citations that really support their claims</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It measures how trustworthy the citations are.</div>
+        </div>
+        <div>
+          <input id="rag18-q3-b" name="rag18-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag18-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The share of claims that have any citation</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is citation recall.</div>
+        </div>
+        <div>
+          <input id="rag18-q3-c" name="rag18-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag18-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The number of sources in the index</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It says nothing about the index size.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Citations build trust, help debugging, support compliance and let users reach the underlying documents.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Source ids, titles, locations, links and versions must survive every pipeline step.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Label passages with numbers in the prompt, ask for numbers per claim, validate them, then render readable sources.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Provenance records the question, retrieved chunks, prompt and answer for audit and reproduction.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>A citation shows where to look, not that the statement is true, so verify claims against the cited text.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Verification can use word overlap, entailment models or a language model judge, with growing accuracy and cost.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Measure citation precision and recall, and remove or flag unsupported claims.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Retrieval finds the evidence, context construction presents it, and attribution proves where each statement came from. Together they turn a fluent answer into an accountable one, and complete the Query and Context phase of your RAG system.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Track sources → Cite them → Verify claims → Show or remove → Keep the provenance</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> RAG Evolution: Naive, Advanced and Modular. You will see how RAG systems evolve from simple pipelines to advanced and modular designs, where each approach fails, and when to use which.</div>
+    </div>
+  </section>
+</div>

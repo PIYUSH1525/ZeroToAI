@@ -1,0 +1,454 @@
+---
+title: "Modern LLM Architectures: Decoder-Only, RMSNorm, SwiGLU, GQA and MoE"
+slug: "08-modern-llm-architectures"
+order: 8
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Intermediate"
+readTime: "30 min"
+description: "Learn what a modern large language model is built from: the decoder-only design, pre-norm RMSNorm, SwiGLU feed-forward layers, RoPE, grouped-query attention and Mixture of Experts, and count the parameters of a 7B model in code."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A modern LLM is just <strong className="text-white">one decoder block repeated many times</strong>. Compared with the 2017 Transformer, each part got a practical upgrade: <strong className="text-white">RMSNorm</strong> before sublayers, a <strong className="text-white">SwiGLU</strong> feed-forward, <strong className="text-white">RoPE</strong> for position, <strong className="text-white">GQA</strong> for a smaller cache, and sometimes <strong className="text-white">Mixture of Experts</strong> to run only part of the model.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: What Is a Modern LLM Made Of?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The original Transformer from 2017 had two halves: an <strong className="text-white">encoder</strong> that reads and a <strong className="text-white">decoder</strong> that writes. Today&apos;s chatbots such as GPT-style, Llama-style and Mistral-style models keep <strong className="text-white">only the decoder half</strong> and stack it many times. This design is called a <strong className="text-white">decoder-only</strong> Transformer.
+      </div>
+      <div>
+        A decoder-only model is just one block repeated, for example 32 times for a 7B model or 80 times for a 70B model. Each block has two jobs: an <strong className="text-white">attention</strong> part that mixes information between tokens, and a <strong className="text-white">feed-forward</strong> part that processes each token on its own.
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Embedding</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Start</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Turns each token id into a vector of numbers.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-violet-300">N × Decoder Block</span>
+            <span className="rounded bg-violet-950/80 px-2 py-0.5 font-mono text-xs text-violet-300">The repeated part</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Attention + feed-forward, each with a residual shortcut and a normalization step.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Output Head</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">End</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Turns the final vector into a score for every word in the vocabulary.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Good news:</strong> Once you understand one block, you understand the whole model. The rest of this lesson is about what changed <strong className="text-white">inside</strong> that block since 2017.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: What Changed Since 2017
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The overall shape stayed the same, but almost every small part was upgraded. Most modern open LLMs share these upgrades:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Part</th>
+              <th className="px-5 py-3">Original Transformer (2017)</th>
+              <th className="px-5 py-3">Typical modern LLM</th>
+              <th className="px-5 py-3">Why it changed</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Overall design</td><td className="px-5 py-3">Encoder + decoder</td><td className="px-5 py-3">Decoder-only</td><td className="px-5 py-3">Simpler, and next-token training scales very well</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Normalization</td><td className="px-5 py-3">LayerNorm after each sublayer</td><td className="px-5 py-3">RMSNorm <strong className="text-white">before</strong> each sublayer (pre-norm)</td><td className="px-5 py-3">Cheaper and trains more stably in deep stacks</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Feed-forward activation</td><td className="px-5 py-3">ReLU</td><td className="px-5 py-3">SwiGLU</td><td className="px-5 py-3">Gating gives better quality for the same size</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Position</td><td className="px-5 py-3">Sinusoidal, added once</td><td className="px-5 py-3">RoPE inside attention</td><td className="px-5 py-3">Relative positions and longer context</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Attention heads</td><td className="px-5 py-3">Multi-head (MHA)</td><td className="px-5 py-3">Grouped-query (GQA)</td><td className="px-5 py-3">Smaller KV cache, faster generation</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Bias terms</td><td className="px-5 py-3">Used everywhere</td><td className="px-5 py-3">Mostly removed</td><td className="px-5 py-3">Fewer parameters, no loss in quality</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Remember:</strong> None of these changes is a new magic idea. Each one is a practical improvement that makes models <strong className="text-white">cheaper to train, more stable, or faster to run</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: RMSNorm and SwiGLU, the Two Quiet Upgrades
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Normalization</strong> keeps the numbers flowing through a deep network at a healthy size. LayerNorm subtracts the average and divides by the spread. <strong className="text-white">RMSNorm</strong> skips the subtraction and only rescales by the root-mean-square (RMS), which is simpler and works just as well in practice.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\text{RMSNorm}(x) = \frac{x}{\sqrt{\frac{1}{d}\sum_i x_i^2 + \epsilon}} \cdot g$$
+      </div>
+      <div>
+        The <strong className="text-white">feed-forward</strong> part of each block used to be two matrices with a ReLU in the middle. SwiGLU uses <strong className="text-white">three</strong> matrices: a <em>gate</em> decides how much of an <em>up</em> signal is allowed through, then a <em>down</em> matrix returns to the model size.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\text{SwiGLU}(x) = \big(\text{SiLU}(xW_{gate}) \odot xW_{up}\big)\, W_{down}$$
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Plain English:</strong> Think of a water pipe with a tap. The <em>up</em> path is the water, the <em>gate</em> is the tap that decides how much flows, and <em>down</em> collects it into the right size pipe. Because the tap is learned, the network can switch information on and off per token.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Pre-Norm Blocks and Residual Shortcuts
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Each decoder block follows the same recipe. The input is <strong className="text-white">normalized first</strong>, passed through a sublayer, and then <strong className="text-white">added back</strong> to the original input. This add-back is the <em>residual connection</em>, a shortcut that lets information and gradients flow straight through the whole stack.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">RMSNorm:</strong> Rescale the incoming vector.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Attention with GQA and RoPE:</strong> Tokens look back at earlier tokens. RoPE is applied to Q and K.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Add the shortcut:</strong> Result = original input + attention output.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">RMSNorm, then SwiGLU feed-forward:</strong> Each token is processed on its own.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Add the shortcut again:</strong> Result = previous result + feed-forward output.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-blue-300">Why pre-norm?</strong> Putting the normalization <strong className="text-white">before</strong> the sublayer keeps the shortcut path clean. That makes it much easier to train networks with dozens of layers without the signal blowing up or fading away.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Mixture of Experts (MoE)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Making a model bigger usually makes it slower, because every token passes through every parameter. A <strong className="text-white">Mixture of Experts</strong> model breaks the feed-forward part into several smaller <strong className="text-white">experts</strong> and adds a tiny <strong className="text-white">router</strong>. For each token the router picks only a few experts, such as 2 out of 8, and the rest stay idle.
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Dense model</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Every parameter works</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Per token:</strong> All parameters are used</div>
+            <div><strong className="text-white">Cost:</strong> Grows with total size</div>
+            <div><strong className="text-white">Example idea:</strong> A 7B model uses 7B parameters every step</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Mixture of Experts</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Only some experts work</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Per token:</strong> Router picks the top few experts</div>
+            <div><strong className="text-white">Cost:</strong> Grows with the <em>active</em> size, not the total size</div>
+            <div><strong className="text-white">Example idea:</strong> A model with 8 experts can hold far more knowledge than it uses on any one token</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Trade-off:</strong> MoE models are cheap to <strong className="text-white">run</strong> per token but still need memory for <strong className="text-white">all</strong> experts, and they are trickier to train because the router must spread work evenly. Several well-known recent open and closed models use this design.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">A quick parameter count</div>
+        <div className="text-sm leading-relaxed text-slate-300">A Llama-style 7B model has about 6.74 billion parameters: embeddings (131 million), then 32 blocks of attention (about 67 million each with full multi-head) and SwiGLU feed-forward (about 135 million each), plus an output head. The code below counts them exactly.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: One Modern Decoder Block
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This is one decoder block, from input to output. Click each part to see what changed compared with the 2017 Transformer.
+      </div>
+      <Mermaid chart="graph TD; X[Input vectors] --> N1[RMSNorm]; N1 --> A[GQA attention with RoPE on Q and K]; A --> R1[Add residual shortcut]; X --> R1; R1 --> N2[RMSNorm]; N2 --> F[SwiGLU feed-forward]; F --> R2[Add residual shortcut]; R1 --> R2; R2 --> Y[Output vectors to the next block]" />
+      <div className="space-y-6 rounded-2xl border border-white/10 bg-[#060913] p-6 shadow-[0_0_40px_rgba(0,240,255,0.04)] sm:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="rounded-full bg-indigo-500/20 px-3 py-0.5 font-mono text-[11px] font-bold text-indigo-300">🏗️ WHAT CHANGED? · CLICK A PART</span>
+          <span className="font-mono text-xs text-slate-400">2017 vs. today</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          <div>
+            <input id="arch-up-1" name="arch-up" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-up-1" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">Normalization</label>
+            <div className="mt-3 hidden rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Before: LayerNorm after the sublayer<br />
+              Now: RMSNorm before the sublayer<br />
+              Why: cheaper, stabler for deep stacks<br />
+              <span className="text-blue-300">Pre-norm keeps the shortcut path clean.</span>
+            </div>
+          </div>
+          <div>
+            <input id="arch-up-2" name="arch-up" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-up-2" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">Feed-forward</label>
+            <div className="mt-3 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Before: 2 matrices + ReLU<br />
+              Now: 3 matrices + SwiGLU gate<br />
+              Why: better quality per parameter<br />
+              <span className="text-emerald-300">The gate learns what to let through.</span>
+            </div>
+          </div>
+          <div>
+            <input id="arch-up-3" name="arch-up" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-up-3" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Position</label>
+            <div className="mt-3 hidden rounded-lg border border-violet-500/30 bg-violet-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Before: sinusoidal vector added once<br />
+              Now: RoPE rotates Q and K in every layer<br />
+              Why: relative distance, longer context<br />
+              <span className="text-violet-300">Position is built into attention itself.</span>
+            </div>
+          </div>
+          <div>
+            <input id="arch-up-4" name="arch-up" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-up-4" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">Attention</label>
+            <div className="mt-3 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Before: every head has its own K and V<br />
+              Now: heads share K and V in groups (GQA)<br />
+              Why: smaller KV cache, faster chat<br />
+              <span className="text-rose-300">Same quality, far less memory.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: RMSNorm, SwiGLU and a Parameter Counter
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script builds the two quiet upgrades from scratch, <strong className="text-white">RMSNorm</strong> and a <strong className="text-white">SwiGLU</strong> feed-forward layer, and then counts the parameters of a Llama-style 7B model. The counter reproduces the well-known figure of about 6.74 billion and shows how GQA makes the model smaller.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">modern_llm_block.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">rng = np.random.default_rng(0)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def layer_norm(x, eps=1e-5):</span>
+            <span className="block">    return (x - x.mean(-1, keepdims=True)) / np.sqrt(x.var(-1, keepdims=True) + eps)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def rms_norm(x, weight, eps=1e-5):</span>
+            <span className="block">    rms = np.sqrt(np.mean(x ** 2, axis=-1, keepdims=True) + eps)</span>
+            <span className="block">    return x / rms * weight</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def silu(x):</span>
+            <span className="block">    return x / (1 + np.exp(-x))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def swiglu_ffn(x, W_gate, W_up, W_down):</span>
+            <span className="block">    return (silu(x @ W_gate) * (x @ W_up)) @ W_down      # gate decides how much of &quot;up&quot; passes</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">d_model, d_ff = 8, 16</span>
+            <span className="block">x = rng.normal(size=(3, d_model)) * 5 + 2                 # 3 tokens with large, off-center values</span>
+            <span className="block">weight = np.ones(d_model)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">normed = rms_norm(x, weight)</span>
+            <span className="block">print(&quot;RMS of each token after RMSNorm:&quot;, np.round(np.sqrt(np.mean(normed ** 2, axis=-1)), 3))</span>
+            <span className="block">print(&quot;Largest mean left after LayerNorm:&quot;, round(float(np.abs(layer_norm(x).mean(-1)).max()), 6), &quot;(LayerNorm also re-centers to zero)&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">W_gate = rng.normal(size=(d_model, d_ff)) * 0.3</span>
+            <span className="block">W_up = rng.normal(size=(d_model, d_ff)) * 0.3</span>
+            <span className="block">W_down = rng.normal(size=(d_ff, d_model)) * 0.3</span>
+            <span className="block">out = swiglu_ffn(normed, W_gate, W_up, W_down)</span>
+            <span className="block">print(&quot;SwiGLU output shape:&quot;, out.shape)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Count the parameters of a Llama-style decoder</span>
+            <span className="block text-cyan-300">def count_params(layers, d_model, d_ff, vocab, heads, kv_heads, tied_embeddings=False):</span>
+            <span className="block">    head_dim = d_model // heads</span>
+            <span className="block">    attention = 2 * d_model * d_model + 2 * d_model * kv_heads * head_dim   # Q and O + K and V</span>
+            <span className="block">    ffn = 3 * d_model * d_ff                                                # gate, up, down</span>
+            <span className="block">    norms = 2 * d_model</span>
+            <span className="block">    embeddings = vocab * d_model</span>
+            <span className="block">    output_head = 0 if tied_embeddings else embeddings</span>
+            <span className="block">    return layers * (attention + ffn + norms) + embeddings + output_head + d_model</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">mha = count_params(32, 4096, 11008, 32000, heads=32, kv_heads=32)</span>
+            <span className="block">gqa = count_params(32, 4096, 11008, 32000, heads=32, kv_heads=8)</span>
+            <span className="block">print(&quot;7B-style with multi-head attention:&quot;, format(mha, &quot;,&quot;), &quot;parameters&quot;)</span>
+            <span className="block">print(&quot;Same model with GQA (8 KV heads):  &quot;, format(gqa, &quot;,&quot;), &quot;parameters&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>RMS of each token after RMSNorm: [1. 1. 1.]</div>
+          <div>Largest mean left after LayerNorm: 0.0 (LayerNorm also re-centers to zero)</div>
+          <div>SwiGLU output shape: (3, 8)</div>
+          <div>7B-style with multi-head attention: 6,738,415,616 parameters</div>
+          <div>Same model with GQA (8 KV heads):   5,933,109,248 parameters</div>
+        </div>
+      </div>
+      <div>
+        The parameter count for the multi-head version is exactly <strong className="text-white">6,738,415,616</strong>, which matches the published size of a 7B Llama-style model. Switching to 8 KV heads removes about 0.8 billion parameters and, as you learned in the attention lesson, also shrinks the KV cache by 4×.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What does pre-norm mean in a modern LLM block?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="arch-q1-a" name="arch-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The normalization happens before the attention and feed-forward sublayers</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> This keeps the residual shortcut clean and makes deep stacks easier to train.</div>
+          </div>
+          <div>
+            <input id="arch-q1-b" name="arch-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The model is normalized before training starts</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Pre-norm refers to the position inside each block, not the time of training.</div>
+          </div>
+          <div>
+            <input id="arch-q1-c" name="arch-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Only the first layer is normalized</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Every block normalizes its input.</div>
+          </div>
+          <div>
+            <input id="arch-q1-d" name="arch-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Normalization is removed completely</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It is still used, just in a different place.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What is the main benefit of a Mixture of Experts model?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="arch-q2-a" name="arch-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Only a few experts run per token, so cost depends on the active size, not the total size</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The router activates a small subset of experts for each token.</div>
+          </div>
+          <div>
+            <input id="arch-q2-b" name="arch-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Every expert is used for every token</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That would be a dense model.</div>
+          </div>
+          <div>
+            <input id="arch-q2-c" name="arch-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It needs no GPU memory</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> All experts must still be stored in memory.</div>
+          </div>
+          <div>
+            <input id="arch-q2-d" name="arch-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="arch-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It removes the attention layers</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Attention is still present. MoE changes the feed-forward part.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Most modern chat models are <strong className="text-white">decoder-only</strong>: one block repeated many times.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A block = pre-<strong className="text-white">RMSNorm</strong> + attention (with RoPE and GQA) + shortcut, then pre-RMSNorm + <strong className="text-white">SwiGLU</strong> feed-forward + shortcut.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">RMSNorm</strong> skips re-centering and only rescales, so it is simpler and cheaper than LayerNorm.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">SwiGLU</strong> uses a learned gate to decide how much information passes through the feed-forward layer.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">GQA</strong> shares keys and values between heads, saving parameters and KV-cache memory.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Mixture of Experts</strong> activates only a few experts per token, so cost follows the active size, not the total size.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">A Modern LLM in One Line</div>
+        <div className="text-center font-bold text-white">
+          Embedding → N × (RMSNorm → GQA + RoPE → RMSNorm → SwiGLU) → Output head
+        </div>
+      </div>
+      <div>
+        You can now read the architecture description of almost any open LLM. Differences between models are mostly the number of layers, the width, the number of KV heads, and whether the feed-forward part is dense or Mixture of Experts.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You know how an LLM is built. In <strong className="text-white">LLM Pre-Training</strong> you will see how that empty network learns language from trillions of tokens, and how much compute that costs.
+      </div>
+    </div>
+  </section>
+
+</div>

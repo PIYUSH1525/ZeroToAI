@@ -1,0 +1,454 @@
+---
+title: "Mixture of Experts: Routers, Experts and Load Balancing"
+slug: "19-mixture-of-experts"
+order: 19
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Advanced"
+readTime: "28 min"
+description: "Learn how Mixture of Experts models run only part of the network for each token: the router, top-k expert selection, load-balancing loss, capacity limits, and the difference between total and active parameters."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A <strong className="text-white">Mixture of Experts</strong> replaces the feed-forward block with many <strong className="text-white">experts</strong> and a <strong className="text-white">router</strong> that sends each token to only the best few. The model can know a lot (large <strong className="text-white">total</strong> size) while computing little per token (small <strong className="text-white">active</strong> size).
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: A Team of Specialists
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In a normal (<strong className="text-white">dense</strong>) LLM, every token goes through <strong className="text-white">every parameter</strong>. Making the model smarter means making it bigger, and a bigger model costs more for every single token.
+      </div>
+      <div>
+        A <strong className="text-white">Mixture of Experts (MoE)</strong> model works like a hospital instead of one doctor. There are many specialists (<strong className="text-white">experts</strong>) and a receptionist (the <strong className="text-white">router</strong>) who sends each patient to the two or three who fit best. The hospital as a whole knows a huge amount, but each patient only uses a small part of it.
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Dense model</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Everyone works</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Per token:</strong> Every parameter is used</div>
+            <div><strong className="text-white">Cost:</strong> Grows with total size</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">MoE model</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Only some work</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Per token:</strong> The router picks the top few experts</div>
+            <div><strong className="text-white">Cost:</strong> Grows with the <em>active</em> size</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Big idea:</strong> MoE separates <strong className="text-white">how much the model knows</strong> (total parameters) from <strong className="text-white">how much it computes per token</strong> (active parameters).
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Where the Experts Live
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In a Transformer block, the <strong className="text-white">attention</strong> part is usually kept as is. The <strong className="text-white">feed-forward</strong> part, which holds most of the parameters, is replaced by <strong className="text-white">several parallel feed-forward networks</strong>, the experts, plus a small router network in front of them.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Attention:</strong> Runs normally for every token.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Router:</strong> A tiny linear layer scores every expert for this token.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Select top-k:</strong> Keep the best $k$ experts (often 1 or 2).</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Run and mix:</strong> The chosen experts process the token, and their outputs are blended using the router weights.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Note:</strong> Experts do not usually specialize in neat human topics like <em>math</em> or <em>French</em>. They tend to specialize in subtler patterns, such as kinds of tokens or syntax.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Routing in Detail
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        For each token the router computes a score for every expert and turns the scores into probabilities with a softmax. It keeps the top $k$ experts and <strong className="text-white">renormalizes</strong> their weights so they add up to 1. The output is the weighted sum of those experts:
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$y = \sum_{i \in \text{top-}k} g_i \cdot E_i(x)$$
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Symbol</th>
+              <th className="px-5 py-3">Meaning</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">$E_i(x)$</td><td className="px-5 py-3">The output of expert number i for token x</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">$g_i$</td><td className="px-5 py-3">The router weight for that expert (the chosen weights add up to 1)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">top-k</td><td className="px-5 py-3">Only the k best experts run, usually k = 1 or 2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Why it saves compute:</strong> If the model has 8 experts and picks 2, only a quarter of the feed-forward parameters do any work for each token.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: The Load-Balancing Problem
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A router that is left alone tends to <strong className="text-white">collapse</strong>: it sends almost everything to a few favorite experts, which get better at their job and attract even more tokens, while the others stay untrained. That wastes capacity and makes the busy experts a bottleneck.
+      </div>
+      <div>
+        Training therefore adds an <strong className="text-white">auxiliary load-balancing loss</strong>. It multiplies, for every expert, the <strong className="text-white">fraction of tokens it received</strong> by the <strong className="text-white">average probability the router gave it</strong>, then adds them up. The value is smallest when the load is spread evenly.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Fix</th>
+              <th className="px-5 py-3">Idea</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Auxiliary balance loss</td><td className="px-5 py-3">Penalize uneven token counts across experts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Capacity limit</td><td className="px-5 py-3">Cap how many tokens one expert may take per batch. Extra tokens skip it or are dropped</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Noise in the router</td><td className="px-5 py-3">Small random noise encourages exploring other experts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Shared experts</td><td className="px-5 py-3">Some newer designs keep one or two experts that every token uses, plus many routed ones</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Rule of thumb:</strong> If an MoE model trains badly, check the <strong className="text-white">expert load first</strong>. A few overloaded experts are the classic sign.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Total vs. Active Parameters and Serving
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        MoE models are described with two numbers. <strong className="text-white">Total parameters</strong> decide how much memory you need, because <em>all</em> experts must be loaded. <strong className="text-white">Active parameters</strong> decide how much computing each token costs.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Model type</th>
+              <th className="px-5 py-3">Memory need</th>
+              <th className="px-5 py-3">Compute per token</th>
+              <th className="px-5 py-3">Strength</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Dense, 13B</td><td className="px-5 py-3">About 13B parameters</td><td className="px-5 py-3">About 13B</td><td className="px-5 py-3">Simple to run</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">MoE, about 47B total, about 13B active (for example Mixtral-style 8 experts, 2 per token)</td><td className="px-5 py-3">About 47B parameters</td><td className="px-5 py-3">About 13B</td><td className="px-5 py-3">Knowledge of a large model at the speed of a smaller one</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Serving challenges</div>
+        <div className="text-sm leading-relaxed text-slate-300">Experts are often spread across several GPUs (<strong className="text-white">expert parallelism</strong>), so tokens must be sent between GPUs and back. That communication, plus keeping every expert loaded, is the main cost of MoE.</div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">When to choose MoE:</strong> MoE shines when you can afford the memory and want high quality at lower per-token compute, typically in large-scale serving.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Router and the Experts
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure follows one token through an MoE layer and then compares the three numbers you need to think about with MoE models.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-violet-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Part 1 · One Token Through an MoE Layer</span>
+        <span className="text-xs text-slate-400">The router picks 2 of 8 experts</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Routing</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Router</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Token vector arrives after attention</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Router scores all 8 experts</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Keep the top 2, weights add up to 1</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Chosen: expert 0 (0.69) and expert 3 (0.31)</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Computing</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Experts</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Expert 0 processes the token</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Expert 3 processes the token</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Outputs are blended by the weights</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Layer output (6 experts stayed idle)</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 2 · Dense vs. MoE</span>
+        <span className="text-xs text-slate-400">Same quality goal, different cost shape</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Total parameters</div>
+          <div className="mt-2 text-lg font-bold text-white">Memory</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">All experts must be loaded.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Active parameters</div>
+          <div className="mt-2 text-lg font-bold text-white">Compute</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Only the chosen experts run.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Load balance</div>
+          <div className="mt-2 text-lg font-bold text-white">Health</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Work should spread evenly across experts.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-violet-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see what a balance loss looks like</span>
+          <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">The balance loss equals the number of experts times the sum over experts of (fraction of tokens sent to it) × (average router probability for it). It is about 1.0 when work is perfectly even and grows when a few experts dominate.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows the route of a single token: score, choose, compute, blend. Part 2 separates memory, compute and balance. Open the bar for the balance-loss formula in words.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Top-2 Router and a Balance Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script builds a router from scratch for 1,000 tokens and 8 experts: it picks the top 2 experts per token, counts how many tokens each expert receives, computes a load-balancing loss, and works out total versus active parameters for an example model.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">moe_router.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">rng = np.random.default&#95;rng(0)</span>
+            <span className="block">tokens, d&#95;model, n&#95;experts, top&#95;k = 1000, 16, 8, 2</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">x = rng.normal(size=(tokens, d&#95;model))</span>
+            <span className="block">router&#95;w = rng.normal(size=(d&#95;model, n&#95;experts)) &#42; 0.5</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def softmax(z):</span>
+            <span className="block">    z = z - z.max(axis=1, keepdims=True)</span>
+            <span className="block">    e = np.exp(z)</span>
+            <span className="block">    return e / e.sum(axis=1, keepdims=True)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. The router scores every expert for every token, then keeps the top-k</span>
+            <span className="block">probs = softmax(x @ router&#95;w)</span>
+            <span className="block">chosen = np.argsort(probs, axis=1)&#91;:, ::-1&#93;&#91;:, :top&#95;k&#93;            # best 2 experts per token</span>
+            <span className="block">gates = np.take&#95;along&#95;axis(probs, chosen, axis=1)</span>
+            <span className="block">gates = gates / gates.sum(axis=1, keepdims=True)                  # weights of the 2 experts add up to 1</span>
+            <span className="block">print(&quot;Token 0 goes to experts&quot;, chosen&#91;0&#93;, &quot;with weights&quot;, np.round(gates&#91;0&#93;, 2))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. How evenly is the work spread?</span>
+            <span className="block">load = np.bincount(chosen.ravel(), minlength=n&#95;experts)</span>
+            <span className="block">print(&quot;Tokens handled by each expert:&quot;, load.tolist())</span>
+            <span className="block">print(&quot;Busiest / average expert load:&quot;, round(float(load.max() / load.mean()), 2))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Load-balancing loss: small when the router spreads work evenly</span>
+            <span className="block">fraction&#95;tokens = load / load.sum()                              # share of assignments per expert</span>
+            <span className="block">fraction&#95;prob = probs.mean(axis=0)                               # average router probability per expert</span>
+            <span className="block">aux&#95;loss = n&#95;experts &#42; np.sum(fraction&#95;tokens &#42; fraction&#95;prob)</span>
+            <span className="block">print(&quot;Balance loss (1.0 means perfectly even):&quot;, round(float(aux&#95;loss), 3))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 4. Total vs active parameters</span>
+            <span className="block text-cyan-300">def moe&#95;params(shared, expert, n&#95;experts, top&#95;k):</span>
+            <span className="block">    return shared + n&#95;experts &#42; expert, shared + top&#95;k &#42; expert</span>
+            <span className="block">total, active = moe&#95;params(shared=1.6e9, expert=5.6e9, n&#95;experts=8, top&#95;k=2)</span>
+            <span className="block">print(&quot;Example MoE: total&quot;, round(total / 1e9, 1), &quot;B parameters, active per token&quot;, round(active / 1e9, 1), &quot;B&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Token 0 goes to experts &#91;0 3&#93; with weights &#91;0.69 0.31&#93;</div>
+          <div>Tokens handled by each expert: &#91;241, 270, 240, 223, 283, 267, 273, 203&#93;</div>
+          <div>Busiest / average expert load: 1.13</div>
+          <div>Balance loss (1.0 means perfectly even): 1.009</div>
+          <div>Example MoE: total 46.4 B parameters, active per token 12.8 B</div>
+        </div>
+      </div>
+      <div>
+        The tokens spread fairly evenly across the 8 experts (the busiest has only about 13% more than average), and the balance loss is close to 1.0. The last line shows why MoE is attractive: about 46 billion parameters of knowledge, but only about 13 billion used per token. The sizes there are example numbers.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What does the router in an MoE layer do?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="moe-q1-a" name="moe-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="moe-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Chooses which few experts process each token</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It scores all experts and keeps the top k for that token.</div>
+          </div>
+          <div>
+            <input id="moe-q1-b" name="moe-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="moe-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Splits the vocabulary into languages</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Routing is per token and not per language.</div>
+          </div>
+          <div>
+            <input id="moe-q1-c" name="moe-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="moe-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Trains the tokenizer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The tokenizer is separate.</div>
+          </div>
+          <div>
+            <input id="moe-q1-d" name="moe-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="moe-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Removes the attention layers</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Attention is unchanged. MoE replaces the feed-forward part.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Why is a load-balancing loss used?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="moe-q2-a" name="moe-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="moe-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) To stop a few experts from receiving almost all tokens</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Without it the router collapses onto favorite experts and the rest stay untrained.</div>
+          </div>
+          <div>
+            <input id="moe-q2-b" name="moe-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="moe-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) To make the model smaller</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It does not reduce parameters.</div>
+          </div>
+          <div>
+            <input id="moe-q2-c" name="moe-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="moe-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) To increase the number of experts</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The number of experts is fixed in the design.</div>
+          </div>
+          <div>
+            <input id="moe-q2-d" name="moe-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="moe-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) To remove the router</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The router is essential.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>MoE replaces the feed-forward block with several experts plus a router. Attention stays the same.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The router scores every expert, keeps the top k and blends their outputs with renormalized weights.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Only the chosen experts run, so compute follows <strong className="text-white">active</strong> parameters, not total parameters.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>All experts must still be stored, so memory follows <strong className="text-white">total</strong> parameters.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Routers can collapse onto a few experts, so training adds a <strong className="text-white">load-balancing loss</strong> and sometimes capacity limits.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Serving MoE needs expert parallelism and fast communication between GPUs.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">MoE in One Line</div>
+        <div className="text-center font-bold text-white">
+          Many experts + a router + top-k selection = big knowledge at small per-token cost
+        </div>
+      </div>
+      <div>
+        MoE is one of the main ways modern models grow without every token paying for every parameter.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Having a big model is only half the job: you also have to serve it to many users. In <strong className="text-white">Efficient LLM Serving</strong> you will learn batching, paged memory and speculative decoding.
+      </div>
+    </div>
+  </section>
+
+</div>

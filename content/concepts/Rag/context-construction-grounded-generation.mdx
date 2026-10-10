@@ -1,0 +1,387 @@
+---
+title: "Context Construction and Grounded Generation"
+slug: "context-construction-grounded-generation"
+order: 17
+category: "RAG"
+subcategory: "Query & Context"
+difficulty: "Intermediate"
+readTime: "25 min"
+description: "Learn how to select, order and compress retrieved chunks, build a grounded prompt, and handle missing or conflicting information."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> Retrieval hands you a pile of chunks. <strong className="text-white">Context construction</strong> decides which ones the model actually reads, in what order, and with what instructions. <strong className="text-white">Grounded generation</strong> means the model answers only from that context, admits when it lacks information, and handles disagreement between sources. This last step often decides whether a RAG answer is trusted.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: From Chunks to a Prompt</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A RAG prompt has three parts, and the middle one is the retrieved context.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Instructions</div>
+          <div className="text-sm leading-7">Rules for the model: use only the context, cite sources, say when you do not know.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Context</div>
+          <div className="text-sm leading-7">The selected, ordered and labeled passages from retrieval.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Question</div>
+          <div className="text-sm leading-7">The user question, placed clearly after the context.</div>
+        </div>
+      </div>
+      <div><strong className="text-white">Grounded generation</strong> is the practice of tying every statement in the answer to that context. A grounded answer can be checked against the passages; an ungrounded one relies on the model memory, which is exactly what RAG tries to avoid.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: Selecting Context</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>More context is not better context. Every passage costs tokens, adds delay, and gives the model more to be distracted by. Selection applies a few simple rules in order.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">Threshold.</strong> Drop chunks with a relevance score below a minimum.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">Deduplicate.</strong> Remove repeated or near-identical chunks, which waste space and overweight one idea.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">Diversify.</strong> Avoid filling the context with several chunks that say the same thing. A technique called maximal marginal relevance balances relevance against similarity to chunks already chosen.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">Fit the budget.</strong> Add chunks in order of score until the prompt budget is used.</div>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$T_{\text{instructions}} + T_{\text{context}} + T_{\text{question}} + T_{\text{answer}} \le T_{\text{window}}$$</div>
+      <div>The prompt budget is whatever remains of the model window after the instructions, the question and the space reserved for the answer.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Ordering and Compression</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Order</strong> matters because models do not use all positions equally. Research on long prompts has found that information in the middle can be used less reliably than information at the start or end. So a common choice is to put the strongest passages at the beginning and the end, and weaker ones in the middle.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Ordering</th><th className="px-4 py-3">How</th><th className="px-4 py-3">Use when</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Best first</td><td className="px-4 py-3">Highest score at the top</td><td className="px-4 py-3">A short context with a clear winner</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Edges first</td><td className="px-4 py-3">Best chunks at the start and the end</td><td className="px-4 py-3">Longer contexts with many chunks</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Document order</td><td className="px-4 py-3">Chunks in their original reading order</td><td className="px-4 py-3">Passages that must be read as a story</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div><strong className="text-white">Compression</strong> trims each chunk to the sentences that answer the question, so more distinct evidence fits in the budget. Remember the risk from the reranking lesson: compression may remove a sentence that qualifies the answer.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Building a Prompt for Grounded Answers</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The instructions are where grounding is requested. A reliable template contains these elements.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Role and scope:</strong> answer only from the context below.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Fallback:</strong> if the context does not contain the answer, say that you do not know.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Conflict rule:</strong> if sources disagree, prefer the newest and mention the older value.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Format:</strong> give a short answer, then cite source ids.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Labels:</strong> wrap each passage with an id, its source and date, so it can be cited.</div>
+      </div>
+      <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5"><strong className="text-orange-300">Safety tip:</strong> retrieved text is data, not instructions. Separate it clearly from your own instructions, and tell the model to ignore commands that appear inside the context. A later lesson covers prompt injection in detail.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Missing and Conflicting Information</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Two situations separate careful systems from careless ones.</div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-rose-300">Missing information</div>
+          <div className="text-sm leading-7">If nothing in the context scores above the threshold, do not send weak chunks and hope. Either skip generation and answer that nothing was found, or send an empty context with an instruction to say so. Test with questions the documents do not cover.</div>
+        </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-amber-300">Conflicting information</div>
+          <div className="text-sm leading-7">Two sources can disagree, for example an old and a new policy. Resolve by metadata when you can: newest wins, or the more authoritative source wins. When you cannot, show both values and say they differ.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5"><strong className="text-cyan-300">Test it deliberately:</strong> keep a test set with unanswerable questions and with known conflicts, and check that the system refuses or flags them instead of producing a confident but unsupported answer.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Building the Context Step by Step</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A shows the selection funnel. Panel B shows the chunks from the code below and what happened to each one. Panel C lists edge cases.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · The Selection Funnel</span><span className="text-xs text-slate-400">Five chunks in, a clean context out</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Retrieved chunks</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Drop weak scores</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Remove duplicates</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Fit the budget</span><span className="text-blue-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Order and label</span></div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · What Happened to Each Chunk</span><span className="text-xs text-slate-400">From the code in section 7</span></div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-white/[0.04] text-slate-300">
+                <tr><th className="px-4 py-3 text-center">Chunk</th><th className="px-4 py-3 text-center">Score</th><th className="px-4 py-3 text-center">Outcome</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300">
+                <tr><td className="px-4 py-3 text-center">c1, handbook 2024</td><td className="px-4 py-3 text-center">0.91</td><td className="px-4 py-3 text-center text-amber-300">kept, but conflicts with c2</td></tr>
+                <tr><td className="px-4 py-3 text-center">c2, policy update 2025</td><td className="px-4 py-3 text-center">0.89</td><td className="px-4 py-3 text-center text-emerald-300">kept, newest source</td></tr>
+                <tr><td className="px-4 py-3 text-center">c3, copy of c2</td><td className="px-4 py-3 text-center">0.88</td><td className="px-4 py-3 text-center text-rose-300">dropped, duplicate</td></tr>
+                <tr><td className="px-4 py-3 text-center">c4, FAQ</td><td className="px-4 py-3 text-center">0.74</td><td className="px-4 py-3 text-center text-emerald-300">kept</td></tr>
+                <tr><td className="px-4 py-3 text-center">c5, newsletter</td><td className="px-4 py-3 text-center">0.31</td><td className="px-4 py-3 text-center text-rose-300">dropped, below threshold</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Edge Cases</span><span className="text-xs text-slate-400">Click a case to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c17-edge-0" name="c17-edge" type="radio" className="peer sr-only" />
+              <label htmlFor="c17-edge-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">Nothing relevant was retrieved</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-rose-300">Do:</strong> Answer that you do not know</div>
+                <div><strong className="text-rose-300">Avoid:</strong> Sending weak chunks and hoping</div>
+              </div>
+            </div>
+            <div>
+              <input id="c17-edge-1" name="c17-edge" type="radio" className="peer sr-only" />
+              <label htmlFor="c17-edge-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-amber-400/50 peer-checked:bg-amber-500/10 peer-checked:text-amber-300">Two sources disagree</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-amber-300">Do:</strong> Prefer the newest or most authoritative, and mention the older value</div>
+                <div><strong className="text-amber-300">Avoid:</strong> Silently picking one</div>
+              </div>
+            </div>
+            <div>
+              <input id="c17-edge-2" name="c17-edge" type="radio" className="peer sr-only" />
+              <label htmlFor="c17-edge-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">The context is too long</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Do:</strong> Drop duplicates, compress, reduce k</div>
+                <div><strong className="text-orange-300">Avoid:</strong> Cutting the context at a random point</div>
+              </div>
+            </div>
+            <div>
+              <input id="c17-edge-3" name="c17-edge" type="radio" className="peer sr-only" />
+              <label htmlFor="c17-edge-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">A chunk contains instructions</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Do:</strong> Treat it as data and say so in the prompt</div>
+                <div><strong className="text-violet-300">Avoid:</strong> Mixing it with your own rules</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why labels are put on every chunk</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">Labels such as an id, a source and a date let the model cite what it used, let you check the answer, and let a conflict rule such as prefer the newest actually work.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the process, Panel B applies it to real chunks, and Panel C is the checklist for unusual situations.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Select, Resolve Conflicts, Order and Build the Prompt</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program takes five retrieved chunks with scores and dates. It drops chunks below a score threshold, removes duplicates and respects a word budget. It then detects conflicting statements, applies the newest-wins rule, orders the chunks with the strongest at the edges, and assembles the grounded prompt with ids, sources and dates. The final line shows the refusal path when nothing strong enough exists.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">context_builder.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">chunks = [</span>
+            <span className="block">    (&quot;c1&quot;, 0.91, &quot;2024-03-01&quot;, &quot;handbook&quot;, &quot;Employees receive 15 vacation days per year.&quot;),</span>
+            <span className="block">    (&quot;c2&quot;, 0.89, &quot;2025-06-10&quot;, &quot;policy update&quot;, &quot;Employees receive 20 vacation days per year.&quot;),</span>
+            <span className="block">    (&quot;c3&quot;, 0.88, &quot;2025-06-10&quot;, &quot;policy update&quot;, &quot;Employees receive 20 vacation days per year.&quot;),</span>
+            <span className="block">    (&quot;c4&quot;, 0.74, &quot;2025-01-15&quot;, &quot;faq&quot;, &quot;Unused vacation days carry over for 3 months.&quot;),</span>
+            <span className="block">    (&quot;c5&quot;, 0.31, &quot;2023-02-01&quot;, &quot;newsletter&quot;, &quot;The office picnic is in July.&quot;),</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">BUDGET = 22</span>
+            <span className="block">THRESHOLD = 0.5</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def count(text):</span>
+            <span className="block">    return len(text.split())</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def select(chunks):</span>
+            <span className="block">    seen = set()</span>
+            <span className="block">    picked = []</span>
+            <span className="block">    used = 0</span>
+            <span className="block">    for chunk in sorted(chunks, key=lambda c: -c[1]):</span>
+            <span className="block">        chunk_id, score, date, source, text = chunk</span>
+            <span className="block">        if score &lt; THRESHOLD or text in seen:</span>
+            <span className="block">            continue</span>
+            <span className="block">        if used + count(text) &gt; BUDGET:</span>
+            <span className="block">            continue</span>
+            <span className="block">        seen.add(text)</span>
+            <span className="block">        picked.append(chunk)</span>
+            <span className="block">        used += count(text)</span>
+            <span className="block">    return picked, used</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def find_conflict(picked):</span>
+            <span className="block">    numbers = &#123;&#125;</span>
+            <span className="block">    for chunk_id, score, date, source, text in picked:</span>
+            <span className="block">        key = &quot; &quot;.join(text.split()[:2])</span>
+            <span className="block">        numbers.setdefault(key, []).append((date, source, text))</span>
+            <span className="block">    return [v for v in numbers.values() if len(set(t for d, s, t in v)) &gt; 1]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def order_edges(picked):</span>
+            <span className="block text-slate-500">    # put the strongest chunks at the start and the end of the context</span>
+            <span className="block">    first = picked[0::2]</span>
+            <span className="block">    last = picked[1::2][::-1]</span>
+            <span className="block">    return first + last</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">picked, used = select(chunks)</span>
+            <span className="block">print(&quot;Kept&quot;, len(picked), &quot;of&quot;, len(chunks), &quot;chunks using&quot;, used, &quot;of&quot;, BUDGET, &quot;words&quot;)</span>
+            <span className="block">for chunk_id, score, date, source, text in picked:</span>
+            <span className="block">    print(&quot;  &quot;, chunk_id, score, date, source)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">conflicts = find_conflict(picked)</span>
+            <span className="block">print(&quot;Conflicting statements found:&quot;, len(conflicts))</span>
+            <span className="block">for group in conflicts:</span>
+            <span className="block">    for date, source, text in sorted(group):</span>
+            <span className="block">        print(&quot;  &quot;, date, source, &quot;-&gt;&quot;, text)</span>
+            <span className="block">    print(&quot;  Prefer the newest:&quot;, sorted(group)[-1][0])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">prompt = [&quot;Answer only from the context. If it is missing, say you do not know.&quot;,</span>
+            <span className="block">          &quot;If sources disagree, prefer the newest and mention the older value.&quot;, &quot;Context:&quot;]</span>
+            <span className="block">for chunk_id, score, date, source, text in order_edges(picked):</span>
+            <span className="block">    prompt.append(&quot;[&quot; + chunk_id + &quot;] (&quot; + source + &quot;, &quot; + date + &quot;) &quot; + text)</span>
+            <span className="block">prompt.append(&quot;Question: How many vacation days do employees get?&quot;)</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">for line in prompt:</span>
+            <span className="block">    print(line)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">no_context = [c for c in chunks if c[1] &gt;= 0.95]</span>
+            <span className="block">print(&quot;Strong matches for a question the documents do not cover:&quot;, len(no_context), &quot;-&gt; answer: I do not know&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Kept 3 of 5 chunks using 22 of 22 words</span>
+            <span className="block">   c1 0.91 2024-03-01 handbook</span>
+            <span className="block">   c2 0.89 2025-06-10 policy update</span>
+            <span className="block">   c4 0.74 2025-01-15 faq</span>
+            <span className="block">Conflicting statements found: 1</span>
+            <span className="block">   2024-03-01 handbook -&gt; Employees receive 15 vacation days per year.</span>
+            <span className="block">   2025-06-10 policy update -&gt; Employees receive 20 vacation days per year.</span>
+            <span className="block">  Prefer the newest: 2025-06-10</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Answer only from the context. If it is missing, say you do not know.</span>
+            <span className="block">If sources disagree, prefer the newest and mention the older value.</span>
+            <span className="block">Context:</span>
+            <span className="block">[c1] (handbook, 2024-03-01) Employees receive 15 vacation days per year.</span>
+            <span className="block">[c4] (faq, 2025-01-15) Unused vacation days carry over for 3 months.</span>
+            <span className="block">[c2] (policy update, 2025-06-10) Employees receive 20 vacation days per year.</span>
+            <span className="block">Question: How many vacation days do employees get?</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Strong matches for a question the documents do not cover: 0 -&gt; answer: I do not know</span>
+          </code>
+        </pre>
+      </div>
+      <div>Three of five chunks survive. The duplicate and the weak newsletter chunk are removed, and the conflict between 15 days in 2024 and 20 days in 2025 is detected, with the newer value preferred. The prompt carries that rule in its instructions, so the model has both the facts and the policy for handling disagreement. The last line proves that the pipeline can decline to answer instead of inventing something.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. Why deduplicate retrieved chunks before building the prompt?</div>
+        <div>
+          <input id="rag17-q1-a" name="rag17-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag17-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Repeated text wastes the budget and overweights one idea</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Duplicates add cost without adding evidence.</div>
+        </div>
+        <div>
+          <input id="rag17-q1-b" name="rag17-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag17-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Duplicates make the model faster</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They only add tokens and noise.</div>
+        </div>
+        <div>
+          <input id="rag17-q1-c" name="rag17-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag17-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Models cannot read repeated sentences</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They can; it is simply wasteful.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. What should a RAG system do when nothing relevant is retrieved?</div>
+        <div>
+          <input id="rag17-q2-a" name="rag17-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag17-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Ask the model to answer from memory</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That defeats the purpose of grounding.</div>
+        </div>
+        <div>
+          <input id="rag17-q2-b" name="rag17-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag17-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Say that it does not know, instead of sending weak chunks and guessing</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Honest refusal is a feature of grounded generation.</div>
+        </div>
+        <div>
+          <input id="rag17-q2-c" name="rag17-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag17-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Raise k until something appears</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> More noise does not create evidence.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. Why put retrieved text clearly apart from your own instructions?</div>
+        <div>
+          <input id="rag17-q3-a" name="rag17-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag17-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) It makes the prompt shorter</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Separation does not shorten the prompt.</div>
+        </div>
+        <div>
+          <input id="rag17-q3-b" name="rag17-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag17-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It improves embeddings</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Embeddings are unaffected by prompt layout.</div>
+        </div>
+        <div>
+          <input id="rag17-q3-c" name="rag17-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag17-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) Retrieved text is data and may contain commands that should not be followed</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Separation reduces the risk of prompt injection.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>A RAG prompt has instructions, context and the question; grounded generation ties the answer to the context.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Select context by threshold, deduplication, diversity and the token budget.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Models can use the middle of a long prompt less reliably, so consider putting the best chunks at the edges.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Compression saves space but may remove a qualifier, so test it.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Prompts should say: answer only from context, say you do not know, resolve conflicts, cite ids.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Handle missing information with an honest refusal and conflicts with newest-wins or by showing both values.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Treat retrieved text as data, keep it apart from instructions, and label every chunk.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Context construction is where retrieval turns into an answer. Choosing, ordering and labeling the evidence, and telling the model how to behave when evidence is missing or contradictory, is what makes the final output reliable instead of merely fluent.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Retrieve → Select → Resolve conflicts → Order → Label → Instruct → Generate</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Citations and Source Attribution. You will learn how to track sources through the pipeline, generate citations, check that each claim is supported, and prevent unsupported statements.</div>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,477 @@
+---
+title: "Advanced and Research-Level Agents"
+slug: "27-advanced-and-research-level-agents"
+order: 27
+category: "AI Agents"
+subcategory: "Advanced"
+difficulty: "Advanced"
+readTime: "30 min"
+description: "Explore the research frontier of agents: self-improving agents and agent learning, trajectory optimization, agent fine-tuning from successful trajectories, simulation environments, agent swarms and emerging autonomous-agent architectures."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> At the research frontier, agents <strong className="text-white">learn from their own experience</strong>: they write down lessons, <strong className="text-white">sample many trajectories</strong> and keep the best, <strong className="text-white">fine-tune</strong> on their successes, <strong className="text-white">practice in simulations</strong>, and sometimes work in <strong className="text-white">swarms</strong>. These methods are promising but young, so <strong className="text-white">measure carefully</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Self-Improving Agents and Agent Learning
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">self-improving agent</strong> gets better at its task over time without a human rewriting its prompts. The simplest form is <strong className="text-white">reflection memory</strong>: after a failure the agent writes down what went wrong, stores the lesson and reads it on the next attempt.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> The first booking attempt fails with an invalid date format. The agent stores <em>Dates must be written as YYYY-MM-DD</em>. The second attempt, with that lesson in context, succeeds.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Way an agent learns</th>
+              <th className="px-5 py-3">What changes</th>
+              <th className="px-5 py-3">Needs training?</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Reflection memory</td><td className="px-5 py-3">Notes added to the prompt</td><td className="px-5 py-3">No</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Skill library</td><td className="px-5 py-3">Saved, tested code or procedures it can reuse</td><td className="px-5 py-3">No</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Prompt optimization</td><td className="px-5 py-3">The instructions are rewritten and tested</td><td className="px-5 py-3">No</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Fine-tuning</td><td className="px-5 py-3">The model weights change</td><td className="px-5 py-3">Yes</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Caution:</strong> Learning from experience can also learn <strong className="text-white">bad habits</strong> or store false lessons. Review what the agent saves.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Trajectory Optimization
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">trajectory</strong> is the full record of a run: every thought, action and observation. Because agents are random, the same task gives different trajectories. <strong className="text-white">Trajectory optimization</strong> uses this: sample many trajectories, <strong className="text-white">score</strong> them, and keep or learn from the best.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Technique</th>
+              <th className="px-5 py-3">Idea</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Best-of-N</td><td className="px-5 py-3">Run N times, pick the highest-scoring result</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Search over steps</td><td className="px-5 py-3">Explore several possible next actions and keep promising branches</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Scoring by outcome</td><td className="px-5 py-3">Reward a successful result, minus a small cost per step</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Scoring by process</td><td className="px-5 py-3">Judge each step as good or bad, not just the final outcome</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> Out of 20 sampled trajectories, 11 succeeded. A reward of 10 for success minus 0.3 per step picked trajectory 1 as the best.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Agent Fine-Tuning
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Instead of only changing prompts, you can <strong className="text-white">train the model on agent behavior</strong>. A common recipe is <strong className="text-white">rejection sampling</strong>: run the agent many times, keep only the <strong className="text-white">successful and efficient</strong> trajectories, and fine-tune on them, so the model learns to act more like its own best runs.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> 8 of the 20 trajectories were kept: they succeeded and used no more than the median number of steps.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Ingredient</th>
+              <th className="px-5 py-3">Detail</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Checkable success</td><td className="px-5 py-3">Tests, rules or a verifier that can say success or failure</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Many attempts</td><td className="px-5 py-3">Needed to find enough good trajectories</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Filtering</td><td className="px-5 py-3">Remove lucky, wasteful or unsafe runs</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Evaluation on new tasks</td><td className="px-5 py-3">Check it generalizes and did not memorize</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Related ideas</div>
+        <div className="text-sm leading-relaxed text-slate-300">Reinforcement learning with verifiable rewards trains agents directly on checkable outcomes, such as passing tests. It is an active research area.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Agent Simulation
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Real-world practice is slow and risky. <strong className="text-white">Simulated environments</strong> let agents practice safely and cheaply: a fake website, a mock company with fake customers, a sandboxed code repository, or even simulated users played by another model.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Use of simulation</th>
+              <th className="px-5 py-3">Benefit</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Training</td><td className="px-5 py-3">Many safe attempts, with automatic scoring</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Testing</td><td className="px-5 py-3">Replay the same scenarios after every change</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Benchmarks</td><td className="px-5 py-3">Compare agents fairly</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Red-teaming</td><td className="px-5 py-3">Rehearse attacks such as prompt injection</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">The gap:</strong> A simulation is never the real world. Agents that excel in a simulator can still fail on real systems, so validate on real tasks before trusting them.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Agent Swarms and Emerging Architectures
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In a <strong className="text-white">swarm</strong>, many simple agents work in parallel and their outputs are combined by voting, ranking or a judge. This is the multi-agent idea scaled up, and it is closely related to majority voting.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> One agent is right about half the time. A swarm of 15 agents taking a majority vote is right about 93% of the time on the same kind of question, because wrong answers are scattered while the right answer repeats.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Be honest about noise:</strong> In the self-improvement test, 20 trials per prompt version picked the wrong winner (v2). With 400 trials it still tied v3 and v4 at 0.64 and picked v4, although v3 is truly best. Noisy tests can mislead any learning loop, so use enough trials and keep a held-out test set.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Emerging direction</th>
+              <th className="px-5 py-3">Idea</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Hybrid planners</td><td className="px-5 py-3">A strong model plans and cheaper models execute</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Self-evolving skill libraries</td><td className="px-5 py-3">Agents save and refine reusable tools</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Agent-to-agent protocols</td><td className="px-5 py-3">Standards for agents from different vendors to cooperate</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Long-horizon training</td><td className="px-5 py-3">Training on very long task sequences</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Better evaluation</td><td className="px-5 py-3">Harder, cleaner benchmarks</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Staying current</div>
+        <div className="text-sm leading-relaxed text-slate-300">This area moves fast. Treat claims skeptically, ask how a result was measured, and test ideas on your own tasks.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Self-Improvement Cycle and Two Honest Numbers
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure follows the cycle of sampling, scoring, filtering and learning with the numbers from the code, then shows what swarms and noisy tests did in the experiments.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-violet-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Part 1 · The Self-Improvement Cycle</span>
+        <span className="text-xs text-slate-400">Try, score, learn</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-4">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Sample</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">20 trajectories</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Same task, different runs</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">11 succeeded</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Score</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Reward</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">10 for success minus 0.3 per step</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Best: trajectory 1 (8.8)</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Filter</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Keep the best</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Successful and efficient only</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">8 of 20 kept for training</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Learn</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Improve</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Reflection notes or fine-tuning</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Better next time</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Numbers From the Code</span>
+        <span className="text-xs text-slate-400">Swarms and noisy tests</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">One agent</div>
+          <div className="mt-2 text-lg font-bold text-white">Accuracy</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">About 50%.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Swarm of 15</div>
+          <div className="mt-2 text-lg font-bold text-white">Majority vote</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">About 93%.</div>
+        </div>
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">20 trials</div>
+          <div className="mt-2 text-lg font-bold text-white">Test per version</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Picked the wrong version (v2).</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">400 trials</div>
+          <div className="mt-2 text-lg font-bold text-white">Test per version</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Picked v4, tied with v3.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-violet-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why swarms work, and when they do not</span>
+          <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Voting helps when each agent is right more often than any single wrong answer, because mistakes spread out while the correct answer repeats. If agents share the same blind spot, they all make the same mistake and voting cannot fix it.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows the cycle step by step. Part 2 compares a single agent with a swarm and shows how test size changes a decision. Open the bar for why swarms work and when they fail.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Reflection, Trajectory Sampling, Swarms and Noisy Tests
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script demonstrates five research ideas in miniature: reflection memory, scoring and selecting trajectories, building a fine-tuning set by rejection sampling, a swarm of voting agents, and a self-improvement loop that compares prompt versions on noisy trials. Everything uses a fixed random seed.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">frontier_agents.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import random</span>
+            <span className="block">rng = random.Random(7)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Learning from failure: reflect, store a lesson, use it next time</span>
+            <span className="block">lessons = &#91;&#93;</span>
+            <span className="block text-cyan-300">def attempt(lessons):</span>
+            <span className="block">    if any(&quot;YYYY-MM-DD&quot; in lesson for lesson in lessons):</span>
+            <span className="block">        return True, &quot;booked&quot;</span>
+            <span className="block">    return False, &quot;error: invalid date format&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">ok, info = attempt(lessons)</span>
+            <span className="block">print(&quot;Attempt 1:&quot;, info)</span>
+            <span className="block">lessons.append(&quot;Dates must be written as YYYY-MM-DD&quot;)          # the reflection step writes a lesson</span>
+            <span className="block">ok, info = attempt(lessons)</span>
+            <span className="block">print(&quot;Attempt 2 with the lesson:&quot;, info)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Trajectory optimization: sample many tries, score them, keep the best</span>
+            <span className="block">trajectories = &#91;&#123;&quot;id&quot;: i, &quot;success&quot;: rng.random() &lt; 0.4, &quot;steps&quot;: rng.randint(4, 14)&#125; for i in range(20)&#93;</span>
+            <span className="block">reward = lambda t: (10 if t&#91;&quot;success&quot;&#93; else 0) - 0.3 &#42; t&#91;&quot;steps&quot;&#93;</span>
+            <span className="block">best = max(trajectories, key=reward)</span>
+            <span className="block">successes = &#91;t for t in trajectories if t&#91;&quot;success&quot;&#93;&#93;</span>
+            <span className="block">print(&quot;Successful trajectories:&quot;, len(successes), &quot;of&quot;, len(trajectories), &quot;| best trajectory:&quot;, best&#91;&quot;id&quot;&#93;, &quot;with reward&quot;, round(reward(best), 1))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Training data for agent fine-tuning: keep only successful, efficient trajectories (rejection sampling)</span>
+            <span className="block">median&#95;steps = sorted(t&#91;&quot;steps&quot;&#93; for t in successes)&#91;len(successes) // 2&#93;</span>
+            <span className="block">training&#95;set = &#91;t&#91;&quot;id&quot;&#93; for t in successes if t&#91;&quot;steps&quot;&#93; &lt;= median&#95;steps&#93;</span>
+            <span className="block">print(&quot;Fine-tuning examples kept:&quot;, len(training&#95;set), &quot;of&quot;, len(trajectories), &quot;| ids:&quot;, training&#95;set)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 4. Agent swarm: many noisy agents vote (4 answer options, one correct)</span>
+            <span className="block text-cyan-300">def one&#95;agent(p&#95;correct=0.5):</span>
+            <span className="block">    return 0 if rng.random() &lt; p&#95;correct else rng.randint(1, 3)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def swarm&#95;vote(n&#95;agents):</span>
+            <span className="block">    votes = &#91;one&#95;agent() for &#95; in range(n&#95;agents)&#93;</span>
+            <span className="block">    return max(set(votes), key=votes.count) == 0</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">questions = 2000</span>
+            <span className="block">single = sum(one&#95;agent() == 0 for &#95; in range(questions)) / questions</span>
+            <span className="block">swarm = sum(swarm&#95;vote(15) for &#95; in range(questions)) / questions</span>
+            <span className="block">print(&quot;One agent accuracy:&quot;, round(single, 3), &quot;| swarm of 15 voting:&quot;, round(swarm, 3))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 5. Self-improvement loop: test prompt versions on noisy trials, keep the best (noise can mislead)</span>
+            <span className="block">true&#95;skill = &#123;&quot;v1&quot;: 0.50, &quot;v2&quot;: 0.58, &quot;v3&quot;: 0.66, &quot;v4&quot;: 0.61&#125;</span>
+            <span className="block">for trials in (20, 400):</span>
+            <span className="block">    scores = &#123;v: sum(rng.random() &lt; p for &#95; in range(trials)) / trials for v, p in true&#95;skill.items()&#125;</span>
+            <span className="block">    print(&quot;With&quot;, trials, &quot;trials per version, estimated:&quot;, &#123;v: round(s, 2) for v, s in scores.items()&#125;, &quot;-&gt; picks&quot;, max(scores, key=scores.get))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Attempt 1: error: invalid date format</div>
+          <div>Attempt 2 with the lesson: booked</div>
+          <div>Successful trajectories: 11 of 20 | best trajectory: 1 with reward 8.8</div>
+          <div>Fine-tuning examples kept: 8 of 20 | ids: &#91;0, 1, 2, 4, 5, 7, 9, 15&#93;</div>
+          <div>One agent accuracy: 0.504 | swarm of 15 voting: 0.927</div>
+          <div>With 20 trials per version, estimated: &#123;&apos;v1&apos;: 0.6, &apos;v2&apos;: 0.8, &apos;v3&apos;: 0.45, &apos;v4&apos;: 0.65&#125; -&gt; picks v2</div>
+          <div>With 400 trials per version, estimated: &#123;&apos;v1&apos;: 0.49, &apos;v2&apos;: 0.58, &apos;v3&apos;: 0.64, &apos;v4&apos;: 0.64&#125; -&gt; picks v4</div>
+        </div>
+      </div>
+      <div>
+        Each experiment is tiny, but the pattern is the same as in real research. Note the final two lines: even with 400 trials the noisy test could not separate two close versions, which is why careful measurement is the foundation of every agent that learns.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What is rejection sampling for agent fine-tuning?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag27-q1-a" name="ag27-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag27-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Running many attempts and keeping only the successful, efficient trajectories as training data</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The model learns from its own best runs.</div>
+          </div>
+          <div>
+            <input id="ag27-q1-b" name="ag27-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag27-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Deleting the model after a failure</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Failures are simply filtered out of the data.</div>
+          </div>
+          <div>
+            <input id="ag27-q1-c" name="ag27-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag27-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Asking a human to write every example</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The data come from the agent&apos;s own runs.</div>
+          </div>
+          <div>
+            <input id="ag27-q1-d" name="ag27-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag27-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Training with random labels</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The labels come from a success check.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Why can a swarm of agents beat a single agent?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag27-q2-a" name="ag27-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag27-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Wrong answers are scattered while the correct answer repeats, so a majority vote is more reliable</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> This works when each agent is better than chance and errors are independent.</div>
+          </div>
+          <div>
+            <input id="ag27-q2-b" name="ag27-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag27-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Swarms never make mistakes</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They can fail when agents share the same blind spot.</div>
+          </div>
+          <div>
+            <input id="ag27-q2-c" name="ag27-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag27-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Swarms use fewer tokens</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They usually use more.</div>
+          </div>
+          <div>
+            <input id="ag27-q2-d" name="ag27-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag27-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Swarms do not need evaluation</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They need evaluation like any system.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Self-improving agents learn through reflection memory, skill libraries, prompt optimization or fine-tuning.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Trajectory optimization samples many runs, scores them and keeps or learns from the best.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Rejection sampling builds fine-tuning data from successful, efficient trajectories.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Simulations give safe, cheap practice and testing, but never match the real world exactly.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Swarms combine many agents by voting. They work when errors are independent.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Noisy tests can pick the wrong winner, so use enough trials and a held-out test set.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">The Frontier in One Line</div>
+        <div className="text-center font-bold text-white">
+          Sample → score → keep the best → learn from it → test honestly
+        </div>
+      </div>
+      <div>
+        Research ideas change quickly, but the habit of measuring carefully stays valuable.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You have finished the <strong className="text-white">AI Agents</strong> series. A good next step is to build one real agent project end to end: pick a narrow task, add two or three tools, add guardrails and evaluation, and improve it from its traces.
+      </div>
+    </div>
+  </section>
+
+</div>

@@ -1,0 +1,455 @@
+---
+title: "Long Context and Efficient Attention"
+slug: "18-long-context-and-efficient-attention"
+order: 18
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Advanced"
+readTime: "30 min"
+description: "See why long inputs are expensive and how FlashAttention, sliding-window and sparse attention, GQA, ring attention and linear-time architectures make long context practical, with online softmax built from scratch."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Attention cost and KV-cache memory both explode with length. <strong className="text-white">FlashAttention</strong> keeps the answer exact but moves less data, <strong className="text-white">sliding windows and sparse patterns</strong> compare fewer pairs, and <strong className="text-white">ring attention</strong> spreads one huge sequence across many GPUs.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why Long Inputs Are Hard
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In the attention lesson you saw that every token compares itself with every earlier token. For $n$ tokens that is about $n^2$ comparisons. This cost, together with the memory of the KV cache, is what makes very long inputs such as books, codebases or hours of chat difficult.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Text length</th>
+              <th className="px-5 py-3">Comparisons per head, per layer (n × n)</th>
+              <th className="px-5 py-3">Growth</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">4,000 tokens</td><td className="px-5 py-3">16,000,000</td><td className="px-5 py-3">1×</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">32,000 tokens</td><td className="px-5 py-3">1,024,000,000</td><td className="px-5 py-3">64×</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">128,000 tokens</td><td className="px-5 py-3">16,384,000,000</td><td className="px-5 py-3">1,024×</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Two separate problems:</strong> <strong className="text-white">Compute</strong> (too many comparisons) and <strong className="text-white">memory</strong> (a huge score table and a huge KV cache). Different tricks attack different problems.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: The Main Families of Tricks
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Idea</th>
+              <th className="px-5 py-3">What it changes</th>
+              <th className="px-5 py-3">Exact or approximate?</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">FlashAttention</td><td className="px-5 py-3">How the math is scheduled on the GPU, so the big table is never stored</td><td className="px-5 py-3">Exact (same answer, faster)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Sliding-window attention</td><td className="px-5 py-3">Each token looks only at the last few thousand tokens</td><td className="px-5 py-3">Approximate (less context)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Sparse / local + global</td><td className="px-5 py-3">Only some token pairs are compared, plus a few special tokens that see everything</td><td className="px-5 py-3">Approximate</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">GQA / MQA</td><td className="px-5 py-3">Share keys and values to shrink the KV cache</td><td className="px-5 py-3">Slightly approximate by design</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Ring attention</td><td className="px-5 py-3">Split a very long sequence across many GPUs that pass keys and values around a ring</td><td className="px-5 py-3">Exact</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Linear attention / state-space models</td><td className="px-5 py-3">Replace attention with a fixed-size running memory</td><td className="px-5 py-3">Different architecture</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Rule of thumb:</strong> Exact methods keep the answer identical and only save time or memory. Approximate methods trade some context for speed.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: FlashAttention, the Same Answer With Less Memory
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A GPU has a small, very fast on-chip memory and a large, slower main memory. Standard attention writes the whole $n \times n$ score table to the slow memory and reads it back. Most of the time is spent moving data, not calculating.
+      </div>
+      <div>
+        <strong className="text-white">FlashAttention</strong> processes the keys and values in small <strong className="text-white">tiles</strong> that fit in the fast memory and never writes the full table. The difficulty is the softmax, which seems to need all scores at once. The trick is the <strong className="text-white">online softmax</strong>: keep a running maximum and a running sum, and rescale what was accumulated whenever a new tile arrives.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Load a tile of K and V:</strong> Small enough for fast memory.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Compute scores for that tile:</strong> Only a small block of the table exists.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Update the running max and sum:</strong> Rescale the earlier partial results.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Add the tile&apos;s contribution to the output:</strong> Then discard the tile and move to the next.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Result:</strong> Exactly the same output as standard attention, but memory for the score table drops from $n^2$ to a small tile, and speed improves a lot because far less data is moved.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Sliding Windows and Sparse Patterns
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Sliding-window attention</strong> limits each token to the previous $w$ tokens (for example 4,096). The cost becomes about $n \times w$ instead of $n^2$, which is linear in length. Information can still travel far, because each layer passes information a window further, so stacked layers see much beyond one window.
+      </div>
+      <div>
+        <strong className="text-white">Sparse</strong> patterns add a few <strong className="text-white">global</strong> tokens (like the start of the text or special markers) that every token can see, so important information is never fully cut off.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Method</th>
+              <th className="px-5 py-3">Cost for n tokens</th>
+              <th className="px-5 py-3">Keeps</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Full attention</td><td className="px-5 py-3">about n²</td><td className="px-5 py-3">Everything</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Sliding window (w)</td><td className="px-5 py-3">about n × w</td><td className="px-5 py-3">The most recent w tokens, plus indirect memory through layers</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Local + global</td><td className="px-5 py-3">about n × w + few</td><td className="px-5 py-3">Recent tokens and a few special tokens</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Trade-off:</strong> A pure window can forget a detail from early in the document. Models that need exact recall of far-away facts often keep some full-attention layers.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Ring Attention, Position Scaling and Beyond
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When one GPU cannot even hold the KV cache of a very long input, the sequence itself is split. <strong className="text-white">Ring attention</strong> gives each GPU a piece of the sequence. The GPUs pass blocks of keys and values around a ring while each computes its share, so the result is exact and memory per GPU stays small.
+      </div>
+      <div>
+        To make a model handle lengths beyond its training length, it also needs its positions rescaled (see the RoPE lesson) and usually some extra training on long documents.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Architectures beyond attention</div>
+        <div className="text-sm leading-relaxed text-slate-300"><strong className="text-white">State-space models</strong> and other linear-time designs keep a fixed-size memory that is updated token by token, so cost grows only linearly with length. They are efficient but can be weaker at exact recall, so some recent models mix them with a few attention layers.</div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Practical advice:</strong> Choose the <strong className="text-white">shortest context that solves your task</strong>. Use retrieval (RAG) to bring in only relevant pieces, and use long-context models when you really need the whole document at once.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Seeing Less, Moving Less
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure first compares three attention patterns, then contrasts standard attention with the tiled FlashAttention approach.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-cyan-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 1 · Which Tokens Can I See?</span>
+        <span className="text-xs text-slate-400">Three attention patterns</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-300">Full causal</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200">Cost: n²</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Token 10 looks at tokens 1 to 10</div>
+          <div className="text-center text-blue-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Every earlier token is compared</div>
+          <div className="text-center text-blue-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Complete memory, highest cost</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Sliding window</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Cost: n × w</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Token 10 looks at the last w tokens only</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Older tokens are skipped</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Linear cost, limited direct view</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Local + global</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Cost: n × w + few</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Recent tokens plus a few global tokens</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Global tokens see everything</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Cheap and keeps key anchors</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · FlashAttention in Tiles</span>
+        <span className="text-xs text-slate-400">Same answer, far less memory traffic</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Standard attention</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Slow memory heavy</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Build the full n × n score table</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Write it to main GPU memory</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Read it back for softmax</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-300">Big memory use, lots of data movement</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">FlashAttention</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Tiled, exact</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Load one small tile of K and V</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Update running max and sum (online softmax)</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Add to the output, then next tile</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Identical output, small memory</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-cyan-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see the online-softmax idea</span>
+          <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Keep a running maximum m and running sum l. When a new tile has a larger maximum, multiply the old sum and old output by exp(old m - new m) to rescale them. After the last tile, divide the output by the sum. The code below proves it matches normal attention.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        In Part 1, the cost line under each title shows how work grows with length. Part 2 shows that FlashAttention changes how the data moves, not the answer. Open the bar for the online-softmax rule.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Window Savings and Online Softmax
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script counts how many token pairs full attention and a 4,096-token sliding window need at three lengths, then implements a tiled, FlashAttention-style attention with online softmax and checks that it matches standard attention exactly.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">efficient_attention.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Sliding-window attention: each token looks only at the last &#96;window&#96; tokens</span>
+            <span className="block text-cyan-300">def pairs&#95;full(n):</span>
+            <span className="block">    return n &#42; (n + 1) // 2                              # causal: every token sees all earlier tokens</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def pairs&#95;window(n, window):</span>
+            <span className="block">    return sum(min(i + 1, window) for i in range(n))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for n in &#91;4096, 32768, 131072&#93;:</span>
+            <span className="block">    full, win = pairs&#95;full(n), pairs&#95;window(n, 4096)</span>
+            <span className="block">    print(&quot;n =&quot;, format(n, &quot;,&quot;), &quot;| full:&quot;, format(full, &quot;,&quot;), &quot;| window 4096:&quot;, format(win, &quot;,&quot;), &quot;| saving:&quot;, round(full / win, 1), &quot;x&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Online softmax: the trick inside FlashAttention (process scores in small tiles)</span>
+            <span className="block">rng = np.random.default&#95;rng(0)</span>
+            <span className="block">n, d, tile = 64, 16, 16</span>
+            <span className="block">Q, K, V = rng.normal(size=(3, n, d))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def standard&#95;attention(Q, K, V):</span>
+            <span className="block">    S = Q @ K.T / np.sqrt(d)</span>
+            <span className="block">    P = np.exp(S - S.max(axis=1, keepdims=True))</span>
+            <span className="block">    return (P / P.sum(axis=1, keepdims=True)) @ V</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def tiled&#95;attention(Q, K, V):</span>
+            <span className="block">    m = np.full(n, -np.inf)                              # running max of scores</span>
+            <span className="block">    l = np.zeros(n)                                      # running sum of exponentials</span>
+            <span className="block">    out = np.zeros((n, d))</span>
+            <span className="block">    for start in range(0, n, tile):                      # one tile of keys and values at a time</span>
+            <span className="block">        S = Q @ K&#91;start:start + tile&#93;.T / np.sqrt(d)</span>
+            <span className="block">        m&#95;new = np.maximum(m, S.max(axis=1))</span>
+            <span className="block">        fix = np.exp(m - m&#95;new)                          # rescale what we accumulated before</span>
+            <span className="block">        P = np.exp(S - m&#95;new&#91;:, None&#93;)</span>
+            <span className="block">        l = l &#42; fix + P.sum(axis=1)</span>
+            <span className="block">        out = out &#42; fix&#91;:, None&#93; + P @ V&#91;start:start + tile&#93;</span>
+            <span className="block">        m = m&#95;new</span>
+            <span className="block">    return out / l&#91;:, None&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">same = np.allclose(standard&#95;attention(Q, K, V), tiled&#95;attention(Q, K, V))</span>
+            <span className="block">print(&quot;Tiled (FlashAttention-style) result equals standard attention:&quot;, same)</span>
+            <span className="block">print(&quot;Largest score table held at once: standard&quot;, n &#42; n, &quot;numbers | tiled&quot;, n &#42; tile, &quot;numbers&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>n = 4,096 | full: 8,390,656 | window 4096: 8,390,656 | saving: 1.0 x</div>
+          <div>n = 32,768 | full: 536,887,296 | window 4096: 125,831,168 | saving: 4.3 x</div>
+          <div>n = 131,072 | full: 8,590,000,128 | window 4096: 528,484,352 | saving: 16.3 x</div>
+          <div>Tiled (FlashAttention-style) result equals standard attention: True</div>
+          <div>Largest score table held at once: standard 4096 numbers | tiled 1024 numbers</div>
+        </div>
+      </div>
+      <div>
+        At 4,096 tokens the window changes nothing (the whole text already fits). At 131,072 tokens it needs about 16 times fewer pairs. The tiled version matches standard attention (<code>True</code>) while holding a score block four times smaller in this small example.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What is special about FlashAttention?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="longctx-q1-a" name="longctx-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="longctx-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) It gives the same answer as standard attention but uses far less memory movement</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It tiles the computation and uses an online softmax, so the full table is never stored.</div>
+          </div>
+          <div>
+            <input id="longctx-q1-b" name="longctx-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="longctx-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It gives a slightly different, approximate answer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> FlashAttention is exact.</div>
+          </div>
+          <div>
+            <input id="longctx-q1-c" name="longctx-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="longctx-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It removes the softmax</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Softmax is still computed, in tiles.</div>
+          </div>
+          <div>
+            <input id="longctx-q1-d" name="longctx-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="longctx-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It shortens the vocabulary</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Vocabulary is unrelated.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What is the main weakness of a pure sliding window?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="longctx-q2-a" name="longctx-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="longctx-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) A token cannot directly see information older than the window</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Distant details can be forgotten unless layers or global tokens carry them.</div>
+          </div>
+          <div>
+            <input id="longctx-q2-b" name="longctx-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="longctx-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It uses more memory than full attention</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It uses less.</div>
+          </div>
+          <div>
+            <input id="longctx-q2-c" name="longctx-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="longctx-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It cannot be used on GPUs</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It runs on GPUs normally.</div>
+          </div>
+          <div>
+            <input id="longctx-q2-d" name="longctx-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="longctx-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It needs a larger vocabulary</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Vocabulary size is unrelated.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Full attention costs about n² comparisons, and the KV cache grows with n too.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">FlashAttention</strong> is exact: it tiles the work and uses an online softmax to avoid storing the full score table.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Sliding-window</strong> attention costs about n × w and trades some direct context for speed.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Sparse</strong> patterns add a few global tokens so key information stays visible.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Ring attention</strong> splits a sequence over many GPUs and passes keys and values around a ring.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use the shortest context that solves the task, and retrieval when only parts of a document matter.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Efficient Attention in One Line</div>
+        <div className="text-center font-bold text-white">
+          Exact tricks move less data; approximate tricks compare fewer pairs; distributed tricks share the load
+        </div>
+      </div>
+      <div>
+        These methods are why modern models can accept book-length inputs at a reasonable price, and knowing them helps you pick a model for long-document work.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Another way to make big models cheap is to use only part of them for each token. In <strong className="text-white">Mixture of Experts</strong> you will see how a router sends each token to a few specialist sub-networks.
+      </div>
+    </div>
+  </section>
+
+</div>

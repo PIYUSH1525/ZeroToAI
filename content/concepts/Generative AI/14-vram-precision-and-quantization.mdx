@@ -1,0 +1,457 @@
+---
+title: "VRAM, Precision and Quantization"
+slug: "14-vram-precision-and-quantization"
+order: 14
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Learn how much GPU memory an LLM needs, what float16, bfloat16, int8 and int4 mean, why training needs far more memory than inference, and how quantization shrinks a model with only a small loss in quality."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A model must fit in GPU memory. <strong className="text-white">Memory = parameters × bytes per number</strong>, so using fewer bits (<strong className="text-white">quantization</strong>) lets the same model fit on a much smaller GPU with only a small quality loss.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why Memory Is the First Question
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Before asking <em>how smart is this model?</em>, practitioners ask <em>will it even fit on my GPU?</em> A model is just billions of numbers (<strong className="text-white">parameters</strong>), and every number must live in the GPU&apos;s fast memory, called <strong className="text-white">VRAM</strong>, while the model runs.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\text{memory for weights} = \text{number of parameters} \times \text{bytes per parameter}$$
+      </div>
+      <div>
+        So a model with 7 billion parameters needs 7 billion times the size of one number. How big one number is depends on its <strong className="text-white">precision</strong>.
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Analogy:</strong> Think of a photo album. Each photo is a parameter. A high-resolution print takes more shelf space than a thumbnail. Lowering precision is like storing thumbnails: you can fit many more photos, but each loses some detail.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Number Formats (Precision)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Format</th>
+              <th className="px-5 py-3">Bits</th>
+              <th className="px-5 py-3">Bytes per number</th>
+              <th className="px-5 py-3">7B model weights</th>
+              <th className="px-5 py-3">Typical use</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">float32 (FP32)</td><td className="px-5 py-3">32</td><td className="px-5 py-3">4</td><td className="px-5 py-3">28 GB</td><td className="px-5 py-3">Older training, scientific work</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">float16 / bfloat16</td><td className="px-5 py-3">16</td><td className="px-5 py-3">2</td><td className="px-5 py-3">14 GB</td><td className="px-5 py-3">Standard for training and inference</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">int8</td><td className="px-5 py-3">8</td><td className="px-5 py-3">1</td><td className="px-5 py-3">7 GB</td><td className="px-5 py-3">Quantized inference</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">int4</td><td className="px-5 py-3">4</td><td className="px-5 py-3">0.5</td><td className="px-5 py-3">3.5 GB</td><td className="px-5 py-3">Aggressive quantization, local models</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <strong className="text-white">bfloat16</strong> keeps the same <em>range</em> as float32 (so training rarely overflows) but with less <em>precision</em>, which is why it became the favorite for deep learning. <strong className="text-white">float16</strong> has more precision but a smaller range.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Easy mental math:</strong> Weights in gigabytes ≈ parameters in billions × bytes per number. A 13B model in 16-bit is about 26 GB.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: What Else Uses Memory?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Weights are only part of the story. Running a model also needs:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Item</th>
+              <th className="px-5 py-3">What it is</th>
+              <th className="px-5 py-3">Grows with</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Weights</td><td className="px-5 py-3">The learned parameters</td><td className="px-5 py-3">Model size and precision</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">KV cache</td><td className="px-5 py-3">Stored keys and values of earlier tokens</td><td className="px-5 py-3">Context length and number of users</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Activations</td><td className="px-5 py-3">Temporary results inside the layers</td><td className="px-5 py-3">Batch size</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Overhead</td><td className="px-5 py-3">Framework buffers and fragmentation</td><td className="px-5 py-3">Roughly 10 to 20 percent extra</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <strong className="text-white">Training</strong> needs far more than inference. With the common Adam optimizer in mixed precision, each parameter needs about <strong className="text-white">16 bytes</strong>: 2 for the weights, 2 for the gradient, 4 for a 32-bit master copy and 8 for the two optimizer states. A 7B model therefore needs about 112 GB to train fully, versus 14 GB to run.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Rule of thumb for inference:</strong> Plan for weights × 1.2, plus the KV cache for your longest conversations.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Quantization, Shrinking the Numbers
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Quantization</strong> stores weights with fewer bits. Instead of a precise decimal like 0.7312, we keep a small integer and one shared <strong className="text-white">scale</strong> number, then multiply to recover an approximation:
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$w \approx q \times s \qquad q = \text{round}(w / s)$$
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Find the scale:</strong> Divide the largest absolute weight by the biggest integer the format can hold (127 for int8, 7 for int4).</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Round:</strong> Convert every weight to the nearest integer.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Store:</strong> Save the small integers and the scale. This is the shrunken model.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Dequantize on the fly:</strong> During the calculation, multiply back by the scale.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Why it works:</strong> Neural network weights are noisy and redundant. A small rounding error in each weight usually changes the output very little, so quality drops only slightly.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Group-Wise Methods and the Quality Trade-Off
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A single scale for a whole matrix is crude: one huge weight forces a coarse scale on everyone. <strong className="text-white">Group-wise quantization</strong> uses a separate scale for each small group (for example 64 or 128 weights), which fits the values much better and is used by most 4-bit methods.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Approach</th>
+              <th className="px-5 py-3">Idea</th>
+              <th className="px-5 py-3">Where you will see it</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Post-training quantization</td><td className="px-5 py-3">Quantize an already trained model with no retraining</td><td className="px-5 py-3">GPTQ, AWQ, GGUF files</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">4-bit NormalFloat (NF4)</td><td className="px-5 py-3">A 4-bit format designed for bell-shaped weights</td><td className="px-5 py-3">QLoRA fine-tuning</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Quantization-aware training</td><td className="px-5 py-3">Train while simulating the rounding</td><td className="px-5 py-3">Best quality, higher cost</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">KV-cache quantization</td><td className="px-5 py-3">Compress the cache, not the weights</td><td className="px-5 py-3">Long-context serving</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">The trade-off</div>
+        <div className="text-sm leading-relaxed text-slate-300">8-bit is usually almost lossless. 4-bit is the common sweet spot: about 4 times smaller than 16-bit with a small quality drop. Below 4 bits quality falls faster, and tasks like math and code are often hit first. Always test on <em>your</em> task.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Bytes, Bits and Rounding
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure first compares one 7-billion-parameter model at three precisions, then shows the quantize and dequantize round trip for a single weight.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-teal-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-teal-300">Part 1 · Same Model, Different Precision</span>
+        <span className="text-xs text-slate-400">Bytes per number decide the size</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-300">16-bit</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200">2 bytes each</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">7 billion parameters</div>
+          <div className="text-center text-blue-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">× 2 bytes</div>
+          <div className="text-center text-blue-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">About 14 GB</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">8-bit</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">1 byte each</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">7 billion parameters</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">× 1 byte</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">About 7 GB</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">4-bit</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">0.5 byte each</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">7 billion parameters</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">× 0.5 byte</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">About 3.5 GB</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · How Quantization Works</span>
+        <span className="text-xs text-slate-400">Integers plus one scale</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Quantize</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Save time</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Original weight: 0.73</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">scale = 0.10</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">q = round(0.73 / 0.10) = 7</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Stored: tiny integer 7 + scale</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Dequantize</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Use time</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Stored integer 7</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">× scale 0.10</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Approximately 0.70 (small error)</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-teal-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why group-wise is better</span>
+          <span className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs text-teal-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">With one scale for everything, a single large weight forces a coarse step size on all weights. With one scale per 64 weights, each small group gets a step size that suits it, so the error drops. In the code below it falls by roughly a factor of 3.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 reads left to right: fewer bytes per number means a smaller model. Part 2 shows that quantizing stores a small integer and a scale, and using it multiplies back to an approximation. Open the bar to see why groups help.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Memory Math and Quantization From Scratch
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script calculates how much memory 7B and 70B models need at four precisions, quantizes a random weight matrix to int8 and int4, and compares one global scale with group-wise scales.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">quantization_demo.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Memory needed just to store the weights</span>
+            <span className="block text-cyan-300">def weights&#95;gb(params&#95;billion, bits):</span>
+            <span className="block">    return params&#95;billion &#42; 1e9 &#42; bits / 8 / 1e9</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for bits, name in &#91;(32, &quot;float32&quot;), (16, &quot;float16 / bfloat16&quot;), (8, &quot;int8&quot;), (4, &quot;int4&quot;)&#93;:</span>
+            <span className="block">    print(name.ljust(18), &quot;7B model:&quot;, round(weights&#95;gb(7, bits), 1), &quot;GB | 70B model:&quot;, round(weights&#95;gb(70, bits), 1), &quot;GB&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Symmetric int8 quantization of a weight matrix</span>
+            <span className="block">rng = np.random.default&#95;rng(0)</span>
+            <span className="block">W = rng.normal(size=(256, 256)).astype(np.float32)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def quantize(W, bits):</span>
+            <span className="block">    qmax = 2 &#42;&#42; (bits - 1) - 1                          # 127 for int8, 7 for int4</span>
+            <span className="block">    scale = np.abs(W).max() / qmax</span>
+            <span className="block">    q = np.clip(np.round(W / scale), -qmax, qmax)</span>
+            <span className="block">    return q, scale</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def error&#95;after(W, bits):</span>
+            <span className="block">    q, scale = quantize(W, bits)</span>
+            <span className="block">    return float(np.mean((W - q &#42; scale) &#42;&#42; 2))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Mean squared error int8:&quot;, format(error&#95;after(W, 8), &quot;.2e&quot;))</span>
+            <span className="block">print(&quot;Mean squared error int4:&quot;, format(error&#95;after(W, 4), &quot;.2e&quot;))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Group-wise quantization: one scale per small group of 64 weights fits better</span>
+            <span className="block text-cyan-300">def error&#95;groupwise(W, bits, group=64):</span>
+            <span className="block">    flat = W.reshape(-1, group)</span>
+            <span className="block">    qmax = 2 &#42;&#42; (bits - 1) - 1</span>
+            <span className="block">    scales = np.abs(flat).max(axis=1, keepdims=True) / qmax</span>
+            <span className="block">    q = np.clip(np.round(flat / scales), -qmax, qmax)</span>
+            <span className="block">    return float(np.mean((flat - q &#42; scales) &#42;&#42; 2))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;int4 with one scale for everything:&quot;, format(error&#95;after(W, 4), &quot;.2e&quot;))</span>
+            <span className="block">print(&quot;int4 with one scale per 64 weights:&quot;, format(error&#95;groupwise(W, 4), &quot;.2e&quot;))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>float32            7B model: 28.0 GB | 70B model: 280.0 GB</div>
+          <div>float16 / bfloat16 7B model: 14.0 GB | 70B model: 140.0 GB</div>
+          <div>int8               7B model: 7.0 GB | 70B model: 70.0 GB</div>
+          <div>int4               7B model: 3.5 GB | 70B model: 35.0 GB</div>
+          <div>Mean squared error int8: 1.16e-04</div>
+          <div>Mean squared error int4: 3.81e-02</div>
+          <div>int4 with one scale for everything: 3.81e-02</div>
+          <div>int4 with one scale per 64 weights: 1.17e-02</div>
+        </div>
+      </div>
+      <div>
+        The first four lines are the memory table. Then the error numbers show int8 is about 300 times more accurate than int4 in this test, and that group-wise scales cut the int4 error to about a third.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: About how much memory do the weights of a 7B model need in 16-bit?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="vram-q1-a" name="vram-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="vram-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) About 14 GB</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> 7 billion × 2 bytes = 14 billion bytes.</div>
+          </div>
+          <div>
+            <input id="vram-q1-b" name="vram-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="vram-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) About 3.5 GB</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is closer to the 4-bit size.</div>
+          </div>
+          <div>
+            <input id="vram-q1-c" name="vram-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="vram-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) About 28 GB</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is the 32-bit size.</div>
+          </div>
+          <div>
+            <input id="vram-q1-d" name="vram-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="vram-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) About 70 GB</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Far too large for a 7B model in 16-bit.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Why is group-wise quantization usually more accurate than one scale for the whole matrix?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="vram-q2-a" name="vram-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="vram-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Each small group gets a scale that fits its own values</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> One outlier no longer forces a coarse scale on every weight.</div>
+          </div>
+          <div>
+            <input id="vram-q2-b" name="vram-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="vram-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It uses more bits per weight</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The bit width is the same. Only the number of scales changes.</div>
+          </div>
+          <div>
+            <input id="vram-q2-c" name="vram-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="vram-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It removes small weights</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> No weights are removed.</div>
+          </div>
+          <div>
+            <input id="vram-q2-d" name="vram-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="vram-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It trains the model again</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Post-training quantization needs no retraining.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Weight memory = parameters × bytes per parameter. A 7B model is about 14 GB in 16-bit.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">bfloat16</strong> keeps float32 range with less precision and is the deep-learning favorite.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Inference also needs the KV cache, activations and about 10 to 20 percent overhead.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Full training with Adam needs about 16 bytes per parameter, far more than inference.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Quantization</strong> stores small integers plus a scale. int8 is almost lossless, int4 is the common sweet spot.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Group-wise scales reduce quantization error. Always test the quantized model on your own task.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Quantization in One Line</div>
+        <div className="text-center font-bold text-white">
+          Fewer bits per number → smaller model → fits on smaller hardware → small quality cost
+        </div>
+      </div>
+      <div>
+        Knowing the memory math lets you choose a model and a GPU in minutes instead of by trial and error.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Now that you can size a model, you need to talk to one. In <strong className="text-white">Prompt Engineering</strong> you will learn how to write instructions that reliably get the answers you want.
+      </div>
+    </div>
+  </section>
+
+</div>

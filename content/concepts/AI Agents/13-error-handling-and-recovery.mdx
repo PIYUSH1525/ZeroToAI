@@ -1,0 +1,491 @@
+---
+title: "Error Handling and Recovery"
+slug: "13-error-handling-and-recovery"
+order: 13
+category: "AI Agents"
+subcategory: "Reliability"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Learn how to make agents resilient: classify tool failures, retry with exponential backoff, add fallbacks and timeouts, choose recovery strategies, and prevent infinite loops."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Tools <strong className="text-white">will</strong> fail: networks drop, services time out, models make bad calls. A reliable agent <strong className="text-white">expects</strong> failure: it <strong className="text-white">retries</strong> temporary errors, uses <strong className="text-white">fallbacks</strong>, enforces <strong className="text-white">timeouts</strong>, <strong className="text-white">recovers</strong> with a plan, and <strong className="text-white">stops loops</strong> before they burn money.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Tool Failures
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Every external tool can fail. Knowing <strong className="text-white">what kind</strong> of failure it is decides the right response:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Failure type</th>
+              <th className="px-5 py-3">Example</th>
+              <th className="px-5 py-3">Temporary?</th>
+              <th className="px-5 py-3">Typical response</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Network or service error</td><td className="px-5 py-3">503 service unavailable</td><td className="px-5 py-3">Yes</td><td className="px-5 py-3">Retry with backoff</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Rate limit</td><td className="px-5 py-3">429 too many requests</td><td className="px-5 py-3">Yes</td><td className="px-5 py-3">Wait, then retry</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Timeout</td><td className="px-5 py-3">No answer in 30 seconds</td><td className="px-5 py-3">Maybe</td><td className="px-5 py-3">Retry once, then fall back</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Bad request</td><td className="px-5 py-3">Missing or wrong argument</td><td className="px-5 py-3">No</td><td className="px-5 py-3">Fix the call, do not repeat it</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Permission denied</td><td className="px-5 py-3">No access to the file</td><td className="px-5 py-3">No</td><td className="px-5 py-3">Stop or ask for access</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Wrong result</td><td className="px-5 py-3">Tool returns empty or nonsense</td><td className="px-5 py-3">Maybe</td><td className="px-5 py-3">Validate and try another tool</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Key idea:</strong> Do not treat every error the same. <strong className="text-white">Retry what is temporary. Fix or report what is permanent.</strong>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Retries
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">retry</strong> simply tries again. Done badly, it makes outages worse. Done well, it hides small glitches from the user. Use <strong className="text-white">exponential backoff</strong>: wait 1 second, then 2, then 4, and so on, with a small random delay (<em>jitter</em>) so many clients do not retry at the same instant.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> The flaky tool fails twice and succeeds on the third try. The agent waited 1 s and 2 s between attempts, 3 seconds of simulated time in total.
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Never retry blindly:</strong> Do not retry errors that cannot change, such as a bad argument. And never retry an action with side effects, such as a payment, unless it is <strong className="text-white">idempotent</strong> (safe to repeat).
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Fallbacks and Timeouts
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">fallback</strong> is a plan B when the main option keeps failing: another tool, cached data, a simpler method, or an honest message. A <strong className="text-white">timeout</strong> limits how long to wait, so one slow tool cannot freeze the whole agent.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Fallback</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Cached data</td><td className="px-5 py-3">Show yesterday&apos;s prices, marked as possibly old</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Alternative tool</td><td className="px-5 py-3">Search engine B if search engine A is down</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Simpler method</td><td className="px-5 py-3">Summarize titles only if the full page cannot be fetched</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Ask the user</td><td className="px-5 py-3">Request the missing information</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Honest failure</td><td className="px-5 py-3">Tell the user what failed and what was tried</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">In the code:</strong> The slow tool took 12 seconds against a 5 second limit, so the call is cut off with a clear timeout error that the agent can react to.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Recovery Strategies
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When something fails, the agent chooses a recovery strategy. Roughly from cheapest to most expensive:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Retry:</strong> The error looks temporary.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Repair the call:</strong> The model sent a bad argument. Return the error and let it correct the call.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Switch tools:</strong> Use a fallback or another route.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Replan:</strong> Change the plan around the broken subtask, keeping finished work.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Escalate:</strong> Ask a human or stop with a clear report.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Good error messages</div>
+        <div className="text-sm leading-relaxed text-slate-300">Return errors the model can act on, such as <em>missing argument: order_id</em>, instead of a long stack trace.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Preventing Infinite Loops
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The most expensive failure is an agent that <strong className="text-white">never stops</strong>. Defend in layers:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Guard</th>
+              <th className="px-5 py-3">How it works</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Maximum steps</td><td className="px-5 py-3">A hard limit on the number of loop iterations</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Repeat detection</td><td className="px-5 py-3">If the last three actions are identical, stop or change approach</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Budgets</td><td className="px-5 py-3">Limits on tokens, time and money per run</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">No-progress check</td><td className="px-5 py-3">If the state has not changed for several steps, escalate</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Retry caps</td><td className="px-5 py-3">A fixed number of retries per tool</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">In the code:</strong> The confused agent repeats the same search. The loop detector fires at step 3 and stops it. Without a guard, this would repeat until the budget is gone.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Four Defenses and a Recovery Ladder
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows the four defenses from the code, then orders the recovery strategies from cheapest to most expensive.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-rose-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-rose-300">Part 1 · Four Defenses in the Code</span>
+        <span className="text-xs text-slate-400">Each handles a different failure</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-4">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Retry</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Temporary error</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Fails, waits 1 s</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Fails, waits 2 s</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Third try works</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">fresh data</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Fallback</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Primary stays down</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Two attempts fail</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">cached data</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Timeout</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Tool too slow</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">12 s taken, limit 5 s</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Cut off with an error</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Loop guard</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Same action repeated</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">3 identical actions in a row</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Stopped at step 3</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Choosing a Recovery</span>
+        <span className="text-xs text-slate-400">Cheapest first</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-5">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Retry</div>
+          <div className="mt-2 text-lg font-bold text-white">Temporary</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Backoff and jitter.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Repair</div>
+          <div className="mt-2 text-lg font-bold text-white">Bad call</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Return the error.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Switch</div>
+          <div className="mt-2 text-lg font-bold text-white">Tool down</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Fallback tool.</div>
+        </div>
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Replan</div>
+          <div className="mt-2 text-lg font-bold text-white">Broken step</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Keep finished work.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Escalate</div>
+          <div className="mt-2 text-lg font-bold text-white">Cannot fix</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Ask a human.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-rose-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why retries need jitter</span>
+          <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs text-rose-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If a thousand clients all retry at exactly 1 s, 2 s and 4 s, they hit the recovering service together and knock it down again. A small random delay spreads them out.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 maps each failure to its defense. Part 2 is a ladder you climb only as far as needed. Open the bar to learn why jitter matters.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Retries, Fallbacks, Timeouts and a Loop Guard
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script uses a fake clock so it runs instantly. It retries a flaky tool with exponential backoff, falls back to cached data when the primary tool stays down, cuts off a slow tool with a timeout, and detects an agent repeating the same action.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">error_handling.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># Error handling: retries with backoff, fallbacks, timeouts and loop detection</span>
+            <span className="block text-cyan-300">class FakeClock:                      # so the demo runs instantly instead of really waiting</span>
+            <span className="block text-cyan-300">    def &#95;&#95;init&#95;&#95;(self):</span>
+            <span className="block">        self.now = 0</span>
+            <span className="block text-cyan-300">    def sleep(self, seconds):</span>
+            <span className="block">        self.now += seconds</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">clock = FakeClock()</span>
+            <span className="block">attempts = &#123;&quot;flaky&quot;: 0&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def flaky&#95;tool():                     # fails twice, then works</span>
+            <span className="block">    attempts&#91;&quot;flaky&quot;&#93; += 1</span>
+            <span className="block">    if attempts&#91;&quot;flaky&quot;&#93; &lt; 3:</span>
+            <span className="block">        raise ConnectionError(&quot;503 service unavailable&quot;)</span>
+            <span className="block">    return &quot;fresh data&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def with&#95;retry(fn, max&#95;attempts=4, base&#95;delay=1):</span>
+            <span className="block">    for attempt in range(1, max&#95;attempts + 1):</span>
+            <span className="block">        try:</span>
+            <span className="block">            return fn()</span>
+            <span className="block">        except ConnectionError as error:</span>
+            <span className="block">            if attempt == max&#95;attempts:</span>
+            <span className="block">                raise</span>
+            <span className="block">            delay = base&#95;delay &#42; 2 &#42;&#42; (attempt - 1)        # 1, 2, 4 seconds...</span>
+            <span className="block">            print(&quot;  attempt&quot;, attempt, &quot;failed (&quot; + str(error) + &quot;), waiting&quot;, delay, &quot;s&quot;)</span>
+            <span className="block">            clock.sleep(delay)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;1. Retry with backoff -&gt;&quot;, with&#95;retry(flaky&#95;tool), &quot;| simulated waiting:&quot;, clock.now, &quot;s&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def primary&#95;tool():</span>
+            <span className="block">    raise ConnectionError(&quot;primary down&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def fallback&#95;tool():</span>
+            <span className="block">    return &quot;cached data (may be old)&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def with&#95;fallback():</span>
+            <span className="block">    try:</span>
+            <span className="block">        return with&#95;retry(primary&#95;tool, max&#95;attempts=2)</span>
+            <span className="block">    except ConnectionError:</span>
+            <span className="block">        return fallback&#95;tool()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;2. Fallback -&gt;&quot;, with&#95;fallback())</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def slow&#95;tool():</span>
+            <span className="block">    return &quot;report&quot;, 12                                    # result and the seconds it took</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def with&#95;timeout(tool, limit):</span>
+            <span className="block">    result, seconds = tool()</span>
+            <span className="block">    if seconds &gt; limit:</span>
+            <span className="block">        raise TimeoutError(&quot;took &quot; + str(seconds) + &quot;s, limit is &quot; + str(limit) + &quot;s&quot;)</span>
+            <span className="block">    return result</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">try:</span>
+            <span className="block">    with&#95;timeout(slow&#95;tool, limit=5)</span>
+            <span className="block">except TimeoutError as error:</span>
+            <span className="block">    print(&quot;3. Timeout -&gt;&quot;, error)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def detect&#95;loop(actions, window=3):</span>
+            <span className="block">    last = actions&#91;-window:&#93;</span>
+            <span className="block">    return len(last) == window and len(set(last)) == 1</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">actions = &#91;&#93;</span>
+            <span className="block">for step in range(1, 10):</span>
+            <span className="block">    actions.append(&quot;search:weather today&quot;)                 # a confused agent repeats itself</span>
+            <span className="block">    if detect&#95;loop(actions):</span>
+            <span className="block">        print(&quot;4. Loop detected at step&quot;, step, &quot;-&gt; stop and change approach&quot;)</span>
+            <span className="block">        break</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>  attempt 1 failed (503 service unavailable), waiting 1 s</div>
+          <div>  attempt 2 failed (503 service unavailable), waiting 2 s</div>
+          <div>1. Retry with backoff -&gt; fresh data | simulated waiting: 3 s</div>
+          <div>  attempt 1 failed (primary down), waiting 1 s</div>
+          <div>2. Fallback -&gt; cached data (may be old)</div>
+          <div>3. Timeout -&gt; took 12s, limit is 5s</div>
+          <div>4. Loop detected at step 3 -&gt; stop and change approach</div>
+        </div>
+      </div>
+      <div>
+        Each of the four defenses fires on its own kind of failure: the retry recovers a temporary error, the fallback covers a longer outage, the timeout bounds slow work, and the loop detector stops the repeating agent. Together they turn crashes into controlled outcomes.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Which error should an agent NOT retry?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag13-q1-a" name="ag13-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag13-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) A bad argument that will fail every time</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Permanent errors need a fix, not a repeat.</div>
+          </div>
+          <div>
+            <input id="ag13-q1-b" name="ag13-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag13-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) A 503 service unavailable</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> This is usually temporary.</div>
+          </div>
+          <div>
+            <input id="ag13-q1-c" name="ag13-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag13-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) A rate limit</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Wait and retry.</div>
+          </div>
+          <div>
+            <input id="ag13-q1-d" name="ag13-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag13-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) A short network glitch</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Retrying is appropriate.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What does exponential backoff mean?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag13-q2-a" name="ag13-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag13-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Waiting longer after each failed attempt, such as 1, 2, 4 seconds</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It gives the service time to recover.</div>
+          </div>
+          <div>
+            <input id="ag13-q2-b" name="ag13-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag13-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Retrying as fast as possible</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That can worsen an outage.</div>
+          </div>
+          <div>
+            <input id="ag13-q2-c" name="ag13-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag13-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Waiting the same time every time</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is a fixed delay.</div>
+          </div>
+          <div>
+            <input id="ag13-q2-d" name="ag13-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag13-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Never retrying</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Backoff is a way of retrying.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Classify failures: temporary errors get retries, permanent errors need a fix or a report.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use exponential backoff with jitter, and retry only safe or idempotent actions.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Fallbacks give a plan B: cached data, another tool, a simpler method or an honest message.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Timeouts stop one slow tool from freezing the agent.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Recovery goes from retry to repair, switch, replan and escalate.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Prevent infinite loops with step limits, repeat detection, budgets and retry caps.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Reliability in One Line</div>
+        <div className="text-center font-bold text-white">
+          Expect failure → classify it → retry or fall back → replan or escalate → never loop forever
+        </div>
+      </div>
+      <div>
+        Resilient agents turn most failures into small delays instead of broken tasks.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Some actions should not happen without a person&apos;s say-so. In <strong className="text-white">Human-in-the-Loop and Guardrails</strong> you will learn approvals, permissions and validation.
+      </div>
+    </div>
+  </section>
+
+</div>

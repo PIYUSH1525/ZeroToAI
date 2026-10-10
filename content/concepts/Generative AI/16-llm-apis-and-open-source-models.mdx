@@ -1,0 +1,439 @@
+---
+title: "LLM APIs and Open-Source Models"
+slug: "16-llm-apis-and-open-source-models"
+order: 16
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Beginner"
+readTime: "28 min"
+description: "Learn how to call an LLM from code: messages and roles, token pricing, API key safety, retries with backoff, and how to choose between hosted APIs and open-weight models that you run yourself."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> An <strong className="text-white">LLM API</strong> is a stateless request and response: you send messages, you get a completion, you pay per token. Keep keys secret, plan for failures, and choose between <strong className="text-white">hosted</strong> and <strong className="text-white">open-weight</strong> models based on cost, privacy and control.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: What Is an LLM API?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        An <strong className="text-white">API</strong> (Application Programming Interface) lets your code talk to a model that runs on someone else&apos;s servers. You send a request over the internet and get the model&apos;s answer back. You do not manage GPUs, you only pay for what you use.
+      </div>
+      <div>
+        Almost every provider uses the same basic idea: you send a list of <strong className="text-white">messages</strong> and settings, and you receive a <strong className="text-white">completion</strong>.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Build the request:</strong> A JSON body with the model name, the messages and settings such as temperature and max tokens.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Send it securely:</strong> An HTTPS call with your secret API key in a header.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Read the response:</strong> The reply text, the reason it stopped, and how many tokens were used.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Handle problems:</strong> Rate limits, timeouts and errors need retries and clear messages.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Messages, Roles and Settings
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Field</th>
+              <th className="px-5 py-3">What it does</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">model</td><td className="px-5 py-3">Which model should answer</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">messages</td><td className="px-5 py-3">The conversation: a list of role and content pairs</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">system role</td><td className="px-5 py-3">Standing instructions: tone, rules, persona</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">user role</td><td className="px-5 py-3">What the person asked</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">assistant role</td><td className="px-5 py-3">Earlier answers, so the model sees the history</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">temperature / top_p</td><td className="px-5 py-3">How random the answer is (see the sampling lesson)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">max_tokens</td><td className="px-5 py-3">A limit on the length of the answer</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">stream</td><td className="px-5 py-3">Send the answer piece by piece, so users see text appear immediately</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Remember:</strong> The API is <strong className="text-white">stateless</strong>. The model does not remember your last call. You must send the earlier messages again each time.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Cost, Speed and Keys
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Providers bill by <strong className="text-white">tokens</strong>, usually per million, with separate prices for <strong className="text-white">input</strong> and <strong className="text-white">output</strong> tokens. Output tokens are normally more expensive. A quick estimate:
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\text{cost} = \frac{\text{input tokens} \times \text{input price} + \text{output tokens} \times \text{output price}}{1{,}000{,}000}$$
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Protect your API key:</strong> Treat it like a password. Keep it in an environment variable on a <strong className="text-white">server</strong>. Never put it in browser code, a public repository or a mobile app. Anyone who has it can spend your money.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Ways to save money</div>
+        <div className="text-sm leading-relaxed text-slate-300">Choose the smallest model that does the job, shorten prompts, cap max tokens, cache repeated prefixes, and send simple tasks to cheaper models.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Reliability, Rate Limits and Retries
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Networks fail and busy servers say <em>slow down</em>. A production app must expect this:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Problem</th>
+              <th className="px-5 py-3">Typical response</th>
+              <th className="px-5 py-3">What your code should do</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Rate limit (HTTP 429)</td><td className="px-5 py-3">Too many requests</td><td className="px-5 py-3">Wait and retry with <strong className="text-white">exponential backoff</strong>: 1, 2, 4, 8 seconds</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Server error (5xx)</td><td className="px-5 py-3">Provider problem</td><td className="px-5 py-3">Retry a few times, then show a friendly message</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Timeout</td><td className="px-5 py-3">No answer in time</td><td className="px-5 py-3">Set a timeout and retry once or twice</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Invalid request (4xx)</td><td className="px-5 py-3">Your request is wrong</td><td className="px-5 py-3">Do not retry. Fix the request</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Context too long</td><td className="px-5 py-3">Prompt exceeds the window</td><td className="px-5 py-3">Shorten or summarize before sending</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Good practice:</strong> Add a little random delay (<em>jitter</em>) to each wait so many clients do not retry at exactly the same moment.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Open-Weight Models and Choosing Between Them
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Besides hosted APIs there are <strong className="text-white">open-weight</strong> models, such as the Llama, Mistral, Qwen and Gemma families, whose trained weights you can download and run yourself. <em>Open weights</em> is not always the same as <em>open source</em>: always read the <strong className="text-white">license</strong>, because some limit commercial use or large-scale deployment.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Question</th>
+              <th className="px-5 py-3">Hosted API</th>
+              <th className="px-5 py-3">Self-hosted open model</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Setup effort</td><td className="px-5 py-3">Minutes</td><td className="px-5 py-3">Hours to days (GPU, serving software)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Cost pattern</td><td className="px-5 py-3">Pay per token, nothing when idle</td><td className="px-5 py-3">Pay for hardware even when idle</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Privacy</td><td className="px-5 py-3">Data goes to the provider</td><td className="px-5 py-3">Data stays on your machines</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Control</td><td className="px-5 py-3">Limited to provider settings</td><td className="px-5 py-3">Full: fine-tune, quantize, modify</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Top quality</td><td className="px-5 py-3">Often the strongest models</td><td className="px-5 py-3">Strong and improving, size dependent</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Tools to run models yourself</div>
+        <div className="text-sm leading-relaxed text-slate-300">Weights are commonly shared on the Hugging Face Hub. Popular ways to run them include <strong className="text-white">llama.cpp</strong> and <strong className="text-white">Ollama</strong> for a laptop or single machine, and <strong className="text-white">vLLM</strong> for high-throughput servers.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The API Journey and the Hosting Choice
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure traces one request from your server to the provider and back, then compares three ways to get a model.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-emerald-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 1 · One API Call</span>
+        <span className="text-xs text-slate-400">From your code to an answer</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Your side</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Client</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Build JSON: model, messages, settings</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Add the secret API key (server side)</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Send over HTTPS</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Request leaves your server</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Provider side</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Server</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Check key and limits</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Run the model on GPUs</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Return text and token counts</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Response arrives</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 2 · Hosted or Self-Hosted?</span>
+        <span className="text-xs text-slate-400">Choose by need</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Hosted API</div>
+          <div className="mt-2 text-lg font-bold text-white">Fast start</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Best when you want quality and zero setup.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Open model, your GPU</div>
+          <div className="mt-2 text-lg font-bold text-white">Control</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Best for privacy, customization, steady heavy use.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Hybrid</div>
+          <div className="mt-2 text-lg font-bold text-white">Both</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Cheap local model for easy tasks, hosted model for hard ones.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-emerald-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see the retry rule</span>
+          <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If a call fails with 429 or a server error, wait 1 second and retry, then 2, then 4, doubling each time up to a limit, with a little random jitter. Never retry requests that are simply wrong (4xx). The code below shows the loop.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows who does what in a single call. Part 2 compares hosted, self-hosted and hybrid setups. Open the bar for the retry rule.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Requests, Cost and Retries
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script builds a chat-style request as JSON (no network or key needed), estimates a monthly bill using example prices, and shows retry with exponential backoff against a simulated busy server. The prices are made-up examples, not real quotes.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">llm_api_basics.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import json</span>
+            <span className="block">import random</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. What a chat API request really is: a JSON body (no network needed to build it)</span>
+            <span className="block">request = &#123;</span>
+            <span className="block">    &quot;model&quot;: &quot;example-model&quot;,</span>
+            <span className="block">    &quot;messages&quot;: &#91;</span>
+            <span className="block">        &#123;&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: &quot;You are a concise assistant.&quot;&#125;,</span>
+            <span className="block">        &#123;&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Explain what an API key is in one sentence.&quot;&#125;,</span>
+            <span className="block">    &#93;,</span>
+            <span className="block">    &quot;temperature&quot;: 0.2,</span>
+            <span className="block">    &quot;max&#95;tokens&quot;: 100,</span>
+            <span className="block">&#125;</span>
+            <span className="block">print(&quot;Request body is&quot;, len(json.dumps(request)), &quot;characters of JSON with keys:&quot;, list(request))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Estimating the bill: providers charge per million tokens, input and output separately</span>
+            <span className="block text-cyan-300">def cost&#95;usd(input&#95;tokens, output&#95;tokens, in&#95;price, out&#95;price):</span>
+            <span className="block">    return (input&#95;tokens &#42; in&#95;price + output&#95;tokens &#42; out&#95;price) / 1&#95;000&#95;000</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">calls, in&#95;tok, out&#95;tok = 100&#95;000, 800, 300</span>
+            <span className="block">for name, in&#95;p, out&#95;p in &#91;(&quot;small model (example prices)&quot;, 0.15, 0.60), (&quot;large model (example prices)&quot;, 3.00, 15.00)&#93;:</span>
+            <span className="block">    print(name, &quot;-&gt; USD per month:&quot;, round(calls &#42; cost&#95;usd(in&#95;tok, out&#95;tok, in&#95;p, out&#95;p), 2))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Retry with exponential backoff when the server is busy</span>
+            <span className="block">random.seed(1)</span>
+            <span className="block text-cyan-300">def flaky&#95;call(attempt):</span>
+            <span className="block">    if random.random() &lt; 0.6:</span>
+            <span className="block">        raise RuntimeError(&quot;429 Too Many Requests&quot;)</span>
+            <span className="block">    return &quot;ok&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def call&#95;with&#95;retry(max&#95;attempts=6):</span>
+            <span className="block">    wait = 1</span>
+            <span className="block">    for attempt in range(1, max&#95;attempts + 1):</span>
+            <span className="block">        try:</span>
+            <span className="block">            return flaky&#95;call(attempt), attempt</span>
+            <span className="block">        except RuntimeError:</span>
+            <span className="block">            print(&quot;  attempt&quot;, attempt, &quot;failed, waiting&quot;, wait, &quot;seconds&quot;)</span>
+            <span className="block">            wait &#42;= 2                                   # 1, 2, 4, 8 ... seconds</span>
+            <span className="block">    return &quot;gave up&quot;, max&#95;attempts</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">result, attempts = call&#95;with&#95;retry()</span>
+            <span className="block">print(&quot;Result:&quot;, result, &quot;after&quot;, attempts, &quot;attempt(s)&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Request body is 218 characters of JSON with keys: &#91;&apos;model&apos;, &apos;messages&apos;, &apos;temperature&apos;, &apos;max&#95;tokens&apos;&#93;</div>
+          <div>small model (example prices) -&gt; USD per month: 30.0</div>
+          <div>large model (example prices) -&gt; USD per month: 690.0</div>
+          <div>  attempt 1 failed, waiting 1 seconds</div>
+          <div>Result: ok after 2 attempt(s)</div>
+        </div>
+      </div>
+      <div>
+        The cost comparison shows why model choice matters: with the same traffic, the larger model costs about 23 times more in this example. In the retry demo the first attempt fails, the code waits, and the second succeeds.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Where should you keep your API key?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="api-q1-a" name="api-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="api-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) In an environment variable on your server</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Keys are secrets. Server-side storage keeps them out of the browser and the code repository.</div>
+          </div>
+          <div>
+            <input id="api-q1-b" name="api-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="api-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) In your front-end JavaScript</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Anyone can read browser code.</div>
+          </div>
+          <div>
+            <input id="api-q1-c" name="api-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="api-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) In a public GitHub repository</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Public keys get stolen and abused quickly.</div>
+          </div>
+          <div>
+            <input id="api-q1-d" name="api-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="api-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) In the prompt text</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Prompts can leak.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What should you do after a 429 Too Many Requests error?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="api-q2-a" name="api-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="api-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Wait and retry, increasing the wait each time (exponential backoff)</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Backoff gives the server time to recover.</div>
+          </div>
+          <div>
+            <input id="api-q2-b" name="api-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="api-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Immediately send the request again in a tight loop</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That makes the overload worse.</div>
+          </div>
+          <div>
+            <input id="api-q2-c" name="api-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="api-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Give up forever</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The error is usually temporary.</div>
+          </div>
+          <div>
+            <input id="api-q2-d" name="api-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="api-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Change the model name randomly</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The model name is not the cause.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A chat API takes messages and settings and returns a completion plus token usage.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The API is stateless: send the conversation history again with every call.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Cost = tokens × price per million, with different prices for input and output.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Keep API keys on the server in environment variables and never in front-end code.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Retry rate-limit and server errors with exponential backoff; never retry invalid requests.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Open-weight models give privacy and control but need hardware and a careful reading of the license.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">APIs in One Line</div>
+        <div className="text-center font-bold text-white">
+          Messages + settings → HTTPS call with a secret key → completion → handle errors and cost
+        </div>
+      </div>
+      <div>
+        With an API key and a few lines of code you can build real products. The model choice then becomes an engineering trade-off between quality, price, speed and privacy.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Your app must read the answer, not just show it. In <strong className="text-white">Structured Outputs and Tool Calling</strong> you will learn how to get reliable JSON and let the model use tools safely.
+      </div>
+    </div>
+  </section>
+
+</div>

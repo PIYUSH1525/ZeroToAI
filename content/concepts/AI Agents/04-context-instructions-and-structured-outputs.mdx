@@ -1,0 +1,469 @@
+---
+title: "Context, Instructions and Structured Outputs"
+slug: "04-context-instructions-and-structured-outputs"
+order: 4
+category: "AI Agents"
+subcategory: "Foundations"
+difficulty: "Beginner"
+readTime: "28 min"
+description: "Learn how to steer an agent with system instructions and prompts, manage the context that fills the model window, and get reliable structured outputs and tool-call responses from the model."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Every model call in an agent contains <strong className="text-white">instructions</strong>, <strong className="text-white">context</strong> and the <strong className="text-white">latest input</strong>. Good agents keep instructions clear, keep context <strong className="text-white">small and relevant</strong>, and demand <strong className="text-white">structured outputs</strong> so code can read the model&apos;s decisions.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: System Instructions
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The <strong className="text-white">system instructions</strong> are the standing rules of the agent. They are sent at the start of every model call and tell the model <strong className="text-white">who it is, what it may do, and what it must never do</strong>.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Part</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Role</td><td className="px-5 py-3">You are a support agent for an online shop.</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Goal</td><td className="px-5 py-3">Resolve the customer&apos;s order question using the tools.</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Rules</td><td className="px-5 py-3">Never reveal internal notes. Ask before issuing a refund.</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Tools guidance</td><td className="px-5 py-3">Use lookup_order for any question about shipping.</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Output format</td><td className="px-5 py-3">Reply with JSON only: a tool call or an answer.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Tip:</strong> Be specific and positive. <em>Always confirm the order ID before looking it up</em> works better than <em>do not be careless</em>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Agent Prompts
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A model call in an agent is built from several pieces that your code assembles every turn:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">System instructions:</strong> The fixed rules.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Key facts:</strong> Things that must always be known, such as the customer name.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">History:</strong> Earlier messages and tool results.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">The newest input:</strong> The user message or the latest tool result.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Remember:</strong> The model has no memory of its own between calls. Whatever is not in this assembled prompt, <strong className="text-white">the model does not know</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Context Management
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The context window is limited and every token costs money and time. Agents add tool results to the history on every step, so context grows quickly. Good <strong className="text-white">context management</strong> keeps what matters:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Technique</th>
+              <th className="px-5 py-3">What it does</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Keep the system prompt and newest message</td><td className="px-5 py-3">Never drop the essentials</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Trim the oldest history first</td><td className="px-5 py-3">Cheapest way to stay under budget</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Summarize old steps</td><td className="px-5 py-3">Keeps the gist in fewer tokens</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Shorten tool results</td><td className="px-5 py-3">Return only needed fields, not whole pages</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Pin key facts</td><td className="px-5 py-3">Facts survive even when history is trimmed</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Rule of thumb:</strong> More context is not better context. Give the model <strong className="text-white">exactly what it needs for the next decision</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Structured Outputs
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Your loop must read the model&apos;s decision with code, so the reply has to follow a <strong className="text-white">fixed format</strong>, usually JSON. For an agent there are two kinds of reply:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Reply type</th>
+              <th className="px-5 py-3">Shape</th>
+              <th className="px-5 py-3">What your code does</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Tool call</td><td className="px-5 py-3">A tool name plus an arguments object</td><td className="px-5 py-3">Validate, run the tool, continue the loop</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Final answer</td><td className="px-5 py-3">An answer field</td><td className="px-5 py-3">Stop the loop and return it</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        Providers offer JSON mode and schema-constrained output to make the format reliable. Even then, <strong className="text-white">validate</strong> every reply: parse it, check the required keys, and handle failures by retrying or asking the model to fix its reply.
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Valid shape is not correct content.</strong> A reply can have perfect JSON and still ask for the wrong tool. Check the values too.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Tool-Call Responses
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        After your code runs a tool, the result goes back to the model as a <strong className="text-white">tool message</strong> linked to the call. Its design affects how well the agent continues:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Good practice</th>
+              <th className="px-5 py-3">Why</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Include the tool name and a clear status</td><td className="px-5 py-3">The model knows which call this answers</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Return compact JSON, not a whole web page</td><td className="px-5 py-3">Saves tokens and avoids confusing the model</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Put errors in the result, not exceptions</td><td className="px-5 py-3">The model can recover</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Mark untrusted text clearly</td><td className="px-5 py-3">Helps defend against injected instructions</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Truncate and say so</td><td className="px-5 py-3">Tell the model when data was cut off</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Looking ahead</div>
+        <div className="text-sm leading-relaxed text-slate-300">Tool results can contain hostile text. A later lesson on agent security covers how to treat tool output as data and never as instructions.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: What Goes Into the Prompt and How Replies Are Read
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows the four pieces that make up every model call, then the reply shapes your code must handle.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-amber-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-300">Part 1 · What Goes Into One Model Call</span>
+        <span className="text-xs text-slate-400">Assembled fresh every turn</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-4">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">System</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Rules</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Role, rules, format</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Always included</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Facts</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Pinned</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Customer, order id</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Always included</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">History</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Trimmed</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Old messages and tool results</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Oldest dropped first</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Newest</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Latest input</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">User message or tool result</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Always included</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The Two Reply Shapes</span>
+        <span className="text-xs text-slate-400">Your code reads one of them</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Tool call</div>
+          <div className="mt-2 text-lg font-bold text-white">tool + arguments</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Validate, run, loop.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Final answer</div>
+          <div className="mt-2 text-lg font-bold text-white">answer</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Stop and return.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Invalid</div>
+          <div className="mt-2 text-lg font-bold text-white">anything else</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Retry or ask the model to fix it.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-amber-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why history is trimmed oldest first</span>
+          <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Recent messages usually matter most for the next decision, while very old ones cost tokens but rarely help. The code below keeps the system prompt, the pinned facts and the newest message, then fills the remaining budget with the most recent history.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows which parts are always kept and which are trimmed. Part 2 shows the three outcomes when your code reads a reply. Open the bar to see why trimming starts with the oldest messages.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Building Context and Parsing Replies
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script assembles a prompt within a token budget (keeping the system prompt, pinned facts and newest message), then parses four model replies and builds the tool message sent back to the model.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">context_and_structured_replies.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import json</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def count&#95;tokens(text):</span>
+            <span className="block">    return round(len(text.split()) / 0.75)               # rough rule: 1 token is about 0.75 words</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">SYSTEM = (</span>
+            <span className="block">    &quot;You are a support agent for a shop. Use tools for order data. &quot;</span>
+            <span className="block">    &quot;Never reveal internal notes. Reply with JSON only.&quot;</span>
+            <span className="block">)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def build&#95;context(system, facts, history, user&#95;message, budget):</span>
+            <span className="block text-slate-500">    # Always keep: system instructions, key facts and the newest message. Trim old history first.</span>
+            <span className="block">    fixed = &#91;(&quot;system&quot;, system), (&quot;system&quot;, &quot;Facts: &quot; + &quot;; &quot;.join(facts)), (&quot;user&quot;, user&#95;message)&#93;</span>
+            <span className="block">    used = sum(count&#95;tokens(text) for &#95;, text in fixed)</span>
+            <span className="block">    kept = &#91;&#93;</span>
+            <span className="block">    for role, text in reversed(history):</span>
+            <span className="block">        cost = count&#95;tokens(text)</span>
+            <span className="block">        if used + cost &gt; budget:</span>
+            <span className="block">            break</span>
+            <span className="block">        kept.insert(0, (role, text))</span>
+            <span className="block">        used += cost</span>
+            <span className="block">    return fixed&#91;:2&#93; + kept + fixed&#91;2:&#93;, used</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">history = &#91;(&quot;user&quot;, &quot;hello &quot; &#42; 80), (&quot;assistant&quot;, &quot;hi there &quot; &#42; 60), (&quot;user&quot;, &quot;my order is late &quot; &#42; 10), (&quot;assistant&quot;, &quot;let me check &quot; &#42; 10)&#93;</span>
+            <span className="block">facts = &#91;&quot;customer name is Ana&quot;, &quot;order id is 4411&quot;&#93;</span>
+            <span className="block">full = sum(count&#95;tokens(t) for &#95;, t in history) + count&#95;tokens(SYSTEM)</span>
+            <span className="block">context, used = build&#95;context(SYSTEM, facts, history, &quot;Where is my order?&quot;, budget=150)</span>
+            <span className="block">print(&quot;History alone would use&quot;, full, &quot;tokens | trimmed context uses&quot;, used, &quot;| messages kept:&quot;, len(context))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def parse&#95;agent&#95;reply(text):</span>
+            <span className="block">    try:</span>
+            <span className="block">        data = json.loads(text)</span>
+            <span className="block">    except json.JSONDecodeError:</span>
+            <span className="block">        return None, &quot;not valid JSON&quot;</span>
+            <span className="block">    if &quot;tool&quot; in data and isinstance(data.get(&quot;arguments&quot;), dict):</span>
+            <span className="block">        return (&quot;tool&#95;call&quot;, data), &quot;ok&quot;</span>
+            <span className="block">    if &quot;answer&quot; in data:</span>
+            <span className="block">        return (&quot;answer&quot;, data), &quot;ok&quot;</span>
+            <span className="block">    return None, &quot;needs either tool+arguments or answer&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">replies = &#91;</span>
+            <span className="block">    &apos;&#123;&quot;tool&quot;: &quot;lookup&#95;order&quot;, &quot;arguments&quot;: &#123;&quot;order&#95;id&quot;: 4411&#125;&#125;&apos;,</span>
+            <span className="block">    &apos;&#123;&quot;answer&quot;: &quot;Your order ships tomorrow.&quot;&#125;&apos;,</span>
+            <span className="block">    &apos;Sure! I will look it up.&apos;,</span>
+            <span className="block">    &apos;&#123;&quot;tool&quot;: &quot;lookup&#95;order&quot;&#125;&apos;,</span>
+            <span className="block">&#93;</span>
+            <span className="block">for r in replies:</span>
+            <span className="block">    parsed, status = parse&#95;agent&#95;reply(r)</span>
+            <span className="block">    print(status.ljust(38), &quot;|&quot;, r&#91;:50&#93;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">tool&#95;result&#95;message = &#123;&quot;role&quot;: &quot;tool&quot;, &quot;name&quot;: &quot;lookup&#95;order&quot;, &quot;content&quot;: json.dumps(&#123;&quot;status&quot;: &quot;shipped&quot;, &quot;eta&#95;days&quot;: 1&#125;)&#125;</span>
+            <span className="block">print(&quot;Message sent back to the model:&quot;, tool&#95;result&#95;message)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>History alone would use 388 tokens | trimmed context uses 138 | messages kept: 5</div>
+          <div>ok                                     | &#123;&quot;tool&quot;: &quot;lookup&#95;order&quot;, &quot;arguments&quot;: &#123;&quot;order&#95;id&quot;:</div>
+          <div>ok                                     | &#123;&quot;answer&quot;: &quot;Your order ships tomorrow.&quot;&#125;</div>
+          <div>not valid JSON                         | Sure! I will look it up.</div>
+          <div>needs either tool+arguments or answer  | &#123;&quot;tool&quot;: &quot;lookup&#95;order&quot;&#125;</div>
+          <div>Message sent back to the model: &#123;&apos;role&apos;: &apos;tool&apos;, &apos;name&apos;: &apos;lookup&#95;order&apos;, &apos;content&apos;: &apos;&#123;&quot;status&quot;: &quot;shipped&quot;, &quot;eta&#95;days&quot;: 1&#125;&apos;&#125;</div>
+        </div>
+      </div>
+      <div>
+        Trimming cuts the prompt from 388 tokens of history to a short context that still contains everything essential. Only two of the four replies are usable: the others are not JSON or are missing the arguments, and your loop would retry them.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What should an agent always keep when trimming context?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag04-q1-a" name="ag04-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag04-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The system instructions, key facts and the newest message</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> These are essential for the next decision. Old history can go first.</div>
+          </div>
+          <div>
+            <input id="ag04-q1-b" name="ag04-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag04-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Only the oldest messages</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Old messages are the first to remove.</div>
+          </div>
+          <div>
+            <input id="ag04-q1-c" name="ag04-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag04-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Nothing, drop everything</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The model would lose its rules.</div>
+          </div>
+          <div>
+            <input id="ag04-q1-d" name="ag04-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag04-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Only tool results</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Instructions and the newest input are also required.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: A model reply is perfect JSON. What should your code still do?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag04-q2-a" name="ag04-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag04-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Validate the required fields and values before acting on it</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Valid shape does not guarantee the right tool or safe values.</div>
+          </div>
+          <div>
+            <input id="ag04-q2-b" name="ag04-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag04-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Run it immediately without checking</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Always validate.</div>
+          </div>
+          <div>
+            <input id="ag04-q2-c" name="ag04-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag04-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Throw it away</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Valid JSON is useful once validated.</div>
+          </div>
+          <div>
+            <input id="ag04-q2-d" name="ag04-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag04-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Convert it to plain text</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The structured form is what your code needs.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>System instructions state the agent&apos;s role, rules, tool guidance and output format.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Each model call is assembled from instructions, pinned facts, history and the newest input.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The model knows only what is in the prompt, so context management is essential.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Trim oldest history first, summarize old steps and shorten tool results.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Require structured replies (tool call or final answer) and always validate them.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Return compact, clearly labeled tool messages, and treat tool output as untrusted data.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Context in One Line</div>
+        <div className="text-center font-bold text-white">
+          Clear rules + only the context that matters + a strict reply format = a predictable agent
+        </div>
+      </div>
+      <div>
+        With instructions, tools and context under control, you are ready to build your first complete agent.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Time to put it all together. In <strong className="text-white">Building Your First AI Agent</strong> you will write a complete agent loop that takes a goal, uses tools and finishes multi-step tasks.
+      </div>
+    </div>
+  </section>
+
+</div>

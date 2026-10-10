@@ -1,0 +1,420 @@
+---
+title: "Corrective, Self and Adaptive RAG"
+slug: "corrective-self-adaptive-rag"
+order: 20
+category: "RAG"
+subcategory: "Advanced RAG"
+difficulty: "Advanced"
+readTime: "25 min"
+description: "Study RAG systems that evaluate and adapt their own retrieval: corrective RAG, self-reflective RAG, adaptive routing, quality checks and retry loops."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> A standard RAG pipeline never asks whether retrieval worked. It passes along whatever it found and trusts the model. <strong className="text-white">Corrective, self-reflective and adaptive RAG</strong> add judgment to the loop: grade what was retrieved, repair or replace it when it is poor, decide how much retrieval a question needs, and check the draft answer before showing it.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Intermediate: RAG That Checks Itself</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>In a plain pipeline, a bad retrieval produces a bad answer, silently. The ideas in this lesson add three kinds of control.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Corrective</div>
+          <div className="text-sm leading-7">Grade the retrieved passages. If they are poor, fix the retrieval or look somewhere else.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Self-reflective</div>
+          <div className="text-sm leading-7">The system critiques its own retrieval decisions and its own draft answer, and retries if the critique fails.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Adaptive</div>
+          <div className="text-sm leading-7">Choose the amount of retrieval effort per question: none, one search, or several steps.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5"><strong className="text-blue-300">Shared principle:</strong> put a checkpoint where a silent failure could happen, and give the system an alternative action when the check fails.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: Corrective RAG (CRAG)</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Corrective RAG</strong> adds a <strong className="text-white">retrieval evaluator</strong> between retrieval and generation. It scores how relevant the retrieved passages are to the question and sorts the result into one of three cases, each with its own action.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Verdict</th><th className="px-4 py-3">Meaning</th><th className="px-4 py-3">Action</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Correct</td><td className="px-4 py-3">The passages clearly answer the question</td><td className="px-4 py-3">Use them, optionally trimming irrelevant parts</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Ambiguous</td><td className="px-4 py-3">Partly relevant, not convincing</td><td className="px-4 py-3">Use with caution, or combine with another source</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Incorrect</td><td className="px-4 py-3">The passages do not help</td><td className="px-4 py-3">Discard them and fall back, for example to another index or a web search</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>The evaluator can be a small trained model, a reranker score with thresholds, or a language model prompt. Its decisions are only as good as its calibration, so thresholds must be tuned on labeled examples.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Self-RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Self-RAG</strong> is a research approach in which the language model itself learns to make retrieval decisions and to critique them. Instead of always retrieving, it decides whether retrieval is needed. After retrieval it judges whether each passage is relevant, and after writing it judges whether its answer is supported by the passages and useful.</div>
+      <div>In practice you can imitate this behavior with prompts and checks around a standard model: ask whether retrieval is needed, grade passages, draft, then verify. The trained version builds these judgments into the model, which can make them cheaper and more consistent.</div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Self-reflection loop:</strong> draft the answer, check that each claim is supported by the context, and if not, retry with a different query or different passages, up to a fixed number of attempts.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Adaptive RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Adaptive RAG</strong> classifies the incoming question and routes it to the cheapest strategy that is likely to work.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Question type</th><th className="px-4 py-3">Example</th><th className="px-4 py-3">Strategy</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Needs no knowledge base</td><td className="px-4 py-3">Hello, or a general language question</td><td className="px-4 py-3">Answer directly without retrieval</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Simple factual</td><td className="px-4 py-3">What is the refund policy?</td><td className="px-4 py-3">One retrieval step</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Complex or multi-hop</td><td className="px-4 py-3">Who manages the team that owns billing?</td><td className="px-4 py-3">Several retrieval steps</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>The router can be rules, a small classifier or a language model prompt. Routing saves money and time on easy questions and spends effort only where it helps. A wrong route is costly, though: sending a hard question down the cheap path produces a confident but incomplete answer.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Loops, Limits and the Cost of Judgment</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Checks and retries make a system more careful, but they have costs and failure modes of their own.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-orange-300">Latency and price</div>
+          <div className="text-sm leading-7">Every grader call, retry or fallback search adds time and money. Set a hard limit on attempts.</div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-rose-300">Grader errors</div>
+          <div className="text-sm leading-7">A grader that is too strict makes the system abstain on answerable questions. One that is too lenient lets weak evidence through. Measure both.</div>
+        </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-amber-300">Fallback risk</div>
+          <div className="text-sm leading-7">A web fallback brings text you do not control. Treat it as untrusted and label its source.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Define</strong> what counts as correct, ambiguous and incorrect, with thresholds tuned on labeled data.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Cap</strong> the number of retries and fallbacks per question.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Log</strong> every verdict and action so you can audit decisions.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Evaluate</strong> end-to-end quality and cost with and without the checks.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Grade, Route and Retry</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A shows the corrective decision paths. Panel B shows how the code below handled five questions. Panel C is a failure explorer for the grader.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel A · Three Verdicts, Three Actions</span><span className="text-xs text-slate-400">The retrieval evaluator decides</span></div>
+          <div className="grid gap-5 md:grid-cols-3">
+            <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-300">Correct</div>
+              <div><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Score high</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Passages answer the question</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Generate from them</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-amber-300">Ambiguous</div>
+              <div><span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-200">Score medium</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Partly relevant</div>
+              <div className="text-center text-amber-400">↓</div>
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Use with a warning or add a source</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-rose-300">Incorrect</div>
+              <div><span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Score low</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Passages do not help</div>
+              <div className="text-center text-rose-400">↓</div>
+              <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Fall back or abstain</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel B · Five Questions</span><span className="text-xs text-slate-400">From the code in section 7</span></div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-white/[0.04] text-slate-300">
+                <tr><th className="px-4 py-3 text-center">Question</th><th className="px-4 py-3 text-center">Route</th><th className="px-4 py-3 text-center">Grade</th><th className="px-4 py-3 text-center">Outcome</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300">
+                <tr><td className="px-4 py-3 text-center">hello</td><td className="px-4 py-3 text-center">no retrieval</td><td className="px-4 py-3 text-center">none</td><td className="px-4 py-3 text-center">direct reply</td></tr>
+                <tr><td className="px-4 py-3 text-center">what is the refund policy</td><td className="px-4 py-3 text-center">single</td><td className="px-4 py-3 text-center text-emerald-300">correct</td><td className="px-4 py-3 text-center">answered from the index</td></tr>
+                <tr><td className="px-4 py-3 text-center">how fast is express shipping</td><td className="px-4 py-3 text-center">single</td><td className="px-4 py-3 text-center text-amber-300">ambiguous</td><td className="px-4 py-3 text-center">answer marked low confidence</td></tr>
+                <tr><td className="px-4 py-3 text-center">when did the Atlas laptop launch</td><td className="px-4 py-3 text-center">single</td><td className="px-4 py-3 text-center text-rose-300">incorrect</td><td className="px-4 py-3 text-center">web fallback found it</td></tr>
+                <tr><td className="px-4 py-3 text-center">who won the match</td><td className="px-4 py-3 text-center">single</td><td className="px-4 py-3 text-center text-rose-300">incorrect</td><td className="px-4 py-3 text-center">honest abstention</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Grader Failures</span><span className="text-xs text-slate-400">Click a failure to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c20-grader-0" name="c20-grader" type="radio" className="peer sr-only" />
+              <label htmlFor="c20-grader-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">The grader is too strict</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-rose-300">Symptom:</strong> Answerable questions are refused</div>
+                <div><strong className="text-rose-300">Fix:</strong> Lower the threshold and recheck on labeled data</div>
+              </div>
+            </div>
+            <div>
+              <input id="c20-grader-1" name="c20-grader" type="radio" className="peer sr-only" />
+              <label htmlFor="c20-grader-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-amber-400/50 peer-checked:bg-amber-500/10 peer-checked:text-amber-300">The grader is too lenient</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-amber-300">Symptom:</strong> Weak passages produce confident wrong answers</div>
+                <div><strong className="text-amber-300">Fix:</strong> Raise the threshold, add answer verification</div>
+              </div>
+            </div>
+            <div>
+              <input id="c20-grader-2" name="c20-grader" type="radio" className="peer sr-only" />
+              <label htmlFor="c20-grader-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">The router picks the wrong path</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Symptom:</strong> Hard questions get shallow answers</div>
+                <div><strong className="text-orange-300">Fix:</strong> Improve the classifier, or default to deeper retrieval when unsure</div>
+              </div>
+            </div>
+            <div>
+              <input id="c20-grader-3" name="c20-grader" type="radio" className="peer sr-only" />
+              <label htmlFor="c20-grader-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Retries never end</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Symptom:</strong> High latency and cost</div>
+                <div><strong className="text-violet-300">Fix:</strong> Cap attempts and return the best result so far</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why abstaining is a valid outcome</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">A system that says it could not find a reliable source is more trustworthy than one that always answers. Corrective designs treat honest refusal as a correct action.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the rule, Panel B shows it in action, and Panel C reminds you that every judge can be wrong.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Routing, Grading, Fallback and a Retry Check</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program has an internal knowledge base and a separate set of fallback documents standing in for a web search. A router sends greetings straight to a reply, and everything else to retrieval. A grader turns the best match score into correct, ambiguous or incorrect, and each verdict triggers a different action: use the passage, warn about low confidence, fall back to the second source, or abstain. The last lines show a self-check: a draft answer is verified against the evidence, and a failing draft triggers a retry.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">corrective_rag.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">internal = [</span>
+            <span className="block">    &quot;Refunds are issued within 5 business days of an approved return.&quot;,</span>
+            <span className="block">    &quot;Standard shipping takes 5 to 7 business days.&quot;,</span>
+            <span className="block">]</span>
+            <span className="block">web = [</span>
+            <span className="block">    &quot;The Atlas laptop launched in October 2026 with 32 GB of memory.&quot;,</span>
+            <span className="block">]</span>
+            <span className="block">stop_words = set([&quot;the&quot;, &quot;is&quot;, &quot;are&quot;, &quot;a&quot;, &quot;what&quot;, &quot;when&quot;, &quot;did&quot;, &quot;of&quot;, &quot;for&quot;, &quot;an&quot;, &quot;about&quot;, &quot;me&quot;, &quot;tell&quot;])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def stem(word):</span>
+            <span className="block">    return word[:-1] if word.endswith(&quot;s&quot;) and len(word) &gt; 3 else word</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def words(text):</span>
+            <span className="block">    cleaned = &quot;&quot;.join(ch if ch.isalnum() or ch == &quot; &quot; else &quot; &quot; for ch in text.lower()).split()</span>
+            <span className="block">    return set(stem(w) for w in cleaned if w not in stop_words)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def best(query, docs):</span>
+            <span className="block">    q = words(query)</span>
+            <span className="block">    scored = [(len(q &amp; words(d)) / len(q), d) for d in docs]</span>
+            <span className="block">    return max(scored)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def route(query):</span>
+            <span className="block">    greetings = [&quot;hello&quot;, &quot;hi&quot;, &quot;thanks&quot;]</span>
+            <span className="block">    if query.lower().strip(&quot; ?!&quot;) in greetings:</span>
+            <span className="block">        return &quot;no retrieval&quot;</span>
+            <span className="block">    if &quot; and &quot; in query.lower():</span>
+            <span className="block">        return &quot;multi-step&quot;</span>
+            <span className="block">    return &quot;single retrieval&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def grade(score):</span>
+            <span className="block">    if score &gt;= 0.5:</span>
+            <span className="block">        return &quot;correct&quot;</span>
+            <span className="block">    if score &gt;= 0.25:</span>
+            <span className="block">        return &quot;ambiguous&quot;</span>
+            <span className="block">    return &quot;incorrect&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def answer(query):</span>
+            <span className="block">    path = route(query)</span>
+            <span className="block">    if path == &quot;no retrieval&quot;:</span>
+            <span className="block">        return path, &quot;-&quot;, &quot;Hello! How can I help?&quot;</span>
+            <span className="block">    score, doc = best(query, internal)</span>
+            <span className="block">    verdict = grade(score)</span>
+            <span className="block">    if verdict == &quot;correct&quot;:</span>
+            <span className="block">        return path, verdict, doc</span>
+            <span className="block">    if verdict == &quot;ambiguous&quot;:</span>
+            <span className="block">        return path, verdict, doc + &quot; (low confidence, please verify)&quot;</span>
+            <span className="block">    web_score, web_doc = best(query, web)</span>
+            <span className="block">    if web_score &gt;= 0.25:</span>
+            <span className="block">        return path, verdict + &quot; -&gt; web fallback&quot;, web_doc</span>
+            <span className="block">    return path, verdict + &quot; -&gt; abstain&quot;, &quot;I could not find a reliable source.&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for q in [&quot;hello&quot;, &quot;what is the refund policy&quot;, &quot;how fast is express shipping&quot;, &quot;when did the Atlas laptop launch&quot;, &quot;who won the match&quot;]:</span>
+            <span className="block">    path, verdict, text = answer(q)</span>
+            <span className="block">    print(&quot;Q:&quot;, q)</span>
+            <span className="block">    print(&quot;   route:&quot;, path, &quot;| grade:&quot;, verdict)</span>
+            <span className="block">    print(&quot;   answer:&quot;, text)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def supported(claim, evidence):</span>
+            <span className="block">    c = words(claim)</span>
+            <span className="block">    return len(c &amp; words(evidence)) / len(c) &gt;= 0.6</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">evidence = internal[0]</span>
+            <span className="block">drafts = [&quot;Refunds are instant.&quot;, &quot;Refunds are issued within 5 business days.&quot;]</span>
+            <span className="block">for attempt, claim in enumerate(drafts, start=1):</span>
+            <span className="block">    ok = supported(claim, evidence)</span>
+            <span className="block">    print(&quot;Draft&quot;, attempt, &quot;supported:&quot;, ok, &quot;-&gt;&quot;, claim)</span>
+            <span className="block">    if ok:</span>
+            <span className="block">        break</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Q: hello</span>
+            <span className="block">   route: no retrieval | grade: -</span>
+            <span className="block">   answer: Hello! How can I help?</span>
+            <span className="block">Q: what is the refund policy</span>
+            <span className="block">   route: single retrieval | grade: correct</span>
+            <span className="block">   answer: Refunds are issued within 5 business days of an approved return.</span>
+            <span className="block">Q: how fast is express shipping</span>
+            <span className="block">   route: single retrieval | grade: ambiguous</span>
+            <span className="block">   answer: Standard shipping takes 5 to 7 business days. (low confidence, please verify)</span>
+            <span className="block">Q: when did the Atlas laptop launch</span>
+            <span className="block">   route: single retrieval | grade: incorrect -&gt; web fallback</span>
+            <span className="block">   answer: The Atlas laptop launched in October 2026 with 32 GB of memory.</span>
+            <span className="block">Q: who won the match</span>
+            <span className="block">   route: single retrieval | grade: incorrect -&gt; abstain</span>
+            <span className="block">   answer: I could not find a reliable source.</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Draft 1 supported: False -&gt; Refunds are instant.</span>
+            <span className="block">Draft 2 supported: True -&gt; Refunds are issued within 5 business days.</span>
+          </code>
+        </pre>
+      </div>
+      <div>The refund question is graded correct. The express shipping question only partly matches, so the answer is returned with a low-confidence warning. The question about the Atlas laptop has no internal match, so the system falls back to the second source. The sports question has no match anywhere and gets an honest refusal. In the self-check, the first draft says refunds are instant, which the evidence does not support, so the loop rejects it and accepts the second draft. A real system uses models for grading and drafting, but the control flow is the same.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. What does the retrieval evaluator in corrective RAG decide?</div>
+        <div>
+          <input id="rag20-q1-a" name="rag20-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag20-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Which embedding model to use</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The evaluator grades results, it does not choose models.</div>
+        </div>
+        <div>
+          <input id="rag20-q1-b" name="rag20-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag20-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) How long the answer should be</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Length is not its job.</div>
+        </div>
+        <div>
+          <input id="rag20-q1-c" name="rag20-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag20-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) Whether the retrieved passages are correct, ambiguous or incorrect for the question</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Each verdict leads to a different action.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. What is the purpose of adaptive RAG routing?</div>
+        <div>
+          <input id="rag20-q2-a" name="rag20-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag20-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Spend retrieval effort only where the question needs it</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Easy questions use the cheap path, hard ones the deep path.</div>
+        </div>
+        <div>
+          <input id="rag20-q2-b" name="rag20-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag20-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Always use the most expensive path</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That wastes time and money on simple questions.</div>
+        </div>
+        <div>
+          <input id="rag20-q2-c" name="rag20-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag20-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Remove the knowledge base</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Routing still uses retrieval when needed.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. Why should a retry loop have a hard limit?</div>
+        <div>
+          <input id="rag20-q3-a" name="rag20-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag20-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Models cannot be asked twice</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They can; it just costs more each time.</div>
+        </div>
+        <div>
+          <input id="rag20-q3-b" name="rag20-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag20-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Without it, latency and cost can grow without bound</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Cap attempts and return the best result so far.</div>
+        </div>
+        <div>
+          <input id="rag20-q3-c" name="rag20-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag20-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Retries always improve the answer</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They may not, which is why a limit is needed.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Plain pipelines never check retrieval quality; corrective, self-reflective and adaptive designs add checkpoints.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Corrective RAG grades retrieval as correct, ambiguous or incorrect and takes a different action for each.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Self-RAG makes the model decide when to retrieve and critique passages and its own output.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Adaptive RAG routes questions to no retrieval, one step or several steps by complexity.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Self-reflection loops draft, verify support, and retry within a fixed attempt limit.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Graders and routers can be wrong in both directions, so tune thresholds on labeled data and log every decision.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Honest abstention is a valid and valuable outcome.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">These designs move RAG from a pipeline that hopes to a system that checks. The checks are not free, and they are only as good as their judges, but they are what lets a system recover from bad retrieval or refuse politely instead of bluffing.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Route the question → Retrieve → Grade the evidence → Repair or fall back → Verify the answer</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Specialized RAG Architectures. You will explore hierarchical RAG, graph RAG, knowledge graphs, multi-document and multi-source designs, and RAG over structured data with SQL.</div>
+    </div>
+  </section>
+</div>

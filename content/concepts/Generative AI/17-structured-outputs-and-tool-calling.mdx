@@ -1,0 +1,473 @@
+---
+title: "Structured Outputs and Tool Calling"
+slug: "17-structured-outputs-and-tool-calling"
+order: 17
+category: "Generative AI"
+subcategory: "Prompting & Alignment"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Learn how to get reliable JSON from a model with schemas and constrained decoding, how tool calling lets a model request actions that your code runs, and how to validate and secure everything the model returns."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Programs need <strong className="text-white">structure</strong>, not prose. <strong className="text-white">Structured outputs</strong> make the model answer in a schema you define, and <strong className="text-white">tool calling</strong> lets it request actions that <strong className="text-white">your code</strong> performs, as long as you validate and limit everything.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why Free Text Is Not Enough
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A chat answer written for a human is easy to read but hard for a program to use. Imagine your app asks a model to classify a review and the model replies <em>Sure! I think this one is positive, probably.</em> Your code cannot reliably pull the label out of that sentence.
+      </div>
+      <div>
+        <strong className="text-white">Structured outputs</strong> solve this by making the model reply in a fixed format, usually <strong className="text-white">JSON</strong> that follows a schema you define. <strong className="text-white">Tool calling</strong> goes one step further: the model can ask your program to <em>do</em> something, such as look up the weather or query a database.
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-rose-300">Free text</span>
+            <span className="rounded bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">Hard to parse</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Reply:</strong> <em>Sure! It seems positive.</em></div>
+            <div><strong className="text-white">Problem:</strong> Your code must guess where the answer is.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Structured</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Easy to parse</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Reply:</strong> a JSON object with label and confidence</div>
+            <div><strong className="text-white">Benefit:</strong> Your code reads fields directly.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: JSON and Schemas
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">schema</strong> describes the shape you expect: which fields exist, their types and which are required. For example, a classification result might need a text <code>label</code>, a number <code>confidence</code> and a list of <code>tags</code>.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Field</th>
+              <th className="px-5 py-3">Type</th>
+              <th className="px-5 py-3">Meaning</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">label</td><td className="px-5 py-3">string</td><td className="px-5 py-3">One of positive, neutral, negative</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">confidence</td><td className="px-5 py-3">number</td><td className="px-5 py-3">From 0 to 1</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">tags</td><td className="px-5 py-3">list of strings</td><td className="px-5 py-3">Topics mentioned in the review</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        There are three levels of strictness, from weakest to strongest:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Method</th>
+              <th className="px-5 py-3">How it works</th>
+              <th className="px-5 py-3">Reliability</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Ask nicely in the prompt</td><td className="px-5 py-3"><em>Reply with JSON only.</em></td><td className="px-5 py-3">Usually works, sometimes fails</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">JSON mode</td><td className="px-5 py-3">The provider forces syntactically valid JSON</td><td className="px-5 py-3">Valid JSON, but the fields may still be wrong</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Schema-constrained output</td><td className="px-5 py-3">The provider forces output that matches your exact schema</td><td className="px-5 py-3">Highest reliability</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: How Constrained Decoding Works
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Schema-constrained output does not rely on the model <em>choosing</em> to behave. At every step the system looks at the format rules and <strong className="text-white">blocks every token that would break them</strong>, by setting its probability to zero before sampling. If the schema says the next character must be a quote or a digit, no other token can be chosen.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Model scores tokens:</strong> As usual, it scores every token in the vocabulary.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Grammar filter:</strong> Tokens that would break the schema are removed.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Sample from what is left:</strong> Only valid tokens remain, so the result is always well-formed.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Important:</strong> A valid <strong className="text-white">format</strong> does not mean a <strong className="text-white">correct</strong> answer. The JSON can be perfectly shaped and still wrong. Always check the content, not only the shape.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Tool Calling, the Model Asks and Your Code Acts
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In <strong className="text-white">tool calling</strong> (also called function calling) you describe a set of tools to the model: a name, what it does, and a schema for its arguments. The model never runs anything itself. It only replies with <em>which tool to call and with what arguments</em>. Your program runs the tool and sends the result back.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">You describe the tools:</strong> For example get_weather(city).</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">User asks:</strong> <em>What is the weather in Delhi?</em></div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Model requests a call:</strong> It returns get_weather with city set to Delhi.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Your code runs it:</strong> You call your real weather function.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Result goes back:</strong> The model reads the result and writes the final answer.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Why this is powerful:</strong> Tools give a model fresh data, calculators, databases and actions. The model supplies the <strong className="text-white">language skill</strong>, your code supplies the <strong className="text-white">facts and actions</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Safety, Validation and Failure Handling
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Anything the model returns is <strong className="text-white">untrusted input</strong>, just like text typed by a stranger. Treat tool calls with the same care as a public web form:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Risk</th>
+              <th className="px-5 py-3">Defense</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Invalid or missing fields</td><td className="px-5 py-3">Validate every response against the schema and retry or repair on failure</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Wrong or dangerous arguments</td><td className="px-5 py-3">Check values (ranges, allowed lists) before running the tool</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Too much power</td><td className="px-5 py-3">Give each tool the minimum permission it needs. Prefer read-only tools</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Prompt injection through tool results</td><td className="px-5 py-3">Web pages or emails can contain hidden instructions. Treat tool output as data, never as commands</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Irreversible actions</td><td className="px-5 py-3">Ask the human to confirm before sending money, deleting data or emailing people</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Endless loops</td><td className="px-5 py-3">Limit the number of tool calls per request</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Parallel tool calls</div>
+        <div className="text-sm leading-relaxed text-slate-300">Some models can ask for several independent tools at once, for example the weather in two cities. Your code can run them together and return all the results in one go.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Tool Loop and the Three Gates
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows one full tool call in two turns, then the three checks every response should pass before your program trusts it.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-rose-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-rose-300">Part 1 · The Tool-Calling Loop</span>
+        <span className="text-xs text-slate-400">The model asks, your code acts</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Turn 1 · Decide</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Model</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">User: weather in Delhi?</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Model sees tool list: get_weather(city)</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Reply: call get_weather with city = Delhi</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Turn 2 · Answer</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Model again</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Your code ran the tool</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Result sent back: 33C, sunny</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Final text: It is 33C and sunny in Delhi</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Three Gates for Safe Output</span>
+        <span className="text-xs text-slate-400">Never trust, always check</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Gate 1 · Parse</div>
+          <div className="mt-2 text-lg font-bold text-white">Valid JSON?</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">If not, retry or ask the model to fix it.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Gate 2 · Validate</div>
+          <div className="mt-2 text-lg font-bold text-white">Matches the schema?</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Correct fields, types and allowed values.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Gate 3 · Authorize</div>
+          <div className="mt-2 text-lg font-bold text-white">Allowed to run?</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Check permissions and confirm risky actions.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-rose-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why valid is not the same as correct</span>
+          <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs text-rose-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">A schema guarantees shape, such as a number between 0 and 1. It cannot guarantee that the number is the right one. Add checks that use real data, for example confirming that a returned product id exists.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 follows the conversation: the model requests a tool, your code runs it, the model writes the answer. Part 2 lists the gates a response must pass. Open the bar for the difference between valid and correct.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Validator and a Tool-Calling Loop
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script validates three model replies against a small schema, then runs a complete tool-calling loop with a fake model so you can see every step without needing an API key.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">structured_output_and_tools.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import json</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. A tiny JSON-schema style validator for structured outputs</span>
+            <span className="block">schema = &#123;&quot;label&quot;: str, &quot;confidence&quot;: float, &quot;tags&quot;: list&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def validate(text):</span>
+            <span className="block">    try:</span>
+            <span className="block">        data = json.loads(text)</span>
+            <span className="block">    except json.JSONDecodeError as e:</span>
+            <span className="block">        return None, &quot;invalid JSON: &quot; + e.msg</span>
+            <span className="block">    for key, kind in schema.items():</span>
+            <span className="block">        if key not in data:</span>
+            <span className="block">            return None, &quot;missing key: &quot; + key</span>
+            <span className="block">        if not isinstance(data&#91;key&#93;, kind):</span>
+            <span className="block">            return None, &quot;wrong type for &quot; + key</span>
+            <span className="block">    return data, &quot;ok&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">answers = &#91;</span>
+            <span className="block">    &apos;&#123;&quot;label&quot;: &quot;positive&quot;, &quot;confidence&quot;: 0.93, &quot;tags&quot;: &#91;&quot;battery&quot;, &quot;screen&quot;&#93;&#125;&apos;,</span>
+            <span className="block">    &apos;&#123;&quot;label&quot;: &quot;positive&quot;, &quot;confidence&quot;: &quot;high&quot;, &quot;tags&quot;: &#91;&#93;&#125;&apos;,</span>
+            <span className="block">    &apos;Sure! Here is the JSON: &#123;&quot;label&quot;: &quot;positive&quot;&#125;&apos;,</span>
+            <span className="block">&#93;</span>
+            <span className="block">for a in answers:</span>
+            <span className="block">    data, status = validate(a)</span>
+            <span className="block">    print(status.ljust(34), &quot;|&quot;, a&#91;:45&#93;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. A tool-calling loop: the model asks for a tool, our code runs it, the result goes back</span>
+            <span className="block text-cyan-300">def get&#95;weather(city):</span>
+            <span className="block">    return &#123;&quot;Paris&quot;: &quot;18C, cloudy&quot;, &quot;Delhi&quot;: &quot;33C, sunny&quot;&#125;.get(city, &quot;unknown city&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def add(a, b):</span>
+            <span className="block">    return a + b</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">TOOLS = &#123;&quot;get&#95;weather&quot;: get&#95;weather, &quot;add&quot;: add&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def fake&#95;model(messages):</span>
+            <span className="block">    last = messages&#91;-1&#93;</span>
+            <span className="block">    if last&#91;&quot;role&quot;&#93; == &quot;user&quot;:                           # first turn: decide to call a tool</span>
+            <span className="block">        return &#123;&quot;tool&#95;call&quot;: &#123;&quot;name&quot;: &quot;get&#95;weather&quot;, &quot;arguments&quot;: &#123;&quot;city&quot;: &quot;Delhi&quot;&#125;&#125;&#125;</span>
+            <span className="block">    return &#123;&quot;text&quot;: &quot;It is &quot; + last&#91;&quot;content&quot;&#93; + &quot; in Delhi right now.&quot;&#125;   # second turn: answer</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">messages = &#91;&#123;&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;What is the weather in Delhi?&quot;&#125;&#93;</span>
+            <span className="block">reply = fake&#95;model(messages)</span>
+            <span className="block">while &quot;tool&#95;call&quot; in reply:</span>
+            <span className="block">    call = reply&#91;&quot;tool&#95;call&quot;&#93;</span>
+            <span className="block">    result = TOOLS&#91;call&#91;&quot;name&quot;&#93;&#93;(&#42;&#42;call&#91;&quot;arguments&quot;&#93;)    # we run the tool, not the model</span>
+            <span className="block">    print(&quot;Model asked for&quot;, call&#91;&quot;name&quot;&#93;, call&#91;&quot;arguments&quot;&#93;, &quot;-&gt; result:&quot;, result)</span>
+            <span className="block">    messages.append(&#123;&quot;role&quot;: &quot;tool&quot;, &quot;content&quot;: result&#125;)</span>
+            <span className="block">    reply = fake&#95;model(messages)</span>
+            <span className="block">print(&quot;Final answer:&quot;, reply&#91;&quot;text&quot;&#93;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>ok                                 | &#123;&quot;label&quot;: &quot;positive&quot;, &quot;confidence&quot;: 0.93, &quot;ta</div>
+          <div>wrong type for confidence          | &#123;&quot;label&quot;: &quot;positive&quot;, &quot;confidence&quot;: &quot;high&quot;, &quot;</div>
+          <div>invalid JSON: Expecting value      | Sure! Here is the JSON: &#123;&quot;label&quot;: &quot;positive&quot;&#125;</div>
+          <div>Model asked for get&#95;weather &#123;&apos;city&apos;: &apos;Delhi&apos;&#125; -&gt; result: 33C, sunny</div>
+          <div>Final answer: It is 33C, sunny in Delhi right now.</div>
+        </div>
+      </div>
+      <div>
+        Only the first reply passes. The second has the wrong type for <code>confidence</code>, and the third is not valid JSON because of the extra sentence. In the loop, notice that <strong className="text-white">our code</strong>, not the model, runs the tool and passes the result back.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: In tool calling, who actually runs the tool?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="tools-q1-a" name="tools-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="tools-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Your own program</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The model only requests a call. Your code runs it and returns the result.</div>
+          </div>
+          <div>
+            <input id="tools-q1-b" name="tools-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="tools-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The language model itself</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A model can only produce text.</div>
+          </div>
+          <div>
+            <input id="tools-q1-c" name="tools-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="tools-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The user</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The user does not execute tools.</div>
+          </div>
+          <div>
+            <input id="tools-q1-d" name="tools-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="tools-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) The tokenizer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The tokenizer only converts text to tokens.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: A reply is valid JSON that matches your schema. Can you fully trust it?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="tools-q2-a" name="tools-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="tools-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) No, the content can still be wrong or unsafe, so validate values and permissions too</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A valid shape does not guarantee a correct or safe answer.</div>
+          </div>
+          <div>
+            <input id="tools-q2-b" name="tools-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="tools-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Yes, schemas guarantee correctness</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Schemas guarantee shape only.</div>
+          </div>
+          <div>
+            <input id="tools-q2-c" name="tools-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="tools-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Yes, because JSON cannot contain errors</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> JSON can hold wrong values.</div>
+          </div>
+          <div>
+            <input id="tools-q2-d" name="tools-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="tools-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) No, because JSON is not allowed in APIs</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> JSON is the normal format.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Structured outputs make model replies machine-readable, usually as JSON that follows a schema.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Strictness levels: prompt only, JSON mode, then schema-constrained decoding (most reliable).</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Constrained decoding blocks tokens that would break the schema before sampling.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>In tool calling the model only <strong className="text-white">requests</strong> a call. Your code runs the tool and returns the result.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Treat model output as untrusted: validate shape and values, limit permissions, confirm risky actions.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Tool results can contain injected instructions, so treat them as data and not as commands.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Structured Output in One Line</div>
+        <div className="text-center font-bold text-white">
+          Schema + constrained decoding + validation + least-privilege tools = reliable, safe automation
+        </div>
+      </div>
+      <div>
+        With these two ideas an LLM stops being a chat box and becomes a component that other software can depend on. The same loop is the heart of AI agents.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Long documents and long chats raise a new problem: attention gets expensive. In <strong className="text-white">Long Context and Efficient Attention</strong> you will see how FlashAttention, sliding windows and other tricks make long inputs practical.
+      </div>
+    </div>
+  </section>
+
+</div>

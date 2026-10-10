@@ -1,12 +1,23 @@
+import type { Metadata } from "next";
 import "./globals.css";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import Navbar from "@/components/layout/Navbar";
 import AuthModal from "@/components/auth/AuthModal";
 import { ProgressProvider } from "@/context/ProgressContext";
 import { Analytics } from "@vercel/analytics/next";
 
-export const metadata = {
-  title: "MLRoadmap // AI & ML Learning Hub",
-  description: "ZeroToAI is a structured learning platform for AI and Machine Learning, covering fundamentals, ML, deep learning, NLP, transformers, LLMs, RAG, and Generative AI.",
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: `${SITE_NAME} // AI & ML Learning Hub`,
+  description:
+    "MLRoadmap is a structured learning platform for AI and Machine Learning, covering math, Python, ML, deep learning, NLP, transformers, LLMs, RAG and Generative AI.",
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} // AI & ML Learning Hub`,
+    description: "A structured path from math and Python to LLMs, RAG and AI agents.",
+  },
+  twitter: { card: "summary" },
 };
 
 export default function RootLayout({
@@ -43,8 +54,7 @@ export default function RootLayout({
 
           <footer className="border-t border-white/[0.08] py-8 text-center font-mono text-xs text-slate-500">
             <p>
-              Built for future AI Engineers. Your progress syncs across all
-              devices when signed in.
+              Built for future AI Engineers. 
             </p>
           </footer>
         </ProgressProvider>

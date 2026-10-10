@@ -1,0 +1,363 @@
+---
+title: "Advanced Query Strategies"
+slug: "advanced-query-strategies"
+order: 16
+category: "RAG"
+subcategory: "Query & Context"
+difficulty: "Advanced"
+readTime: "20 min"
+description: "Learn HyDE, step-back prompting, sub-question retrieval and iterative multi-step retrieval for questions that a single search cannot answer."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> Some questions cannot be answered by one search with one phrasing. The question may look nothing like the answer, may be too specific to match general text, or may need facts that depend on each other. Advanced query strategies use a language model to <strong className="text-white">plan the retrieval</strong>: write a hypothetical answer, ask a broader question first, split the question, or search in several dependent steps.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Intermediate: When Basic Rewriting Is Not Enough</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Three kinds of mismatch survive simple rewriting.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Question versus answer</div>
+          <div className="text-sm leading-7">The question uses words like get my money back, while the document says refunds are issued to the payment method. They are about the same thing but sound different.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Specific versus general</div>
+          <div className="text-sm leading-7">A very specific question may not match a document that explains the general principle behind it.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Dependent facts</div>
+          <div className="text-sm leading-7">Who manages the team that owns the billing service needs two facts, and the second cannot be searched before the first is known.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: HyDE, Hypothetical Document Embeddings</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>In <strong className="text-white">HyDE</strong>, a language model first writes a short, plausible answer to the question, even without seeing any documents. That hypothetical passage is then embedded and used as the search query. It works because an answer looks like other answers: its vector sits closer to the real answer passage than the short question does.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">1.</strong> Ask the model to write a passage that would answer the question.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">2.</strong> Embed that passage.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">3.</strong> Search the index with it.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">4.</strong> Use only the retrieved real documents as evidence.</div>
+      </div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Never use the fake answer as evidence:</strong> it may contain invented facts. It exists only to find real passages. HyDE costs an extra model call and helps most when questions and documents are phrased very differently.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Step-Back Prompting</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Step-back prompting</strong> asks a broader question before the specific one. For a question about a particular invoice amount, the step-back question might be how invoices are issued and what they include. Retrieving background material gives the model the principles it needs to reason about the specific case.</div>
+      <div>The usual pattern retrieves for both: the original specific question and its more general step-back version. The results are merged, so the model receives both concrete facts and the general rules.</div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Good fit:</strong> troubleshooting, why questions, and any case where the answer depends on a general policy or concept more than on one specific sentence.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Sub-Question Retrieval</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Sub-question retrieval</strong> breaks a complex question into several simpler questions that can be searched independently, often in parallel. Each sub-question gets its own evidence, and the model combines the pieces into one answer.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Strategy</th><th className="px-4 py-3">Sub-questions depend on each other?</th><th className="px-4 py-3">Run</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Sub-question retrieval</td><td className="px-4 py-3">No, they are independent</td><td className="px-4 py-3">In parallel</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Multi-step retrieval</td><td className="px-4 py-3">Yes, later steps need earlier results</td><td className="px-4 py-3">In sequence</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>A comparison question such as how do the Basic and Pro plans differ is a good example of the parallel kind: one search for each plan, then a combined answer.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Multi-Step and Iterative Retrieval</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Multi-step retrieval</strong> is needed when one fact leads to the next. The system searches, reads what it found, forms the next query from it, and repeats. Each round is a small loop: search, read, decide whether the question is answered, and if not, ask for what is still missing.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Search.</strong> Retrieve with the current query.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Read.</strong> Extract the useful fact, such as the name of the owning team.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Decide.</strong> If the question is answered, stop. If not, write the next query.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Limit.</strong> Stop after a maximum number of rounds or when no new information appears.</div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5"><strong className="text-cyan-300">Costs and risks:</strong> every round adds latency and model calls, and an early mistake carries into every later round. Cap the number of steps, keep a trace of every query and result, and compare against a simple single-search baseline before adopting this pattern.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Three Ways to Plan a Search</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A contrasts HyDE and step-back. Panel B follows a two-step chain from the code below. Panel C is a strategy explorer.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel A · HyDE vs Step-Back</span><span className="text-xs text-slate-400">Both change what is searched for</span></div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-violet-300">HyDE</div>
+              <div><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Search with a fake answer</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Question</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Model writes a hypothetical answer</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Embed the answer text</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Finds answer-like passages</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-300">Step-back</div>
+              <div><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Search a broader question too</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Specific question</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Model asks the general question</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Retrieve both</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Brings background and facts</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel B · A Two-Step Chain</span><span className="text-xs text-slate-400">From the code in section 7</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Who manages the team that owns billing?</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Find owner: payments team</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Find manager of payments team</span><span className="text-blue-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Dana Lee</span></div>
+          <div className="text-center text-xs text-slate-300">The second query could not be written until the first search finished</div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Strategy Explorer</span><span className="text-xs text-slate-400">Click a situation to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c16-strat-0" name="c16-strat" type="radio" className="peer sr-only" />
+              <label htmlFor="c16-strat-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">The question sounds unlike the documents</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Try:</strong> HyDE</div>
+                <div><strong className="text-violet-300">Risk:</strong> A wrong fake answer misleads the search</div>
+              </div>
+            </div>
+            <div>
+              <input id="c16-strat-1" name="c16-strat" type="radio" className="peer sr-only" />
+              <label htmlFor="c16-strat-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">The question is very specific and needs rules</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-emerald-300">Try:</strong> Step-back</div>
+                <div><strong className="text-emerald-300">Risk:</strong> Broad results can add noise</div>
+              </div>
+            </div>
+            <div>
+              <input id="c16-strat-2" name="c16-strat" type="radio" className="peer sr-only" />
+              <label htmlFor="c16-strat-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">The question compares or combines topics</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Try:</strong> Sub-questions in parallel</div>
+                <div><strong className="text-orange-300">Risk:</strong> Merging the answers</div>
+              </div>
+            </div>
+            <div>
+              <input id="c16-strat-3" name="c16-strat" type="radio" className="peer sr-only" />
+              <label htmlFor="c16-strat-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-cyan-400/50 peer-checked:bg-cyan-500/10 peer-checked:text-cyan-300">One fact leads to the next</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-cyan-300">Try:</strong> Iterative multi-step retrieval</div>
+                <div><strong className="text-cyan-300">Risk:</strong> Errors carry forward, cost grows</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why you should start simple</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">Each strategy adds model calls and delay. Many questions are solved by good chunking and hybrid search. Add a planning strategy only for the question types where measurements show a single search fails.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A shows two single-shot tricks, Panel B shows the chained approach, and Panel C helps you pick one by the symptom.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: HyDE, Step-Back and a Two-Step Chain</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program has five short documents and a word-match search. A tiny lookup table plays the role of the language model that writes a hypothetical answer or a broader question. The first two experiments show a failing question succeeding once it is replaced by a hypothetical answer or a step-back question. The third experiment is a two-step chain: it finds the team that owns the billing service, extracts the team name, and uses it to find the manager.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">query_strategies.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">stop_words = set([&quot;how&quot;, &quot;can&quot;, &quot;i&quot;, &quot;my&quot;, &quot;the&quot;, &quot;a&quot;, &quot;that&quot;, &quot;who&quot;, &quot;is&quot;, &quot;of&quot;, &quot;by&quot;, &quot;to&quot;, &quot;get&quot;, &quot;do&quot;, &quot;does&quot;, &quot;for&quot;, &quot;and&quot;])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">documents = [</span>
+            <span className="block">    &quot;Refunds are issued to the original payment method within 5 business days.&quot;,</span>
+            <span className="block">    &quot;Invoices are issued monthly and list the plan fee and taxes.&quot;,</span>
+            <span className="block">    &quot;The billing service is owned by the payments team.&quot;,</span>
+            <span className="block">    &quot;The payments team is managed by Dana Lee.&quot;,</span>
+            <span className="block">    &quot;Dana Lee joined the company in 2019.&quot;,</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def words(text):</span>
+            <span className="block">    return set(w for w in &quot;&quot;.join(ch if ch.isalnum() or ch == &quot; &quot; else &quot; &quot; for ch in text.lower()).split() if w not in stop_words)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def search(query):</span>
+            <span className="block">    best = max(documents, key=lambda d: len(words(query) &amp; words(d)))</span>
+            <span className="block">    return best if words(query) &amp; words(best) else None</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># A pretend language model: it writes a plausible answer, even without any documents</span>
+            <span className="block">hypothetical = dict([(&quot;money back&quot;, &quot;You can get a refund. Refunds are issued to your payment method after the return is processed.&quot;)])</span>
+            <span className="block">broader = dict([(&quot;49 dollars&quot;, &quot;How are invoices issued and what do they include?&quot;)])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;1. HyDE&quot;)</span>
+            <span className="block">question = &quot;How can I get my money back?&quot;</span>
+            <span className="block">print(&quot;  Question search       :&quot;, search(question))</span>
+            <span className="block">fake_answer = hypothetical[&quot;money back&quot;]</span>
+            <span className="block">print(&quot;  Hypothetical answer   :&quot;, fake_answer)</span>
+            <span className="block">print(&quot;  Search with that text :&quot;, search(fake_answer))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">print(&quot;2. Step-back&quot;)</span>
+            <span className="block">question = &quot;Why was my invoice 49 dollars?&quot;</span>
+            <span className="block">print(&quot;  Question search :&quot;, search(question))</span>
+            <span className="block">step_back = broader[&quot;49 dollars&quot;]</span>
+            <span className="block">print(&quot;  Broader question:&quot;, step_back)</span>
+            <span className="block">print(&quot;  Broader search  :&quot;, search(step_back))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">print(&quot;3. Iterative, multi-step retrieval&quot;)</span>
+            <span className="block text-cyan-300">def after(text, marker):</span>
+            <span className="block">    return text.split(marker)[1].rstrip(&quot;.&quot;) if marker in text else None</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">first = search(&quot;billing service owned by team&quot;)</span>
+            <span className="block">team = after(first, &quot; owned by the &quot;)</span>
+            <span className="block">print(&quot;  Step 1 finds:&quot;, first, &quot;-&gt;&quot;, team)</span>
+            <span className="block">second = search(team + &quot; managed by&quot;)</span>
+            <span className="block">manager = after(second, &quot; managed by &quot;)</span>
+            <span className="block">print(&quot;  Step 2 finds:&quot;, second, &quot;-&gt;&quot;, manager)</span>
+            <span className="block">print(&quot;  Final answer: the billing service team is managed by&quot;, manager)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">1. HyDE</span>
+            <span className="block">  Question search       : None</span>
+            <span className="block">  Hypothetical answer   : You can get a refund. Refunds are issued to your payment method after the return is processed.</span>
+            <span className="block">  Search with that text : Refunds are issued to the original payment method within 5 business days.</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">2. Step-back</span>
+            <span className="block">  Question search : None</span>
+            <span className="block">  Broader question: How are invoices issued and what do they include?</span>
+            <span className="block">  Broader search  : Invoices are issued monthly and list the plan fee and taxes.</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">3. Iterative, multi-step retrieval</span>
+            <span className="block">  Step 1 finds: The billing service is owned by the payments team. -&gt; payments team</span>
+            <span className="block">  Step 2 finds: The payments team is managed by Dana Lee. -&gt; Dana Lee</span>
+            <span className="block">  Final answer: the billing service team is managed by Dana Lee</span>
+          </code>
+        </pre>
+      </div>
+      <div>The direct questions return nothing because they share no content words with the documents. Searching with the hypothetical answer or with the broader question finds the right passage. In the chain, the second search is only possible after reading the result of the first. The hypothetical answer and the step-back question were scripted here, while a real system would generate them with a model, which is where the extra cost and risk come from.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. What is the hypothetical answer in HyDE used for?</div>
+        <div>
+          <input id="rag16-q1-a" name="rag16-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag16-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) As evidence shown to the user</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It may contain invented facts.</div>
+        </div>
+        <div>
+          <input id="rag16-q1-b" name="rag16-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag16-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) As the final answer</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The final answer must be grounded in retrieved text.</div>
+        </div>
+        <div>
+          <input id="rag16-q1-c" name="rag16-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag16-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) Only as a search query to find real passages</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The real evidence always comes from the retrieved documents.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. When is iterative multi-step retrieval the right tool?</div>
+        <div>
+          <input id="rag16-q2-a" name="rag16-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag16-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) When one fact must be found before the next query can be written</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Dependent facts need a sequence of searches.</div>
+        </div>
+        <div>
+          <input id="rag16-q2-b" name="rag16-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag16-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) When every question is simple</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Simple questions need only one search.</div>
+        </div>
+        <div>
+          <input id="rag16-q2-c" name="rag16-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag16-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) When the index is empty</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Nothing helps if there are no documents.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. How do sub-question retrieval and multi-step retrieval differ?</div>
+        <div>
+          <input id="rag16-q3-a" name="rag16-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag16-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) They are identical</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The dependency between queries is the key difference.</div>
+        </div>
+        <div>
+          <input id="rag16-q3-b" name="rag16-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag16-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Sub-questions are independent and can run in parallel; multi-step queries depend on earlier results</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Dependency decides the structure.</div>
+        </div>
+        <div>
+          <input id="rag16-q3-c" name="rag16-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag16-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Sub-questions use a different index</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The index is the same.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Advanced strategies use a model to plan the search when one phrasing is not enough.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>HyDE searches with a hypothetical answer, which looks more like the target passages than the question does.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>A hypothetical answer is a search aid only and must never be treated as evidence.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Step-back prompting also retrieves for a broader question to bring in background rules.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Sub-question retrieval handles independent parts in parallel; multi-step retrieval handles dependent parts in sequence.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Iterative retrieval needs stop conditions, a step limit and a trace of every query.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Add these strategies only for query types where measurements show a single search fails.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">These strategies move part of the thinking from answer time to search time. They can unlock questions that plain retrieval cannot touch, at the price of latency, cost and new failure modes, so treat them as targeted tools rather than defaults.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Understand the question → Plan the searches → Retrieve → Check progress → Repeat or stop</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Context Construction and Grounded Generation. You will learn how to select, order and compress retrieved chunks, build a grounded prompt, and handle missing or conflicting information.</div>
+    </div>
+  </section>
+</div>

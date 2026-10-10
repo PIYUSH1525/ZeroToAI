@@ -1,0 +1,462 @@
+---
+title: "Alignment and Preference Optimization: RLHF and DPO"
+slug: "11-alignment-and-preference-optimization"
+order: 11
+category: "Generative AI"
+subcategory: "Prompting & Alignment"
+difficulty: "Intermediate"
+readTime: "30 min"
+description: "Learn how language models are steered toward helpful, honest and safe behavior: preference data, reward models, RLHF with PPO, the simpler DPO loss, and common failure modes such as reward hacking and sycophancy."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Alignment teaches a model what people <strong className="text-white">prefer</strong>. People compare two answers, a model learns from those comparisons, and the model is nudged toward the winners, either with a <strong className="text-white">reward model and RLHF</strong> or directly with <strong className="text-white">DPO</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why a Smart Model Is Not Yet a Good Assistant
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        After pre-training and fine-tuning, an LLM can write fluent text. But fluent is not the same as <strong className="text-white">helpful, honest and safe</strong>. A model may give a confident wrong answer, follow a harmful request, ramble, or flatter the user. <strong className="text-white">Alignment</strong> is the work of steering a model toward what people actually want.
+      </div>
+      <div>
+        The hard part is that <em>good</em> is difficult to write down as a rule. It is much easier for a person to look at <strong className="text-white">two answers and say which one is better</strong>. Almost all modern alignment methods are built on that simple idea: learning from <strong className="text-white">preferences</strong>.
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Helpful</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Does the job</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Answers the real question clearly and completely.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Honest</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Tells the truth</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Admits uncertainty instead of inventing facts.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-rose-300">Harmless</span>
+            <span className="rounded bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">Avoids harm</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Declines dangerous requests politely.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Analogy:</strong> Pre-training builds a very knowledgeable student. Alignment is the mentoring that teaches the student how to behave in front of real people.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Collecting Human Preferences
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The raw material for alignment is a <strong className="text-white">preference dataset</strong>. For each prompt, the model writes two or more answers, and a person (or sometimes another AI) marks which one is better:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Prompt</th>
+              <th className="px-5 py-3">Answer A</th>
+              <th className="px-5 py-3">Answer B</th>
+              <th className="px-5 py-3">Better</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">How do I boil an egg?</td><td className="px-5 py-3">Put it in boiling water for 8 to 10 minutes, then cool it in cold water.</td><td className="px-5 py-3">Just google it.</td><td className="px-5 py-3">A (chosen)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Is the Earth flat?</td><td className="px-5 py-3">No. Satellite photos, ship horizons and flights all show it is round.</td><td className="px-5 py-3">Some people say yes!</td><td className="px-5 py-3">A (chosen)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        Each pair gives a <strong className="text-white">chosen</strong> answer and a <strong className="text-white">rejected</strong> answer. Thousands to hundreds of thousands of such pairs are used. The quality and diversity of the labelers matters a lot, because the model will learn <em>their</em> idea of good.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">AI feedback:</strong> Collecting human labels is slow and costly, so some methods let a strong model judge the answers using a written list of principles (for example <em>Constitutional AI</em>). This is often called <strong className="text-white">RLAIF</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: RLHF, Teaching a Reward Model
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">RLHF</strong> (Reinforcement Learning from Human Feedback) was the first widely used recipe. It has three stages:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">SFT:</strong> Fine-tune the base model on good example conversations.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Reward model:</strong> Train a second model that gives any answer a <strong className="text-white">score</strong> reflecting how much humans would like it.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Reinforcement learning:</strong> Let the language model write answers, score them with the reward model, and nudge the model toward higher scores (usually with an algorithm called <strong className="text-white">PPO</strong>).</div>
+        </div>
+      </div>
+      <div>
+        The reward model learns from pairs using the <strong className="text-white">Bradley-Terry</strong> idea: the probability that answer A beats answer B depends on the difference of their scores.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$P(A \succ B) = \sigma\big(r(A) - r(B)\big)$$
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">The leash:</strong> If the language model could chase reward freely it would find tricks that fool the reward model (called <strong className="text-white">reward hacking</strong>). So training adds a <strong className="text-white">KL penalty</strong> that keeps the new model close to the original one.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: DPO, Skipping the Reward Model
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        RLHF works, but it is complex: three models, an unstable reinforcement-learning loop and many settings to tune. <strong className="text-white">DPO</strong> (Direct Preference Optimization) reaches a similar goal with <strong className="text-white">one simple loss</strong> that is trained like normal fine-tuning:
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\mathcal{L}_{DPO} = -\log \sigma\Big(\beta\big[(\log \pi(y_w) - \log \pi_{ref}(y_w)) - (\log \pi(y_l) - \log \pi_{ref}(y_l))\big]\Big)$$
+      </div>
+      <div>
+        In plain words: compare the model with a frozen <strong className="text-white">reference</strong> copy. Raise the probability of the <strong className="text-white">chosen</strong> answer $y_w$ relative to the reference, lower the probability of the <strong className="text-white">rejected</strong> answer $y_l$, and the knob $\beta$ controls how far the model may drift.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3"></th>
+              <th className="px-5 py-3">RLHF (PPO)</th>
+              <th className="px-5 py-3">DPO</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Models needed</td><td className="px-5 py-3">Policy, reference, reward model (and a value model)</td><td className="px-5 py-3">Policy and a frozen reference</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Training</td><td className="px-5 py-3">Reinforcement-learning loop, sampling needed</td><td className="px-5 py-3">Plain supervised-style training on pairs</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Complexity</td><td className="px-5 py-3">High and sometimes unstable</td><td className="px-5 py-3">Much simpler</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Used when</td><td className="px-5 py-3">Maximum control, large teams</td><td className="px-5 py-3">Quick, stable preference tuning</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Failure Modes and Safety Limits
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Alignment is not a finished problem. Models trained on human approval can pick up unwanted habits:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Problem</th>
+              <th className="px-5 py-3">What it looks like</th>
+              <th className="px-5 py-3">Common mitigation</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Reward hacking</td><td className="px-5 py-3">Longer or more confident answers that score well but are not better</td><td className="px-5 py-3">KL penalty, better reward models, human spot checks</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Sycophancy</td><td className="px-5 py-3">Agreeing with the user even when the user is wrong</td><td className="px-5 py-3">Preference data that rewards polite disagreement</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Over-refusal</td><td className="px-5 py-3">Refusing harmless requests</td><td className="px-5 py-3">Balanced data with both safe and helpful examples</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Preference noise</td><td className="px-5 py-3">Labelers disagree with each other</td><td className="px-5 py-3">Clear guidelines, several labelers, quality audits</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Jailbreaks</td><td className="px-5 py-3">Prompts that trick the model into ignoring its training</td><td className="px-5 py-3">Red-teaming and extra safety layers</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Remember:</strong> Alignment shapes behavior but does not make a model perfect. Real systems combine aligned models with testing, monitoring and extra safeguards.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Two Roads to an Aligned Model
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Both roads start from the same preference pairs. The figure compares the steps each one needs, then shows where the data comes from.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-cyan-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 1 · RLHF vs. DPO</span>
+        <span className="text-xs text-slate-400">Same goal, different road</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Path A · RLHF</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">3 stages</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Humans compare answers</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Reward model learns the scores</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">PPO nudges the policy (with a KL leash)</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Aligned model (complex, flexible)</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Path B · DPO</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">1 stage</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Humans compare answers</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Direct loss on chosen vs. rejected</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Frozen reference keeps the model close</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Aligned model (simple, stable)</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The Preference Data</span>
+        <span className="text-xs text-slate-400">Everything starts with pairs</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Step 1 · Prompt</div>
+          <div className="mt-2 text-lg font-bold text-white">A question</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Sampled from real or synthetic requests.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Step 2 · Two answers</div>
+          <div className="mt-2 text-lg font-bold text-white">A and B</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Written by the model being trained.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Step 3 · A label</div>
+          <div className="mt-2 text-lg font-bold text-white">Chosen vs. rejected</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">By humans, or by an AI judge with written principles.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-cyan-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see how the DPO loss behaves</span>
+          <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If the policy still equals the reference the loss is about 0.693. When the policy likes the chosen answer more, the loss falls. When it prefers the rejected answer, the loss rises above 0.693. The code below prints these exact cases.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Read Part 1 left to right: RLHF has one extra learned model (the reward model), DPO does not. Part 2 shows the shared starting point: pairs of answers with a chosen winner. Open the bar at the bottom to see how the DPO loss moves.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Reward Model and the DPO Loss
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script does two things from scratch. First it trains a tiny <strong className="text-white">reward model</strong> from noisy human choices between pairs of answers. Then it computes the <strong className="text-white">DPO loss</strong> for four different situations.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">preference_learning.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def sigmoid(x):</span>
+            <span className="block">    return 1 / (1 + np.exp(-x))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">rng = np.random.default&#95;rng(0)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Reward model: learn what humans prefer from pairs of answers (Bradley-Terry)</span>
+            <span className="block text-slate-500"># Each answer is described by 2 features: &#91;helpfulness, rudeness&#93;</span>
+            <span className="block">w&#95;true = np.array(&#91;2.0, -3.0&#93;)                   # humans like helpful, dislike rude</span>
+            <span className="block">A = rng.normal(size=(500, 2))                    # answer A features</span>
+            <span className="block">B = rng.normal(size=(500, 2))                    # answer B features</span>
+            <span className="block">prefer&#95;A = (sigmoid((A - B) @ w&#95;true) &gt; rng.random(500)).astype(float)   # noisy human choice</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">w = np.zeros(2)</span>
+            <span className="block">for step in range(500):</span>
+            <span className="block">    p = sigmoid((A - B) @ w)                     # model&apos;s chance that A beats B</span>
+            <span className="block">    grad = (A - B).T @ (p - prefer&#95;A) / len(p)   # gradient of the logistic loss</span>
+            <span className="block">    w -= 0.5 &#42; grad</span>
+            <span className="block">print(&quot;Learned reward weights &#91;helpful, rude&#93;:&quot;, np.round(w, 2), &quot;| humans secretly used&quot;, w&#95;true)</span>
+            <span className="block">agree = np.mean((sigmoid((A - B) @ w) &gt; 0.5) == (prefer&#95;A == 1))</span>
+            <span className="block">print(&quot;Reward model agrees with human choices:&quot;, round(float(agree), 3))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. DPO loss: no reward model needed, only log-probabilities of the two answers</span>
+            <span className="block text-cyan-300">def dpo&#95;loss(logp&#95;chosen, logp&#95;rejected, ref&#95;chosen, ref&#95;rejected, beta=0.1):</span>
+            <span className="block">    margin = beta &#42; ((logp&#95;chosen - ref&#95;chosen) - (logp&#95;rejected - ref&#95;rejected))</span>
+            <span className="block">    return -np.log(sigmoid(margin))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">ref&#95;c, ref&#95;r = -12.0, -12.0                      # reference (frozen SFT model) log-probs</span>
+            <span className="block">for name, pc, pr in &#91;(&quot;unchanged policy&quot;, -12.0, -12.0),</span>
+            <span className="block">                     (&quot;likes chosen more&quot;, -10.0, -12.0),</span>
+            <span className="block">                     (&quot;likes chosen a lot&quot;, -6.0, -18.0),</span>
+            <span className="block">                     (&quot;prefers the REJECTED&quot;, -14.0, -9.0)&#93;:</span>
+            <span className="block">    print(name, &quot;-&gt; DPO loss&quot;, round(float(dpo&#95;loss(pc, pr, ref&#95;c, ref&#95;r)), 3))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Learned reward weights &#91;helpful, rude&#93;: &#91; 1.72 -2.68&#93; | humans secretly used &#91; 2. -3.&#93;</div>
+          <div>Reward model agrees with human choices: 0.874</div>
+          <div>unchanged policy -&gt; DPO loss 0.693</div>
+          <div>likes chosen more -&gt; DPO loss 0.598</div>
+          <div>likes chosen a lot -&gt; DPO loss 0.263</div>
+          <div>prefers the REJECTED -&gt; DPO loss 0.974</div>
+        </div>
+      </div>
+      <div>
+        The learned weights point the same way as the hidden human preferences (helpful is good, rude is bad), and the model agrees with most choices even though the humans were noisy. For DPO, the loss starts at 0.693 when nothing has changed, shrinks as the policy favors the chosen answer, and grows when it favors the rejected one.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What data does preference-based alignment use?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="align-q1-a" name="align-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="align-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Pairs of answers where one is marked better</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Comparing two answers is much easier than writing a perfect answer or a perfect rule.</div>
+          </div>
+          <div>
+            <input id="align-q1-b" name="align-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="align-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Only single answers with no labels</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Without a comparison there is no preference signal.</div>
+          </div>
+          <div>
+            <input id="align-q1-c" name="align-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="align-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Only the model&apos;s own weights</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Weights are what we train, not the training data.</div>
+          </div>
+          <div>
+            <input id="align-q1-d" name="align-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="align-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Random text from the internet</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is pre-training data, not preference data.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What does DPO do differently from RLHF?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="align-q2-a" name="align-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="align-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) It trains directly on chosen and rejected answers without a separate reward model</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> DPO folds the preference signal into one loss against a frozen reference model.</div>
+          </div>
+          <div>
+            <input id="align-q2-b" name="align-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="align-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It removes the need for any human data</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> DPO still needs preference pairs.</div>
+          </div>
+          <div>
+            <input id="align-q2-c" name="align-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="align-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It makes the model larger</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Model size is not changed by DPO.</div>
+          </div>
+          <div>
+            <input id="align-q2-d" name="align-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="align-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It trains only the tokenizer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The tokenizer is not trained.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Alignment steers a capable model toward answers that are helpful, honest and harmless.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>It is built on <strong className="text-white">preference pairs</strong>: a chosen answer and a rejected answer for the same prompt.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">RLHF</strong> = SFT, then a reward model, then reinforcement learning with a KL penalty to stay close to the original model.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">DPO</strong> gets a similar result with one simple loss against a frozen reference model.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Typical failures are reward hacking, sycophancy, over-refusal and noisy labels.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Alignment improves behavior but is not a guarantee, so real systems add testing and safeguards.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Alignment in One Line</div>
+        <div className="text-center font-bold text-white">
+          Compare answers → learn what people prefer → nudge the model toward it (but not too far)
+        </div>
+      </div>
+      <div>
+        Pre-training gives knowledge, fine-tuning gives format, and alignment gives judgment about what a good answer is. All three together make a usable assistant.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> A trained, aligned model still has to choose each next word. In <strong className="text-white">Text Generation and Sampling</strong> you will see how temperature, top-k and top-p turn probabilities into text.
+      </div>
+    </div>
+  </section>
+
+</div>

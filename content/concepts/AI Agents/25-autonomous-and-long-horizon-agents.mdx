@@ -1,0 +1,461 @@
+---
+title: "Autonomous and Long-Horizon Agents"
+slug: "25-autonomous-and-long-horizon-agents"
+order: 25
+category: "AI Agents"
+subcategory: "Advanced"
+difficulty: "Advanced"
+readTime: "30 min"
+description: "Learn how agents handle long and autonomous tasks: autonomous task execution, long-running work, planning over many steps, persistent memory with compaction, budgets and stop conditions, and recovery from failure with checkpoints."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A <strong className="text-white">long-horizon agent</strong> works for many steps, minutes or hours, mostly on its own. The challenges grow with length: errors <strong className="text-white">compound</strong>, context <strong className="text-white">overflows</strong>, processes <strong className="text-white">crash</strong> and costs <strong className="text-white">balloon</strong>. The answer is <strong className="text-white">checkpoints, memory compaction, plans and budgets</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Autonomous Task Execution
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        An <strong className="text-white">autonomous agent</strong> receives a goal and then works toward it <strong className="text-white">without a person guiding each step</strong>: planning, using tools, checking its work and deciding when it is done. Examples include a coding agent that fixes a bug across many files, or a research agent that writes a long report.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Short task</th>
+              <th className="px-5 py-3">Long-horizon task</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">A few steps</td><td className="px-5 py-3">Dozens to hundreds of steps</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Fits in one context window</td><td className="px-5 py-3">Exceeds the context window</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Finishes in seconds</td><td className="px-5 py-3">Runs for minutes or hours</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">One mistake is easy to fix</td><td className="px-5 py-3">Mistakes compound over many steps</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Little can go wrong</td><td className="px-5 py-3">Crashes, rate limits and drift are likely</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Remember:</strong> Autonomy is earned. The longer an agent runs alone, the stronger its <strong className="text-white">limits, checks and recovery</strong> must be.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Long-Running Tasks
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A task that runs for a long time cannot live inside a single request. It needs the production design from the earlier lesson:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Run in the background:</strong> Workers and a queue, not an open browser tab.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Report progress:</strong> Show which step is running and what is done.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Allow pausing and cancelling:</strong> The user stays in control.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Notify at the end:</strong> Email, message or webhook when the result is ready.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Tip:</strong> Design for <strong className="text-white">interruption</strong>: the machine may restart at any time, so progress must never exist only in memory.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Planning Over Many Steps
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Over many steps, an agent loses the thread. Good long-horizon agents keep an explicit <strong className="text-white">plan</strong> and a <strong className="text-white">progress record</strong>:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Technique</th>
+              <th className="px-5 py-3">What it does</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Written plan with checkboxes</td><td className="px-5 py-3">Shows what is done and what remains</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Replan at milestones</td><td className="px-5 py-3">Adjust the plan when reality changes</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Subgoals with checks</td><td className="px-5 py-3">Verify each milestone before moving on</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Periodic review</td><td className="px-5 py-3">Compare progress with the original goal to avoid drifting</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Verification steps</td><td className="px-5 py-3">Run tests or checks, do not trust a claim of completion</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Drift:</strong> Agents can slowly wander away from the goal over many steps. Re-reading the goal and the plan at milestones is a simple cure.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Persistent Memory and Compaction
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The context window cannot hold hundreds of steps. The agent keeps <strong className="text-white">recent details</strong> and <strong className="text-white">compressed summaries</strong> of older work, and stores the full history outside the prompt for lookup.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> 30 notes (450 tokens) were compacted into a summary plus the 5 most recent notes: 6 items and 91 tokens. The agent keeps the gist and loses the bulk.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Memory layer</th>
+              <th className="px-5 py-3">Holds</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Prompt</td><td className="px-5 py-3">The plan, recent steps and a summary</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Notes file or database</td><td className="px-5 py-3">Full details, findable by search</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Checkpoint</td><td className="px-5 py-3">The exact state for resuming</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Risk</div>
+        <div className="text-sm leading-relaxed text-slate-300">Summaries can drop important details. Keep the full log, and let the agent search it when something seems missing.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Recovery From Failure, Budgets and Stop Conditions
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Over long runs, failure is certain, so recovery is a core feature. <strong className="text-white">Checkpoints</strong> save progress after each step, so a crash costs only the step that was running.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> A 40-step task with a random crash chance of 4% per step. Without checkpoints, each crash restarts from step 1, and the run executed 66 steps (26 wasted). With checkpoints it executed 42 steps (only 2 wasted). The gap grows rapidly with task length.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Stop condition</th>
+              <th className="px-5 py-3">Example from the code</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Step budget</td><td className="px-5 py-3">stop: step budget used</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Money budget</td><td className="px-5 py-3">stop: money budget used</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">No progress</td><td className="px-5 py-3">stop: no progress, ask a human</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Time limit</td><td className="px-5 py-3">Stop after a maximum duration</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Always keep a human exit:</strong> Long autonomous runs need a visible status, a pause button and a way to take over.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Recovery, Compaction and Budgets
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure compares a long run with and without checkpoints using the numbers from the code, then lists the four tools that keep long runs under control.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-rose-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-rose-300">Part 1 · Crash Recovery in the Code</span>
+        <span className="text-xs text-slate-400">Same task, same crashes</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">No checkpoints</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Restart from step 1</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">2 crashes in 40 steps</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Each crash throws away all progress</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">66 steps executed, 26 wasted</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">With checkpoints</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Resume from the last step</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">The same 2 crashes</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Only the failed step repeats</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">42 steps executed, 2 wasted</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Four Tools for Long Runs</span>
+        <span className="text-xs text-slate-400">Keep the agent on track</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Plan</div>
+          <div className="mt-2 text-lg font-bold text-white">Checklist</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Know what is done.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Compaction</div>
+          <div className="mt-2 text-lg font-bold text-white">450 to 91 tokens</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Keep the gist, drop the bulk.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Checkpoints</div>
+          <div className="mt-2 text-lg font-bold text-white">Resume</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Never lose progress.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Budgets</div>
+          <div className="mt-2 text-lg font-bold text-white">Stop rules</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Steps, money, no progress.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-rose-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why waste grows with task length</span>
+          <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs text-rose-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If each step can crash with probability p, the chance of a run of n steps finishing without any crash is (1 - p) to the power n. For 40 steps at 4% that is only about 20%, so without checkpoints most runs restart several times.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows the wasted work in both cases. Part 2 lists plans, compaction, checkpoints and budgets. Open the bar for the math behind the waste.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Checkpoints, Memory Compaction and Stop Conditions
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script simulates a 40-step task that crashes randomly, with and without checkpoints, compacts 30 old notes into a short summary, and applies budget and no-progress stop conditions. The random numbers use a fixed seed so the output repeats.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">long_horizon.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import random</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def run&#95;task(total&#95;steps=40, crash&#95;chance=0.04, checkpoints=True, seed=3, max&#95;work=5000):</span>
+            <span className="block">    rng = random.Random(seed)</span>
+            <span className="block">    done = executed = crashes = 0</span>
+            <span className="block">    while done &lt; total&#95;steps and executed &lt; max&#95;work:</span>
+            <span className="block">        executed += 1</span>
+            <span className="block">        if rng.random() &lt; crash&#95;chance:</span>
+            <span className="block">            crashes += 1</span>
+            <span className="block">            if not checkpoints:</span>
+            <span className="block">                done = 0                                  # no saved progress: start over from step 1</span>
+            <span className="block">            continue                                      # with a checkpoint we only repeat the failed step</span>
+            <span className="block">        done += 1</span>
+            <span className="block">    return executed, crashes</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for label, use in &#91;(&quot;without checkpoints&quot;, False), (&quot;with checkpoints&quot;, True)&#93;:</span>
+            <span className="block">    executed, crashes = run&#95;task(checkpoints=use)</span>
+            <span className="block">    print(label.ljust(20), &quot;| steps executed:&quot;, executed, &quot;| crashes:&quot;, crashes, &quot;| wasted work:&quot;, executed - 40)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Persistent memory for long tasks: compact old notes into a short summary</span>
+            <span className="block text-cyan-300">def count&#95;tokens(text):</span>
+            <span className="block">    return round(len(text.split()) / 0.75)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def compact(notes, keep&#95;recent=5):</span>
+            <span className="block">    if len(notes) &lt;= keep&#95;recent:</span>
+            <span className="block">        return notes</span>
+            <span className="block">    old, recent = notes&#91;:-keep&#95;recent&#93;, notes&#91;-keep&#95;recent:&#93;</span>
+            <span className="block">    summary = &quot;Summary of &quot; + str(len(old)) + &quot; earlier steps: &quot; + &quot;; &quot;.join(n.split(&quot;:&quot;)&#91;0&#93; for n in old&#91;:3&#93;) + &quot;, ...&quot;</span>
+            <span className="block">    return &#91;summary&#93; + recent</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">notes = &#91;&quot;step &quot; + str(i) + &quot;: collected facts about topic &quot; + str(i) + &quot; and saved the results&quot; for i in range(1, 31)&#93;</span>
+            <span className="block">before = sum(count&#95;tokens(n) for n in notes)</span>
+            <span className="block">compacted = compact(notes)</span>
+            <span className="block">after = sum(count&#95;tokens(n) for n in compacted)</span>
+            <span className="block">print(&quot;Notes before compaction:&quot;, len(notes), &quot;items,&quot;, before, &quot;tokens | after:&quot;, len(compacted), &quot;items,&quot;, after, &quot;tokens&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Budgets and stop conditions keep a long-running agent safe</span>
+            <span className="block text-cyan-300">def should&#95;stop(steps, max&#95;steps, spent, max&#95;spend, no&#95;progress&#95;steps, max&#95;idle):</span>
+            <span className="block">    if steps &gt;= max&#95;steps:</span>
+            <span className="block">        return &quot;stop: step budget used&quot;</span>
+            <span className="block">    if spent &gt;= max&#95;spend:</span>
+            <span className="block">        return &quot;stop: money budget used&quot;</span>
+            <span className="block">    if no&#95;progress&#95;steps &gt;= max&#95;idle:</span>
+            <span className="block">        return &quot;stop: no progress, ask a human&quot;</span>
+            <span className="block">    return &quot;continue&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(should&#95;stop(10, 100, 2.0, 5.0, 0, 8))</span>
+            <span className="block">print(should&#95;stop(100, 100, 2.0, 5.0, 0, 8))</span>
+            <span className="block">print(should&#95;stop(40, 100, 5.5, 5.0, 0, 8))</span>
+            <span className="block">print(should&#95;stop(40, 100, 2.0, 5.0, 9, 8))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>without checkpoints  | steps executed: 66 | crashes: 2 | wasted work: 26</div>
+          <div>with checkpoints     | steps executed: 42 | crashes: 2 | wasted work: 2</div>
+          <div>Notes before compaction: 30 items, 450 tokens | after: 6 items, 91 tokens</div>
+          <div>continue</div>
+          <div>stop: step budget used</div>
+          <div>stop: money budget used</div>
+          <div>stop: no progress, ask a human</div>
+        </div>
+      </div>
+      <div>
+        Checkpointing removes almost all wasted work in this run, compaction shrinks the notes to a fifth of their size, and the stop function ends the run for each of its three reasons. The exact crash counts depend on the seed, but the pattern does not.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Why are checkpoints more important for long-horizon agents?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag25-q1-a" name="ag25-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag25-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) A crash would otherwise discard all progress, and long runs are very likely to crash at some point</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Failure probability grows with the number of steps.</div>
+          </div>
+          <div>
+            <input id="ag25-q1-b" name="ag25-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag25-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) They make the model smarter</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Checkpoints save state, nothing more.</div>
+          </div>
+          <div>
+            <input id="ag25-q1-c" name="ag25-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag25-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) They reduce token prices</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They do not change prices.</div>
+          </div>
+          <div>
+            <input id="ag25-q1-d" name="ag25-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag25-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) They are required by every model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They are an engineering choice.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What is a main risk of summarizing old notes?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag25-q2-a" name="ag25-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag25-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Important details can be lost, so keep the full log searchable</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Summaries are lossy by nature.</div>
+          </div>
+          <div>
+            <input id="ag25-q2-b" name="ag25-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag25-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The agent will refuse to run</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It will still run.</div>
+          </div>
+          <div>
+            <input id="ag25-q2-c" name="ag25-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag25-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The tokens double</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Summaries reduce tokens.</div>
+          </div>
+          <div>
+            <input id="ag25-q2-d" name="ag25-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag25-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Tools stop working</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Tools are unaffected.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Long-horizon agents run for many steps, mostly alone, so errors, context overflow and crashes become likely.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Run them in the background with progress reports, pause, cancel and notification.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Keep an explicit plan, verify milestones and re-read the goal to avoid drift.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Compact old steps into summaries and keep the full log searchable outside the prompt.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Checkpoint after every step so a crash costs only one step.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Set step, money, time and no-progress limits, and keep a human exit.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Long-Horizon in One Line</div>
+        <div className="text-center font-bold text-white">
+          Plan → checkpoint → compact memory → verify milestones → stop on budget → keep a human in reach
+        </div>
+      </div>
+      <div>
+        Duration multiplies every weakness. Strong recovery and limits are what make autonomy usable.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You now have the tools for reliable autonomy. In <strong className="text-white">Advanced Agentic Systems</strong> you will see agentic RAG, computer-use and browser agents, multimodal agents, code agents and tool-rich agents.
+      </div>
+    </div>
+  </section>
+
+</div>

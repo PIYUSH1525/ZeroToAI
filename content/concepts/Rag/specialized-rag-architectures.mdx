@@ -1,0 +1,368 @@
+---
+title: "Specialized RAG Architectures"
+slug: "specialized-rag-architectures"
+order: 21
+category: "RAG"
+subcategory: "Advanced RAG"
+difficulty: "Advanced"
+readTime: "25 min"
+description: "Explore hierarchical RAG, graph RAG, knowledge graphs, multi-document and multi-source designs, and RAG over structured data with SQL."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> Searching chunks of text answers many questions, but not all. Questions about relationships need a <strong className="text-white">graph</strong>. Questions about numbers need a <strong className="text-white">database</strong>. Questions across a huge corpus need a <strong className="text-white">hierarchy</strong> of summaries. Questions that touch several documents or systems need <strong className="text-white">routing and synthesis</strong>. Specialized RAG architectures match the structure of the knowledge to the structure of the question.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Intermediate: Hierarchical RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Hierarchical RAG</strong> organizes knowledge in levels, such as document summaries on top, section summaries below, and detailed chunks at the bottom. The system searches top-down: first find the relevant documents using their summaries, then the relevant sections, and finally the exact chunks.</div>
+      <div>This narrows a huge corpus quickly and helps with questions that need an overview, since higher levels hold condensed information. Approaches such as RAPTOR build a tree of recursive summaries, so the retriever can pick the right level of detail for each question.</div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5"><strong className="text-blue-300">Costs:</strong> summaries must be generated and refreshed when documents change, and a summary can drop details that a question needs. Keep a path from every summary to the chunks beneath it.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: Graph RAG and Knowledge Graphs</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A <strong className="text-white">knowledge graph</strong> stores facts as entities connected by relations, for example Billing Service owned by Payments Team, and Payments Team managed by Dana Lee. <strong className="text-white">Graph RAG</strong> retrieves by following those links, so a question that needs several connected facts can be answered by walking the graph instead of hoping that one chunk contains everything.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Aspect</th><th className="px-4 py-3">Vector search</th><th className="px-4 py-3">Graph retrieval</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Finds</td><td className="px-4 py-3">Passages with similar meaning</td><td className="px-4 py-3">Entities and their relations</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Multi-hop questions</td><td className="px-4 py-3 text-rose-300">Weak, facts are scattered</td><td className="px-4 py-3 text-emerald-300">Strong, follow the links</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Setup cost</td><td className="px-4 py-3 text-emerald-300">Low</td><td className="px-4 py-3 text-rose-300">High, entities and relations must be extracted</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Explainability</td><td className="px-4 py-3">Moderate</td><td className="px-4 py-3 text-emerald-300">High, the path is visible</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>Some systems also build a graph automatically from text with a language model, then summarize clusters of related entities so they can answer broad, global questions about the whole corpus. <strong className="text-white">Knowledge graph plus RAG</strong> combines both worlds: the graph supplies reliable relations, and text retrieval supplies the detailed passages.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Multi-Document and Multi-Source RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Multi-document RAG</strong> answers questions that span several documents, such as comparing two contracts. The system retrieves from each relevant document, keeps track of which passage came from where, and lets the model synthesize.</div>
+      <div><strong className="text-white">Multi-source RAG</strong> goes further: the knowledge lives in different kinds of systems such as a document index, a database, a wiki and an API. A <strong className="text-white">router</strong> decides which source or sources to query for each question, and the results are merged with their provenance.</div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Pitfalls:</strong> sources disagree, have different freshness, and use different identifiers. Label every result with its source, apply conflict rules, and avoid querying every source for every question.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Structured Data and SQL RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Numbers, filters and aggregates belong in a database, not in text chunks. In <strong className="text-white">SQL RAG</strong>, also called text-to-SQL, a model reads the question and the table schema, writes a query, the database runs it, and the result is turned into an answer.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">1.</strong> Give the model the schema: table and column names, with short descriptions.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">2.</strong> The model writes a SQL query for the question.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">3.</strong> Validate the query, then run it with read-only access.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">4.</strong> Pass the result rows to the model, which phrases the answer and shows the query as evidence.</div>
+      </div>
+      <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5"><strong className="text-orange-300">Safety:</strong> allow only read operations, restrict to approved tables, limit rows and run time, and never run a generated query with write permissions. The correct sum comes from the database, so the model must not recompute it by guessing.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Matching Architecture to Question</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Question looks like</th><th className="px-4 py-3">Best fit</th><th className="px-4 py-3">Why</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Summarize or give an overview of a large corpus</td><td className="px-4 py-3">Hierarchical RAG</td><td className="px-4 py-3">Higher levels hold condensed content</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Who is connected to whom, or which thing depends on which</td><td className="px-4 py-3">Graph RAG</td><td className="px-4 py-3">Relations are explicit</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Compare these two documents</td><td className="px-4 py-3">Multi-document RAG</td><td className="px-4 py-3">Evidence from each, then synthesis</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">What was total revenue last month</td><td className="px-4 py-3">SQL RAG</td><td className="px-4 py-3">Exact aggregation</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">A mix of the above</td><td className="px-4 py-3">Multi-source RAG with a router</td><td className="px-4 py-3">Each part goes to the right system</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>These architectures add real engineering cost: graphs must be built and maintained, summaries refreshed, schemas documented. Add one only when a clear class of questions fails with plain retrieval, and evaluate it separately on that class.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: The Right Store for the Right Question</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A maps question types to stores. Panel B follows a graph walk and a router from the code below. Panel C is an architecture explorer.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel A · Four Kinds of Knowledge</span><span className="text-xs text-slate-400">Match the store to the question</span></div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.05] p-5 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Text</div>
+              <div className="mt-2 text-lg font-bold text-white">Document index</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">What does the policy say?</div>
+            </div>
+            <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.05] p-5 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Relations</div>
+              <div className="mt-2 text-lg font-bold text-white">Knowledge graph</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">Who manages whom?</div>
+            </div>
+            <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.05] p-5 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-orange-400">Numbers</div>
+              <div className="mt-2 text-lg font-bold text-white">SQL database</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">What was the total?</div>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Overview</div>
+              <div className="mt-2 text-lg font-bold text-white">Summary tree</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">What is this corpus about?</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel B · From the Code</span><span className="text-xs text-slate-400">A graph walk and a router</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Billing Service</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Payments Team</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Dana Lee</span><span className="text-blue-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Priya Rao</span></div>
+          <div className="text-center text-xs text-slate-300">Three hops answer: who does the manager of the billing team report to</div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-white/[0.04] text-slate-300">
+                <tr><th className="px-4 py-3 text-center">Question</th><th className="px-4 py-3 text-center">Routed to</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300">
+                <tr><td className="px-4 py-3 text-center">What was total revenue in March?</td><td className="px-4 py-3 text-center text-orange-300">sql database</td></tr>
+                <tr><td className="px-4 py-3 text-center">Who manages the team that owns billing?</td><td className="px-4 py-3 text-center text-violet-300">knowledge graph</td></tr>
+                <tr><td className="px-4 py-3 text-center">How do refunds work?</td><td className="px-4 py-3 text-center text-blue-300">document index</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Architecture Explorer</span><span className="text-xs text-slate-400">Click an architecture to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c21-arch-0" name="c21-arch" type="radio" className="peer sr-only" />
+              <label htmlFor="c21-arch-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">Hierarchical RAG</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-emerald-300">Great for:</strong> Overviews of large corpora</div>
+                <div><strong className="text-emerald-300">Cost:</strong> Generating and refreshing summaries</div>
+              </div>
+            </div>
+            <div>
+              <input id="c21-arch-1" name="c21-arch" type="radio" className="peer sr-only" />
+              <label htmlFor="c21-arch-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Graph RAG</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Great for:</strong> Multi-hop and relationship questions</div>
+                <div><strong className="text-violet-300">Cost:</strong> Extracting and maintaining the graph</div>
+              </div>
+            </div>
+            <div>
+              <input id="c21-arch-2" name="c21-arch" type="radio" className="peer sr-only" />
+              <label htmlFor="c21-arch-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">Multi-source RAG</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-blue-300">Great for:</strong> Knowledge spread across systems</div>
+                <div><strong className="text-blue-300">Cost:</strong> Routing and merging with provenance</div>
+              </div>
+            </div>
+            <div>
+              <input id="c21-arch-3" name="c21-arch" type="radio" className="peer sr-only" />
+              <label htmlFor="c21-arch-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">SQL RAG</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Great for:</strong> Exact numbers and aggregates</div>
+                <div><strong className="text-orange-300">Cost:</strong> Schema design and strict safety controls</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why SQL RAG must be read-only</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">A model writes the query, and models can be wrong or be manipulated by hostile input. Read-only access and approved tables ensure that a mistake cannot change or leak data.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the map of stores, Panel B shows two of them working, and Panel C compares the costs.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: A Graph Walk, a SQL Answer and a Source Router</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program shows three specialized retrievers in a few lines each. First, facts are stored as triples and a walk follows relations from a starting entity to answer a multi-hop question. Second, a small SQLite table answers a numeric question with an exact aggregate. Third, a router inspects the question and picks the right source. The language model steps that would write the query or choose the relations are replaced by fixed rules to keep the example self-contained.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">specialized_rag.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import sqlite3</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Graph RAG: facts stored as (subject, relation, object) triples</span>
+            <span className="block">triples = [</span>
+            <span className="block">    (&quot;Billing Service&quot;, &quot;owned_by&quot;, &quot;Payments Team&quot;),</span>
+            <span className="block">    (&quot;Payments Team&quot;, &quot;managed_by&quot;, &quot;Dana Lee&quot;),</span>
+            <span className="block">    (&quot;Dana Lee&quot;, &quot;reports_to&quot;, &quot;Priya Rao&quot;),</span>
+            <span className="block">    (&quot;Search Service&quot;, &quot;owned_by&quot;, &quot;Discovery Team&quot;),</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def neighbors(entity):</span>
+            <span className="block">    return [(r, o) for s, r, o in triples if s == entity]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def walk(start, relations):</span>
+            <span className="block">    path = [start]</span>
+            <span className="block">    current = start</span>
+            <span className="block">    for relation in relations:</span>
+            <span className="block">        found = [o for r, o in neighbors(current) if r == relation]</span>
+            <span className="block">        if not found:</span>
+            <span className="block">            return path, None</span>
+            <span className="block">        current = found[0]</span>
+            <span className="block">        path.append(current)</span>
+            <span className="block">    return path, current</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">path, answer = walk(&quot;Billing Service&quot;, [&quot;owned_by&quot;, &quot;managed_by&quot;, &quot;reports_to&quot;])</span>
+            <span className="block">print(&quot;Graph walk:&quot;, &quot; -&gt; &quot;.join(path))</span>
+            <span className="block">print(&quot;Who does the manager of the billing team report to?&quot;, answer)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># SQL RAG: the question becomes a query over a structured table</span>
+            <span className="block">conn = sqlite3.connect(&quot;:memory:&quot;)</span>
+            <span className="block">conn.execute(&quot;CREATE TABLE sales (region TEXT, month TEXT, revenue INTEGER)&quot;)</span>
+            <span className="block">conn.executemany(&quot;INSERT INTO sales VALUES (?, ?, ?)&quot;, [(&quot;North&quot;, &quot;March&quot;, 120), (&quot;South&quot;, &quot;March&quot;, 90), (&quot;North&quot;, &quot;April&quot;, 150)])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def total_revenue(month):</span>
+            <span className="block">    row = conn.execute(&quot;SELECT SUM(revenue) FROM sales WHERE month = ?&quot;, (month,)).fetchone()</span>
+            <span className="block">    return row[0]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">print(&quot;SQL answer, total revenue in March:&quot;, total_revenue(&quot;March&quot;))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Multi-source routing: pick the source that fits the question</span>
+            <span className="block text-cyan-300">def route(question):</span>
+            <span className="block">    q = question.lower()</span>
+            <span className="block">    if &quot;revenue&quot; in q or &quot;total&quot; in q:</span>
+            <span className="block">        return &quot;sql database&quot;</span>
+            <span className="block">    if &quot;report&quot; in q or &quot;owns&quot; in q or &quot;manager&quot; in q:</span>
+            <span className="block">        return &quot;knowledge graph&quot;</span>
+            <span className="block">    return &quot;document index&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">for question in [&quot;What was total revenue in March?&quot;, &quot;Who manages the team that owns billing?&quot;, &quot;How do refunds work?&quot;]:</span>
+            <span className="block">    print(question.ljust(42), &quot;-&gt;&quot;, route(question))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Graph walk: Billing Service -&gt; Payments Team -&gt; Dana Lee -&gt; Priya Rao</span>
+            <span className="block">Who does the manager of the billing team report to? Priya Rao</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">SQL answer, total revenue in March: 210</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">What was total revenue in March?           -&gt; sql database</span>
+            <span className="block">Who manages the team that owns billing?    -&gt; knowledge graph</span>
+            <span className="block">How do refunds work?                       -&gt; document index</span>
+          </code>
+        </pre>
+      </div>
+      <div>The graph walk reaches the answer in three hops, and the path itself is the explanation. The SQL query returns 210, the exact sum of the March revenue rows, which no text retriever could compute reliably. The router sends each of the three questions to a different source. In production, a model would translate the questions into relations and SQL, and the validation and read-only rules from the lesson would apply.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. Which architecture suits a question that needs several connected facts, such as who manages the team that owns a service?</div>
+        <div>
+          <input id="rag21-q1-a" name="rag21-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag21-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Graph RAG</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Following explicit relations answers multi-hop questions.</div>
+        </div>
+        <div>
+          <input id="rag21-q1-b" name="rag21-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag21-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Plain top-k vector search over chunks only</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The needed facts are usually scattered across chunks.</div>
+        </div>
+        <div>
+          <input id="rag21-q1-c" name="rag21-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag21-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) A bigger chunk size</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Chunk size does not create relations.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. Why use a database for the question what was total revenue last month?</div>
+        <div>
+          <input id="rag21-q2-a" name="rag21-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag21-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Databases hold more text</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The point is exact computation.</div>
+        </div>
+        <div>
+          <input id="rag21-q2-b" name="rag21-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag21-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Aggregates need exact computation, which text chunks cannot provide reliably</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> SQL gives exact numbers.</div>
+        </div>
+        <div>
+          <input id="rag21-q2-c" name="rag21-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag21-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Text retrieval is forbidden for numbers</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It is just unreliable for aggregates.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. What does a router do in multi-source RAG?</div>
+        <div>
+          <input id="rag21-q3-a" name="rag21-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag21-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Merges embeddings from all sources</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Routing happens before retrieval.</div>
+        </div>
+        <div>
+          <input id="rag21-q3-b" name="rag21-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag21-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Deletes duplicate sources</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Routing selects sources, it does not delete them.</div>
+        </div>
+        <div>
+          <input id="rag21-q3-c" name="rag21-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag21-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) Chooses which source or sources to query for each question</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It avoids asking every system everything.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Match the retrieval structure to the structure of the question: text, relations, numbers or overview.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Hierarchical RAG searches summaries top-down to narrow a large corpus and support overview questions.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Graph RAG follows entity relations and excels at multi-hop questions, at the price of building the graph.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Multi-document and multi-source RAG retrieve from several places, keep provenance, and use a router.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>SQL RAG turns questions into queries; the database computes the numbers, never the model.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Generated SQL must be validated and run read-only with limits.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Add a specialized architecture only for a class of questions where plain retrieval measurably fails.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Not every question is a search for similar text. Specialized architectures acknowledge that knowledge has shapes, such as networks, tables and hierarchies, and that the best retrieval respects the shape. The skill is in recognizing the question type and keeping the added machinery proportionate.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Classify the question → Route to the right store → Retrieve → Combine with provenance</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Multimodal and Specialized Data RAG. You will extend RAG to PDFs and tables, images, code, audio transcripts and knowledge bases that mix several formats.</div>
+    </div>
+  </section>
+</div>

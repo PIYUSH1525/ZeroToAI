@@ -1,0 +1,470 @@
+---
+title: "Agents with RAG"
+slug: "08-agents-with-rag"
+order: 8
+category: "AI Agents"
+subcategory: "Single Agents"
+difficulty: "Intermediate"
+readTime: "30 min"
+description: "Combine agents with retrieval: use retrieval as an agent tool, let the agent control when and how to retrieve, build knowledge-based agents, and understand the difference between classic RAG and agentic RAG."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> In classic <strong className="text-white">RAG</strong> the system always retrieves once and then answers. In <strong className="text-white">agentic RAG</strong> the agent <strong className="text-white">decides</strong> whether to retrieve, <strong className="text-white">rewrites</strong> the query, <strong className="text-white">checks</strong> the results and <strong className="text-white">tries again</strong>, so it handles harder questions.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Agent + Retrieval
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">RAG</strong> (Retrieval-Augmented Generation) gives a model <strong className="text-white">relevant documents</strong> to read before answering, so it can use private or recent knowledge. An <strong className="text-white">agent</strong> adds decision-making on top. Combining them gives an agent that can look things up when it needs to.
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Retrieval</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Find</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Search a document collection for the most relevant pieces.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-violet-300">Generation</span>
+            <span className="rounded bg-violet-950/80 px-2 py-0.5 font-mono text-xs text-violet-300">Answer</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>The model writes the answer using the retrieved text.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Agent</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Decide</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Chooses whether to retrieve, what to search for and whether the result is good enough.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Simplest view:</strong> Retrieval becomes <strong className="text-white">one more tool</strong> the agent can call, such as search_knowledge_base(query).
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Retrieval as an Agent Tool
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        To the agent, retrieval is just a tool with a name, a description and parameters. It returns a few passages with their sources, and the agent reads them like any other tool result.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Tool part</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Name</td><td className="px-5 py-3">search_knowledge_base</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Description</td><td className="px-5 py-3">Search the company help documents. Use for policy and product questions.</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Parameter</td><td className="px-5 py-3">query (a short search phrase)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Returns</td><td className="px-5 py-3">The top passages and their document names and scores</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Tip:</strong> Return <strong className="text-white">scores and sources</strong>. Scores let the agent judge quality, and sources let it cite.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Agent-Controlled Retrieval
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Instead of retrieving blindly, the agent controls the process. It can:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Decide:</strong> Skip retrieval for greetings or math, retrieve for factual questions.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Rewrite:</strong> Turn <em>how long until my package arrives?</em> into a better query such as <em>shipping time</em>.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Check:</strong> Look at the retrieval score. If it is low, the results are probably irrelevant.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Retry:</strong> Reformulate and search again, up to a limit.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Combine:</strong> For multi-part questions, search several times and merge the findings (multi-hop).</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> Plain RAG always picks the top result even with a score of 0.0. The agent retries with a rewritten query and succeeds, or honestly says it could not find the answer.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Knowledge-Based Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">knowledge-based agent</strong> answers from a defined body of knowledge, such as product manuals or company policies. Good ones follow four habits:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Habit</th>
+              <th className="px-5 py-3">Why it matters</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Ground answers in retrieved text</td><td className="px-5 py-3">Reduces invented facts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Cite the source document</td><td className="px-5 py-3">Lets users verify</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Say <em>I could not find that</em> when nothing relevant is found</td><td className="px-5 py-3">Honesty beats a confident guess</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Keep knowledge fresh</td><td className="px-5 py-3">Re-index when documents change</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Out of scope questions</div>
+        <div className="text-sm leading-relaxed text-slate-300">The agent should be able to recognize questions its knowledge base cannot answer, instead of forcing a match from irrelevant text.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: RAG vs. Agentic RAG
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3"></th>
+              <th className="px-5 py-3">Classic RAG</th>
+              <th className="px-5 py-3">Agentic RAG</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Retrieval</td><td className="px-5 py-3">Always once, with the user&apos;s question</td><td className="px-5 py-3">When and as often as the agent decides</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Query</td><td className="px-5 py-3">The original question</td><td className="px-5 py-3">Rewritten and refined</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Quality check</td><td className="px-5 py-3">None</td><td className="px-5 py-3">Looks at scores and relevance</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Multi-part questions</td><td className="px-5 py-3">Weak</td><td className="px-5 py-3">Searches several times</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Cost and latency</td><td className="px-5 py-3">Low, predictable</td><td className="px-5 py-3">Higher, varies</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Best for</td><td className="px-5 py-3">Simple lookup questions</td><td className="px-5 py-3">Complex, ambiguous or multi-step questions</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Choose wisely:</strong> Start with classic RAG. Move to agentic RAG only when you can show that simple retrieval fails on real questions, because it costs more and is harder to predict.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Classic RAG and Agentic RAG Side by Side
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows one question processed by classic RAG and by agentic RAG, then lists the five controls an agent has over retrieval.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-teal-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-teal-300">Part 1 · Classic RAG vs. Agentic RAG</span>
+        <span className="text-xs text-slate-400">Same question, different process</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Classic RAG</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Always once</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Question: How long until my package arrives?</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Search the question as written</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Top result is the warranty text (score 0.0)</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Wrong document used</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Agentic RAG</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Decide, rewrite, check</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Search: score is too low</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Rewrite the query to add shipping</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Second search finds the shipping text</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Correct answer found</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The Agent&apos;s Retrieval Controls</span>
+        <span className="text-xs text-slate-400">Five decisions</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-5">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Decide</div>
+          <div className="mt-2 text-lg font-bold text-white">Retrieve?</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Skip it for greetings.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Rewrite</div>
+          <div className="mt-2 text-lg font-bold text-white">Better query</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Add the right words.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Check</div>
+          <div className="mt-2 text-lg font-bold text-white">Score</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Is the result relevant?</div>
+        </div>
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Retry</div>
+          <div className="mt-2 text-lg font-bold text-white">Again</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Up to a limit.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Admit</div>
+          <div className="mt-2 text-lg font-bold text-white">Not found</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Say so honestly.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-teal-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why scores matter</span>
+          <span className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs text-teal-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">A retrieval system always returns something, even when nothing relevant exists. The score tells the agent whether to trust the result, retry, or admit it cannot answer.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows classic RAG using the wrong document while agentic RAG recovers. Part 2 lists the controls. Open the bar to see why scores matter.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Plain RAG vs. Agentic RAG
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script builds a tiny knowledge base and runs four questions through plain RAG (always use the top result) and agentic RAG (decide, rewrite, check the score, retry, or admit failure). Word overlap stands in for embeddings.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">agentic_rag.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">DOCS = &#123;</span>
+            <span className="block">    &quot;refund&quot;: &quot;Refunds are accepted within 30 days of purchase with a receipt.&quot;,</span>
+            <span className="block">    &quot;shipping&quot;: &quot;Standard shipping takes 3 to 5 business days. Express takes 1 to 2 days.&quot;,</span>
+            <span className="block">    &quot;warranty&quot;: &quot;All devices include a 12 month warranty covering manufacturing defects.&quot;,</span>
+            <span className="block">&#125;</span>
+            <span className="block">STOP = &#123;&quot;the&quot;, &quot;a&quot;, &quot;an&quot;, &quot;is&quot;, &quot;of&quot;, &quot;to&quot;, &quot;my&quot;, &quot;i&quot;, &quot;can&quot;, &quot;how&quot;, &quot;what&quot;, &quot;until&quot;, &quot;does&quot;, &quot;do&quot;, &quot;for&quot;, &quot;in&quot;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def words(text):</span>
+            <span className="block">    tokens = &#91;w.strip(&quot;.,?!&apos;&quot;).lower() for w in text.split()&#93;</span>
+            <span className="block">    tokens = &#91;w&#91;:-1&#93; if len(w) &gt; 3 and w.endswith(&quot;s&quot;) else w for w in tokens&#93;</span>
+            <span className="block">    return &#123;w for w in tokens if w not in STOP&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def retrieve(query):</span>
+            <span className="block">    q = words(query)</span>
+            <span className="block">    scored = &#91;(len(q &amp; words(text)) / max(len(q), 1), doc&#95;id) for doc&#95;id, text in DOCS.items()&#93;</span>
+            <span className="block">    return max(scored)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def plain&#95;rag(question):</span>
+            <span className="block">    score, doc&#95;id = retrieve(question)           # always uses the top result, good or bad</span>
+            <span className="block">    return doc&#95;id, round(score, 2)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">SYNONYMS = &#123;&quot;arrive&quot;: &quot;shipping&quot;, &quot;send back&quot;: &quot;refund&quot;, &quot;guarantee&quot;: &quot;warranty&quot;, &quot;broken&quot;: &quot;warranty&quot;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def rewrite(question):</span>
+            <span className="block">    extra = &#91;target for phrase, target in SYNONYMS.items() if phrase in question.lower()&#93;</span>
+            <span className="block">    return question + &quot; &quot; + &quot; &quot;.join(extra)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def needs&#95;retrieval(question):</span>
+            <span className="block">    return not question.lower().startswith((&quot;hello&quot;, &quot;hi&quot;, &quot;thanks&quot;))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def agentic&#95;rag(question, threshold=0.2, max&#95;tries=2):</span>
+            <span className="block">    if not needs&#95;retrieval(question):</span>
+            <span className="block">        return &quot;no retrieval needed, answer directly&quot;</span>
+            <span className="block">    query = question</span>
+            <span className="block">    for attempt in range(1, max&#95;tries + 1):</span>
+            <span className="block">        score, doc&#95;id = retrieve(query)</span>
+            <span className="block">        if score &gt;= threshold:</span>
+            <span className="block">            return &quot;found &apos;&quot; + doc&#95;id + &quot;&apos; (score &quot; + str(round(score, 2)) + &quot;) on attempt &quot; + str(attempt)</span>
+            <span className="block">        query = rewrite(query)                   # the agent reformulates and tries again</span>
+            <span className="block">    return &quot;could not find it, will say so honestly&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for q in &#91;&quot;Hello!&quot;, &quot;How long until my package arrives?&quot;, &quot;Can I send back a gadget?&quot;, &quot;What is the CEO&apos;s name?&quot;&#93;:</span>
+            <span className="block">    print(q.ljust(38), &quot;| plain RAG:&quot;, plain&#95;rag(q), &quot;| agentic RAG:&quot;, agentic&#95;rag(q))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Hello!                                 | plain RAG: (&apos;warranty&apos;, 0.0) | agentic RAG: no retrieval needed, answer directly</div>
+          <div>How long until my package arrives?     | plain RAG: (&apos;warranty&apos;, 0.0) | agentic RAG: found &apos;shipping&apos; (score 0.25) on attempt 2</div>
+          <div>Can I send back a gadget?              | plain RAG: (&apos;warranty&apos;, 0.0) | agentic RAG: found &apos;refund&apos; (score 0.25) on attempt 2</div>
+          <div>What is the CEO&apos;s name?                | plain RAG: (&apos;warranty&apos;, 0.0) | agentic RAG: could not find it, will say so honestly</div>
+        </div>
+      </div>
+      <div>
+        Plain RAG returns the warranty document for every question, even with a score of 0.0. The agent skips retrieval for the greeting, finds the right document on the second attempt for shipping and refunds, and correctly admits it has no answer about the CEO.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What is the main difference between classic RAG and agentic RAG?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag08-q1-a" name="ag08-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag08-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The agent decides whether, how and how often to retrieve</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Agentic RAG adds decisions: skip, rewrite, check and retry.</div>
+          </div>
+          <div>
+            <input id="ag08-q1-b" name="ag08-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag08-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Agentic RAG never retrieves</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It retrieves, but under the agent&apos;s control.</div>
+          </div>
+          <div>
+            <input id="ag08-q1-c" name="ag08-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag08-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Classic RAG uses a bigger model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Model size is not the difference.</div>
+          </div>
+          <div>
+            <input id="ag08-q1-d" name="ag08-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag08-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Classic RAG retrieves many times</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Classic RAG usually retrieves once.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Why should a knowledge-based agent be able to say it could not find an answer?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag08-q2-a" name="ag08-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag08-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Forcing an answer from irrelevant text produces invented facts</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Honesty is better than a confident but wrong answer.</div>
+          </div>
+          <div>
+            <input id="ag08-q2-b" name="ag08-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag08-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Because it saves money</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The reason is accuracy and trust.</div>
+          </div>
+          <div>
+            <input id="ag08-q2-c" name="ag08-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag08-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Because retrieval cannot fail</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Retrieval can return irrelevant results.</div>
+          </div>
+          <div>
+            <input id="ag08-q2-d" name="ag08-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag08-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Because users prefer silence</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Users prefer correct answers or an honest limit.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>RAG gives a model relevant documents to read before answering.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Retrieval becomes a tool the agent can call, returning passages, sources and scores.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Agent-controlled retrieval means deciding whether to retrieve, rewriting queries, checking scores and retrying.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Knowledge-based agents ground answers in text, cite sources and admit when they do not know.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Classic RAG retrieves once and is cheap. Agentic RAG adapts but costs more and is less predictable.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Start simple and add agentic behavior only where simple retrieval fails.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Agentic RAG in One Line</div>
+        <div className="text-center font-bold text-white">
+          Decide → search → check the score → rewrite and retry → answer with sources or say it is unknown
+        </div>
+      </div>
+      <div>
+        Retrieval is one of the most valuable tools an agent can have, and controlling it well is a skill of its own.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Your agent can now act, remember and look things up. In <strong className="text-white">Agent Reasoning and Decision Making</strong> you will study how it chooses what to do next.
+      </div>
+    </div>
+  </section>
+
+</div>

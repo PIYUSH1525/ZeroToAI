@@ -1,0 +1,409 @@
+---
+title: "Introduction to RAG"
+slug: "introduction-to-rag"
+order: 1
+category: "RAG"
+subcategory: "RAG Foundations"
+difficulty: "Beginner"
+readTime: "30 min"
+description: "Learn what Retrieval-Augmented Generation is, how it differs from a traditional LLM, why it exists, and build a tiny RAG pipeline from scratch in Python."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+<section>
+  <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300">
+    <strong className="text-cyan-400">The Core Idea:</strong> A language model only knows what it learned during training. <strong className="text-white">Retrieval-Augmented Generation (RAG)</strong> gives it an open book: before answering, the system searches your documents, finds the most relevant passages, and hands them to the model together with the question. The model then writes an answer based on that evidence instead of relying on memory alone.
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: The Open-Book Exam</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Picture two students taking the same exam about your company. The first student studied months ago and must answer purely from memory. The second student is allowed to bring the company handbook and look things up before writing each answer. Both are equally smart, but the second one will be more accurate, especially about details that are new, rare or private.</div>
+    <div className="grid gap-5 md:grid-cols-2">
+      <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-rose-300">Closed-book student = a plain LLM</div>
+        <div className="text-sm leading-7">A <strong className="text-white">large language model (LLM)</strong> is an AI system trained on huge amounts of text to predict and generate language. Everything it knows is frozen inside its parameters at training time.</div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-emerald-300">Open-book student = a RAG system</div>
+        <div className="text-sm leading-7">The same model, plus a search step that fetches relevant pages from a document collection and places them in front of the model before it answers.</div>
+      </div>
+    </div>
+    <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5">
+      <strong className="text-blue-300">Key point:</strong> RAG does not make the model smarter and does not change its parameters. It changes what the model gets to read at the moment it answers.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: What RAG Is in Three Steps</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>The name RAG describes the three things that happen every time a user asks a question:</div>
+    <div className="grid gap-5 md:grid-cols-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-violet-400">R · Retrieve</div>
+        <div className="mt-2 text-sm leading-7">Search a collection of documents and pick the few passages most related to the question.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-cyan-400">A · Augment</div>
+        <div className="mt-2 text-sm leading-7">Build a new prompt that contains the question and the retrieved passages as context.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">G · Generate</div>
+        <div className="mt-2 text-sm leading-7">The LLM reads that prompt and writes an answer grounded in the context.</div>
+      </div>
+    </div>
+    <div>Here is a tiny example. A customer asks: <em>What is your refund policy?</em> A plain LLM has never seen your policy and might guess a common one. A RAG system first retrieves the passage <em>Returns are accepted within 30 days of purchase</em>, adds it to the prompt, and the model answers with the real policy.</div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Analogy:</strong> a librarian (the retriever) fetches the right books from the shelves, and a writer (the LLM) reads those books and composes the answer. Neither could do the whole job as well alone.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Beginner: RAG vs a Traditional LLM</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>A traditional LLM call is simple: question in, answer out. A RAG call adds a retrieval step in the middle. This table shows what changes.</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Question</th>
+            <th className="px-4 py-3">Traditional LLM</th>
+            <th className="px-4 py-3">RAG system</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3 font-semibold text-white">Where does knowledge come from?</td><td className="px-4 py-3 text-rose-300">Training data only</td><td className="px-4 py-3 text-emerald-300">Training data plus retrieved documents</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Can it use private documents?</td><td className="px-4 py-3 text-rose-300">No, it never saw them</td><td className="px-4 py-3 text-emerald-300">Yes, if they are in the knowledge base</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">How do you update its knowledge?</td><td className="px-4 py-3 text-rose-300">Retrain or fine-tune the model</td><td className="px-4 py-3 text-emerald-300">Add or edit documents</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Can it show its sources?</td><td className="px-4 py-3 text-rose-300">Not reliably</td><td className="px-4 py-3 text-emerald-300">Yes, it can point to the passages used</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">What extra parts are needed?</td><td className="px-4 py-3 text-emerald-300">None</td><td className="px-4 py-3 text-rose-300">Document store, search, prompt building</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <strong className="text-emerald-300">Trade-off:</strong> RAG buys freshness, privacy and traceability, and pays for it with a more complex system. The next lesson explores exactly why that trade is usually worth it.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: RAG Terminology</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>RAG has its own vocabulary. Learn these words now, because every later lesson builds on them.</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Term</th>
+            <th className="px-4 py-3">Plain meaning</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Knowledge base</td><td className="px-4 py-3">The collection of documents the system can search.</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Chunk</td><td className="px-4 py-3">A small piece of a document, such as a few paragraphs, stored and searched as one unit.</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Embedding</td><td className="px-4 py-3">A list of numbers that represents the meaning of a text, so similar meanings get similar numbers.</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Vector store</td><td className="px-4 py-3">A database that keeps embeddings and can quickly find the closest ones to a query.</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Query</td><td className="px-4 py-3">The user question that the system must answer.</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Retriever</td><td className="px-4 py-3">The component that finds the most relevant chunks for a query.</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Top-k</td><td className="px-4 py-3">The number k of best-matching chunks the retriever returns.</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Context</td><td className="px-4 py-3">The retrieved text placed inside the prompt for the model to read.</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Generator</td><td className="px-4 py-3">The LLM that writes the final answer from the prompt.</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Grounding</td><td className="px-4 py-3">Making sure the answer is supported by the retrieved context.</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Hallucination</td><td className="px-4 py-3">A confident-sounding answer that is false or unsupported.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>Two phases tie these terms together. In the <strong className="text-white">indexing phase</strong> (done ahead of time) documents are split into chunks, converted to embeddings and stored. In the <strong className="text-white">query phase</strong> (done for every question) the retriever searches that store, the prompt is built, and the generator answers. Lesson 3 covers this pipeline in detail.</div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Intermediate: Basic Use Cases and Their Limits</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>RAG fits any situation where answers must come from a specific, changing or private body of text.</div>
+    <div className="grid gap-5 md:grid-cols-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-cyan-300">Customer support</div>
+        <div className="text-sm leading-7">A chatbot answers from help-center articles, return policies and product manuals.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-cyan-300">Document question answering</div>
+        <div className="text-sm leading-7">Ask questions about contracts, reports or research papers instead of reading every page.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-cyan-300">Internal knowledge search</div>
+        <div className="text-sm leading-7">Employees ask natural-language questions over wikis, tickets and meeting notes.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-cyan-300">Developer assistants</div>
+        <div className="text-sm leading-7">Answers grounded in a project documentation or codebase rather than general memory.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-cyan-300">Research helpers</div>
+        <div className="text-sm leading-7">Summaries and answers that point back to the papers they came from.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-cyan-300">Regulated domains</div>
+        <div className="text-sm leading-7">Legal, medical or financial answers where citing the exact source matters.</div>
+      </div>
+    </div>
+    <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-5">
+      <strong className="text-amber-300">Advanced note: RAG is only as good as its retrieval.</strong> There are two main ways it fails. If the retriever misses the right passage, the model has no evidence and may guess. If the retriever finds the right passage but the model ignores or misreads it, the answer is still wrong. Most of the later lessons in this course are about preventing these two failures.
+    </div>
+    <div>RAG is also not always needed. For general knowledge that the model already handles well, or tiny knowledge sets that fit directly in the prompt, a plain LLM call can be simpler and cheaper.</div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Plain LLM vs RAG, Step by Step</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>The figure has two parts. Part 1 compares what happens to a question in a plain LLM and in a RAG system. Part 2 breaks RAG into its three steps.</div>
+    <div className="space-y-8 rounded-3xl border border-cyan-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 1 · Plain LLM vs RAG</span>
+          <span className="text-xs text-slate-400">Notice where the knowledge comes from</span>
+        </div>
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Option A · Plain LLM</span>
+              <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Memory only</span>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">User question</div>
+            <div className="text-center text-rose-400">↓</div>
+            <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">LLM answers from training memory</div>
+            <div className="text-center text-rose-400">↓</div>
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">May be outdated or invented</div>
+          </div>
+          <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Option B · RAG</span>
+              <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Memory + documents</span>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">User question</div>
+            <div className="text-center text-cyan-400">↓</div>
+            <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-cyan-200">Retriever searches your documents</div>
+            <div className="text-center text-cyan-400">↓</div>
+            <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Best passages added to the prompt</div>
+            <div className="text-center text-cyan-400">↓</div>
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Answer grounded in your data</div>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The Three Steps of RAG</span>
+          <span className="text-xs text-slate-400">Retrieve, then Augment, then Generate</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.05] p-5 text-center">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Step 1 · Retrieve</div>
+            <div className="mt-2 text-lg font-bold text-white">Find Evidence</div>
+            <div className="mt-2 text-xs leading-relaxed text-slate-400">Search the knowledge base and return the top-k most relevant chunks.</div>
+          </div>
+          <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/[0.07] p-5 text-center">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Step 2 · Augment</div>
+            <div className="mt-2 text-lg font-bold text-white">Build the Prompt</div>
+            <div className="mt-2 text-xs leading-relaxed text-slate-400">Combine the question, the chunks and the instructions into one prompt.</div>
+          </div>
+          <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Step 3 · Generate</div>
+            <div className="mt-2 text-lg font-bold text-white">Write the Answer</div>
+            <div className="mt-2 text-xs leading-relaxed text-slate-400">The LLM reads the prompt and answers using the supplied context.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Result: fresher, private and traceable answers without retraining</div>
+        <details className="group rounded-2xl border border-cyan-500/20 bg-white/[0.03]">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+            <span>Click to see what happens before any question arrives</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">Explain <span className="inline-block transition group-open:rotate-180">▼</span></span>
+          </summary>
+          <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Ahead of time, an indexing step collects the documents, splits them into chunks, converts each chunk to an embedding and stores everything in a searchable index. Step 1 then searches that prepared index, which is why retrieval is fast at question time.</div>
+        </details>
+      </div>
+    </div>
+    <div>How to read it: compare Option A and Option B first, then zoom into the three steps of Option B. The only new part is the middle: the search over your own documents.</div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: A Tiny RAG Pipeline from Scratch</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>This program uses only the Python standard library. It stores four short documents, turns each text into word counts, and measures similarity with <strong className="text-white">cosine similarity</strong>, which compares two count vectors by the angle between them:</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$\cos(\theta) = \dfrac{A \cdot B}{\lVert A \rVert \, \lVert B \rVert}$$</div>
+    <div>A score of 1 means the texts use the same words in the same proportions, and 0 means they share no words. The program retrieves the top 2 documents for a question and builds the augmented prompt. It stops there, because the final step would be sending that prompt to an LLM. Real systems use learned embeddings instead of word counts, which you will meet in the embeddings lessons.</div>
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+        <span className="font-mono text-xs font-semibold text-teal-400">tiny_rag.py</span>
+        <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span>
+      </div>
+      <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block text-cyan-300">import math</span>
+          <span className="block text-cyan-300">from collections import Counter</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 1. The knowledge base (four tiny documents)</span>
+          <span className="block">documents = [</span>
+          <span className="block">    &quot;The company refund policy allows returns within 30 days of purchase.&quot;,</span>
+          <span className="block">    &quot;Standard shipping takes 5 to 7 business days inside the country.&quot;,</span>
+          <span className="block">    &quot;Premium members get free shipping on every order.&quot;,</span>
+          <span className="block">    &quot;Our support team is available Monday to Friday from 9 am to 5 pm.&quot;,</span>
+          <span className="block">]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def tokenize(text):</span>
+          <span className="block">    cleaned = &quot;&quot;.join(ch for ch in text.lower() if ch.isalnum() or ch == &quot; &quot;)</span>
+          <span className="block">    return cleaned.split()</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def vectorize(text):</span>
+          <span className="block">    return Counter(tokenize(text))</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def cosine(a, b):</span>
+          <span className="block">    common = set(a) &amp; set(b)</span>
+          <span className="block">    dot = sum(a[w] * b[w] for w in common)</span>
+          <span className="block">    norm_a = math.sqrt(sum(v * v for v in a.values()))</span>
+          <span className="block">    norm_b = math.sqrt(sum(v * v for v in b.values()))</span>
+          <span className="block">    if norm_a == 0 or norm_b == 0:</span>
+          <span className="block">        return 0.0</span>
+          <span className="block">    return dot / (norm_a * norm_b)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 2. RETRIEVE: score every document and keep the top k</span>
+          <span className="block text-violet-300">def retrieve(question, docs, k=2):</span>
+          <span className="block">    q = vectorize(question)</span>
+          <span className="block">    scored = [(cosine(q, vectorize(d)), d) for d in docs]</span>
+          <span className="block">    scored.sort(reverse=True)</span>
+          <span className="block">    return scored[:k]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 3. AUGMENT: put the context and the question into one prompt</span>
+          <span className="block text-emerald-300">def build_prompt(question, retrieved):</span>
+          <span className="block">    lines = [&quot;Answer using ONLY the context below.&quot;, &quot;&quot;, &quot;Context:&quot;]</span>
+          <span className="block">    for score, text in retrieved:</span>
+          <span className="block">        lines.append(&quot;- &quot; + text)</span>
+          <span className="block">    lines.append(&quot;&quot;)</span>
+          <span className="block">    lines.append(&quot;Question: &quot; + question)</span>
+          <span className="block">    return lines</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">question = &quot;What is the refund policy for returns?&quot;</span>
+          <span className="block">retrieved = retrieve(question, documents, k=2)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">print(&quot;Retrieved passages:&quot;)</span>
+          <span className="block">for score, text in retrieved:</span>
+          <span className="block">    print(round(score, 3), &quot;|&quot;, text)</span>
+          <span className="block">print(&quot;&quot;)</span>
+          <span className="block">print(&quot;Prompt sent to the LLM:&quot;)</span>
+          <span className="block">for line in build_prompt(question, retrieved):</span>
+          <span className="block">    print(line)</span>
+        </code>
+      </pre>
+    </div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+      <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block">Retrieved passages:</span>
+          <span className="block">0.456 | The company refund policy allows returns within 30 days of purchase.</span>
+          <span className="block">0.114 | Standard shipping takes 5 to 7 business days inside the country.</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">Prompt sent to the LLM:</span>
+          <span className="block">Answer using ONLY the context below.</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">Context:</span>
+          <span className="block">- The company refund policy allows returns within 30 days of purchase.</span>
+          <span className="block">- Standard shipping takes 5 to 7 business days inside the country.</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">Question: What is the refund policy for returns?</span>
+        </code>
+      </pre>
+    </div>
+    <div>Notice the weak second result. Its score is low and it shares only the word <em>the</em> with the question, yet top-k still returns it. Good retrieval systems learn to rank, filter and sometimes return fewer chunks. The refund passage is the one that actually answers the question, and the model would use it to reply that returns are accepted within 30 days.</div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+  <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q1. What does RAG change about how an LLM answers?</div>
+      <div>
+        <input id="rag1-q1-a" name="rag1-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag1-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) It retrains the model on your documents</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> RAG never changes the model parameters. That would be fine-tuning.</div>
+      </div>
+      <div>
+        <input id="rag1-q1-b" name="rag1-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag1-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) It retrieves relevant documents and adds them to the prompt before the model answers</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The model reads fresh evidence at answer time instead of relying only on memory.</div>
+      </div>
+      <div>
+        <input id="rag1-q1-c" name="rag1-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag1-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It makes the model larger</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The model stays exactly the same size. Only its input changes.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q2. Your company updates its return policy today. What is the easiest way to make a RAG chatbot know about it?</div>
+      <div>
+        <input id="rag1-q2-a" name="rag1-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag1-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Retrain the LLM from scratch</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is slow and expensive, and it is exactly what RAG avoids.</div>
+      </div>
+      <div>
+        <input id="rag1-q2-b" name="rag1-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag1-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Update the policy document in the knowledge base</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The next retrieval will fetch the new text, with no model change needed.</div>
+      </div>
+      <div>
+        <input id="rag1-q2-c" name="rag1-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag1-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Wait for the next LLM release</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A public model release will never contain your private policy.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q3. The retriever returns the wrong passages. What is the most likely result?</div>
+      <div>
+        <input id="rag1-q3-a" name="rag1-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag1-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) The LLM automatically fixes it</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The model can only work with the context it is given.</div>
+      </div>
+      <div>
+        <input id="rag1-q3-b" name="rag1-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag1-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) A weak or incorrect answer, because the evidence is missing</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> RAG quality depends heavily on retrieval quality.</div>
+      </div>
+      <div>
+        <input id="rag1-q3-c" name="rag1-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag1-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The documents are deleted</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Retrieval only reads the knowledge base. It never deletes anything.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+  <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>RAG stands for Retrieval-Augmented Generation: retrieve evidence, augment the prompt, generate the answer.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>A plain LLM answers from frozen training memory; a RAG system also reads documents at answer time.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>RAG does not change the model. Knowledge is updated by editing documents, not by retraining.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Core vocabulary: knowledge base, chunk, embedding, vector store, retriever, top-k, context, grounding.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Typical uses: customer support, document question answering, internal search, developer assistants.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Answer quality is limited by retrieval quality: missing or wrong passages lead to weak answers.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">RAG turns a language model from a closed-book student into an open-book one. The model keeps its language skills, and the retrieval system supplies the facts. That split of responsibilities is the foundation of almost every AI assistant that works with company, product or research data.</div>
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Question → Retrieve → Augment the prompt → Generate a grounded answer</div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Up Next:</strong> Why RAG? LLM Knowledge Limitations. You will look closely at the problems RAG solves, namely knowledge cutoffs, hallucinations, private data and changing information, and compare RAG with fine-tuning and long context windows.
+    </div>
+  </div>
+</section>
+
+</div>

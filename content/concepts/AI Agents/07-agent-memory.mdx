@@ -1,0 +1,453 @@
+---
+title: "Agent Memory"
+slug: "07-agent-memory"
+order: 7
+category: "AI Agents"
+subcategory: "Single Agents"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Learn how agents remember: short-term memory and conversation history, long-term and semantic memory with retrieval, persistent state across restarts, and the design problems of what to store and what to forget."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A model has <strong className="text-white">no memory of its own</strong>. Agent memory is <strong className="text-white">your code</strong> deciding what to store, what to bring back into the prompt, and what to forget: a short-term window, long-term facts found by meaning, and state saved to disk.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why Agents Need Memory
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Each model call is independent. If the agent should remember that your name is Ana or that you are allergic to peanuts, <strong className="text-white">your code must save that and put it back in the prompt</strong>.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Memory type</th>
+              <th className="px-5 py-3">Lasts</th>
+              <th className="px-5 py-3">Holds</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Short-term</td><td className="px-5 py-3">One task or conversation</td><td className="px-5 py-3">Recent messages</td><td className="px-5 py-3">The last few turns</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Long-term</td><td className="px-5 py-3">Across tasks and days</td><td className="px-5 py-3">Facts and preferences</td><td className="px-5 py-3">User is allergic to peanuts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Semantic</td><td className="px-5 py-3">Across tasks</td><td className="px-5 py-3">Searchable knowledge, found by meaning</td><td className="px-5 py-3">Past answers and documents</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Persistent state</td><td className="px-5 py-3">Across restarts</td><td className="px-5 py-3">Progress of a task</td><td className="px-5 py-3">Which step was done</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Analogy:</strong> Short-term memory is what you hold in your head during a conversation. Long-term memory is your notebook. Persistent state is the bookmark that lets you resume after a break.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Short-Term Memory and Conversation History
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Conversation history</strong> is the list of recent messages and tool results sent with each model call. Because the context window is limited, you keep only a <strong className="text-white">rolling window</strong> and drop or summarize the rest.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">In the code:</strong> A rolling buffer keeps only the last 4 messages, so the oldest message disappears as new ones arrive. Without a long-term store, the agent forgets <em>my name is Ana</em> once it falls out of the window.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Trimming strategies</div>
+        <div className="text-sm leading-relaxed text-slate-300">Keep the newest messages, summarize older ones into a short note, and pin important facts so they never fall out.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Long-Term and Semantic Memory
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Long-term memory</strong> stores facts outside the prompt. When the agent needs something, it <strong className="text-white">recalls</strong> the few most relevant items and adds them to the prompt. Finding them by <strong className="text-white">meaning</strong> instead of exact words is <strong className="text-white">semantic memory</strong>.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Remember:</strong> Save a fact or a summary of an interaction.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Embed:</strong> Turn the text into a vector of numbers where similar meanings are close together.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Recall:</strong> Turn the question into a vector and fetch the closest stored items.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Use:</strong> Add only those items to the next prompt.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Honest note:</strong> The code uses simple word overlap as a stand-in for embeddings so it runs without any library. Real systems use <strong className="text-white">embedding models</strong> and a <strong className="text-white">vector database</strong>, as in the RAG lessons.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Persistent State
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Persistent state</strong> is the saved progress of a task: the goal, the steps completed, partial results. Saved to a file or database, it lets an agent <strong className="text-white">resume after a crash, a restart or a long wait</strong> instead of starting over.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Store</th>
+              <th className="px-5 py-3">Good for</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">JSON file</td><td className="px-5 py-3">Prototypes and single-user tools</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Database (SQL)</td><td className="px-5 py-3">Many users, queries, reliability</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Key-value store</td><td className="px-5 py-3">Fast session data</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Vector database</td><td className="px-5 py-3">Semantic memory</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> The facts are saved as JSON, a new memory object loads them back, and recall still works. That is persistence in four lines.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: The Hard Parts of Memory
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Problem</th>
+              <th className="px-5 py-3">What goes wrong</th>
+              <th className="px-5 py-3">Mitigation</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">What to store</td><td className="px-5 py-3">Storing everything fills memory with noise</td><td className="px-5 py-3">Save only durable facts and useful summaries</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Stale facts</td><td className="px-5 py-3">The user moved but old data says otherwise</td><td className="px-5 py-3">Add dates, allow updates and expiry</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Wrong recall</td><td className="px-5 py-3">The most similar item is not the relevant one</td><td className="px-5 py-3">Rank, limit to a few items, show sources</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Privacy</td><td className="px-5 py-3">Personal data kept longer than needed</td><td className="px-5 py-3">Ask consent, allow viewing and deleting</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Memory poisoning</td><td className="px-5 py-3">A malicious page writes false facts into memory</td><td className="px-5 py-3">Only store from trusted sources, review writes</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Cost</td><td className="px-5 py-3">Large memories inflate every prompt</td><td className="px-5 py-3">Recall a few items, not everything</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Privacy:</strong> Memory about people is personal data. Let users see, correct and delete what the agent remembers.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Three Layers of Memory and the Recall Cycle
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure compares the three layers of memory, then shows how a stored fact finds its way back into a prompt.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-violet-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Part 1 · Three Layers of Memory</span>
+        <span className="text-xs text-slate-400">From fast to lasting</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Short-term</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Rolling window</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Last few messages</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Always in the prompt</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Fast, small, forgets</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Long-term</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Recalled by meaning</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Facts and preferences</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Only the best matches enter the prompt</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Large, searchable</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Persistent</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Saved to disk</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Task progress and memory</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Loaded after a restart</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Survives crashes</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The Recall Cycle</span>
+        <span className="text-xs text-slate-400">How a fact comes back</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Store</div>
+          <div className="mt-2 text-lg font-bold text-white">Remember</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Save the fact.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Search</div>
+          <div className="mt-2 text-lg font-bold text-white">Recall</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Find the closest items to the question.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Insert</div>
+          <div className="mt-2 text-lg font-bold text-white">Prompt</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Add the few best items.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Update</div>
+          <div className="mt-2 text-lg font-bold text-white">Maintain</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Correct, expire or delete.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-violet-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why we recall only a few items</span>
+          <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Every recalled item costs tokens and can distract the model. Recalling the top one to three relevant items keeps prompts short and answers focused.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 reads left to right from fast and small to lasting. Part 2 shows the recall cycle. Open the bar to see why only a few items are recalled.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Short-Term, Long-Term and Persistent Memory
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script shows a rolling short-term buffer, a long-term memory that recalls facts by similarity, and persistence to a JSON file that survives a restart. Word overlap stands in for embeddings so it runs with no libraries.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">agent_memory.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import json, math, os, tempfile</span>
+            <span className="block">from collections import Counter, deque</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Short-term memory: only the most recent messages (a rolling window)</span>
+            <span className="block">short&#95;term = deque(maxlen=4)</span>
+            <span className="block">for message in &#91;&quot;hi&quot;, &quot;my name is Ana&quot;, &quot;I like hiking&quot;, &quot;what is RAG?&quot;, &quot;thanks&quot;&#93;:</span>
+            <span className="block">    short&#95;term.append(message)</span>
+            <span className="block">print(&quot;Short-term memory keeps the last 4:&quot;, list(short&#95;term))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Long-term semantic memory: store facts, recall by meaning</span>
+            <span className="block text-slate-500"># (Word overlap stands in for embeddings here. Real systems compare embedding vectors.)</span>
+            <span className="block">STOP = &#123;&quot;the&quot;, &quot;a&quot;, &quot;an&quot;, &quot;is&quot;, &quot;of&quot;, &quot;in&quot;, &quot;to&quot;, &quot;does&quot;, &quot;what&quot;, &quot;which&quot;, &quot;who&quot;, &quot;where&quot;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def vectorize(text):</span>
+            <span className="block">    words = &#91;w.strip(&quot;.,?!&quot;).lower() for w in text.split()&#93;</span>
+            <span className="block">    words = &#91;w&#91;:-1&#93; if len(w) &gt; 3 and w.endswith(&quot;s&quot;) else w for w in words&#93;</span>
+            <span className="block">    return Counter(w for w in words if w not in STOP)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def cosine(a, b):</span>
+            <span className="block">    dot = sum(a&#91;w&#93; &#42; b&#91;w&#93; for w in a)</span>
+            <span className="block">    norm = math.sqrt(sum(v &#42; v for v in a.values())) &#42; math.sqrt(sum(v &#42; v for v in b.values()))</span>
+            <span className="block">    return dot / norm if norm else 0.0</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">class LongTermMemory:</span>
+            <span className="block text-cyan-300">    def &#95;&#95;init&#95;&#95;(self):</span>
+            <span className="block">        self.items = &#91;&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">    def remember(self, text):</span>
+            <span className="block">        self.items.append(text)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">    def recall(self, query, k=1):</span>
+            <span className="block">        ranked = sorted(self.items, key=lambda item: cosine(vectorize(query), vectorize(item)), reverse=True)</span>
+            <span className="block">        return ranked&#91;:k&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">memory = LongTermMemory()</span>
+            <span className="block">for fact in &#91;&quot;The user is allergic to peanuts&quot;, &quot;The user lives in the city of Pune&quot;,</span>
+            <span className="block">             &quot;The user prefers short answers&quot;, &quot;The user is building a recipe app&quot;&#93;:</span>
+            <span className="block">    memory.remember(fact)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for question in &#91;&quot;What is the user allergic to?&quot;, &quot;Which city does the user live in?&quot;, &quot;What is the user building?&quot;&#93;:</span>
+            <span className="block">    print(question.ljust(36), &quot;-&gt;&quot;, memory.recall(question))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Persistent state: survives a restart because it is saved to disk</span>
+            <span className="block">path = os.path.join(tempfile.mkdtemp(), &quot;memory.json&quot;)</span>
+            <span className="block">with open(path, &quot;w&quot;) as f:</span>
+            <span className="block">    json.dump(memory.items, f)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">restored = LongTermMemory()</span>
+            <span className="block">with open(path) as f:</span>
+            <span className="block">    restored.items = json.load(f)</span>
+            <span className="block">print(&quot;After a restart:&quot;, len(restored.items), &quot;facts restored | recall:&quot;, restored.recall(&quot;Does the user like short answers?&quot;))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Short-term memory keeps the last 4: &#91;&apos;my name is Ana&apos;, &apos;I like hiking&apos;, &apos;what is RAG?&apos;, &apos;thanks&apos;&#93;</div>
+          <div>What is the user allergic to?        -&gt; &#91;&apos;The user is allergic to peanuts&apos;&#93;</div>
+          <div>Which city does the user live in?    -&gt; &#91;&apos;The user lives in the city of Pune&apos;&#93;</div>
+          <div>What is the user building?           -&gt; &#91;&apos;The user is building a recipe app&apos;&#93;</div>
+          <div>After a restart: 4 facts restored | recall: &#91;&apos;The user prefers short answers&apos;&#93;</div>
+        </div>
+      </div>
+      <div>
+        The short-term buffer has already forgotten <em>hi</em>, but the long-term memory still returns the right fact for each question. After the save and reload, the restored memory answers a question about short answers correctly.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Why does an agent need long-term memory in addition to the conversation history?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag07-q1-a" name="ag07-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag07-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The history window is limited and forgets old messages</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Long-term memory stores durable facts outside the window.</div>
+          </div>
+          <div>
+            <input id="ag07-q1-b" name="ag07-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag07-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The model refuses to read history</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> History is read normally. It is just limited.</div>
+          </div>
+          <div>
+            <input id="ag07-q1-c" name="ag07-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag07-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) History is always too large</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It depends on the length and the trimming.</div>
+          </div>
+          <div>
+            <input id="ag07-q1-d" name="ag07-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag07-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Long-term memory replaces tools</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Memory and tools do different jobs.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What does persistent state allow?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag07-q2-a" name="ag07-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag07-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Resuming a task after a crash or restart</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Progress saved to disk can be reloaded.</div>
+          </div>
+          <div>
+            <input id="ag07-q2-b" name="ag07-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag07-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Making the model larger</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> State does not change the model.</div>
+          </div>
+          <div>
+            <input id="ag07-q2-c" name="ag07-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag07-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Avoiding all errors</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It helps recovery but does not prevent errors.</div>
+          </div>
+          <div>
+            <input id="ag07-q2-d" name="ag07-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag07-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Deleting the history</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> State and history are separate.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Models have no memory between calls. Your code saves and restores what matters.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Short-term memory is a rolling window of recent messages.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Long-term memory stores facts outside the prompt and recalls the few most relevant ones.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Semantic memory finds items by meaning using embeddings and a vector store.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Persistent state saves task progress so the agent can resume after a restart.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Decide what to store, keep facts fresh, protect privacy and guard against memory poisoning.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Memory in One Line</div>
+        <div className="text-center font-bold text-white">
+          Remember → search by meaning → insert the best few into the prompt → update and forget
+        </div>
+      </div>
+      <div>
+        Memory turns a one-shot responder into an assistant that gets to know its user and its work.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Memory is one source of knowledge. Another is a document collection. In <strong className="text-white">Agents with RAG</strong> you will connect agents to retrieval and compare RAG with agentic RAG.
+      </div>
+    </div>
+  </section>
+
+</div>

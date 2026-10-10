@@ -1,0 +1,378 @@
+---
+title: "Data Cleaning and Metadata"
+slug: "data-cleaning-metadata"
+order: 5
+category: "RAG"
+subcategory: "Data"
+difficulty: "Beginner"
+readTime: "35 min"
+description: "Learn how to clean and normalize extracted text, remove duplicates, and design the metadata, document IDs, timestamps and versioning that keep a RAG knowledge base trustworthy."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+<section>
+  <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300">
+    <strong className="text-cyan-400">The Core Idea:</strong> Text that was extracted from documents is rarely ready to search. It carries stray spaces, page numbers, odd characters, repeated copies and several versions of the same file. <strong className="text-white">Cleaning</strong> makes the text consistent, <strong className="text-white">deduplication</strong> removes repeats, and <strong className="text-white">metadata</strong> records where each piece came from, when, and which version it is. Together they decide whether your knowledge base is trustworthy or full of noise and contradictions.
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: Why Clean Data Matters</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Imagine a library where the same book appears five times, some pages have the page number printed in the middle of sentences, and old editions sit next to new ones with no labels. A librarian searching it would hand you three copies of the same outdated page. A RAG retriever behaves exactly like that librarian: it returns whatever the index contains, in whatever condition it is in.</div>
+    <div className="grid gap-5 md:grid-cols-3">
+      <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-rose-300">Noise</div>
+        <div className="text-sm leading-7">Page numbers, headers and odd symbols take up space in chunks and dilute their meaning.</div>
+      </div>
+      <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-rose-300">Repetition</div>
+        <div className="text-sm leading-7">Copies of the same text fill the top results, pushing out other useful passages.</div>
+      </div>
+      <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-rose-300">Contradiction</div>
+        <div className="text-sm leading-7">An old and a new version of a policy both get retrieved, and the model may quote the wrong one.</div>
+      </div>
+    </div>
+    <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5">
+      <strong className="text-blue-300">Key point:</strong> retrieval cannot tell which passage is current, clean or authoritative unless you tell it. Cleaning and metadata are how you tell it.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: Cleaning and Normalization</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div><strong className="text-white">Cleaning</strong> removes what should not be there. <strong className="text-white">Normalization</strong> makes equivalent things look identical. Both aim at one goal: the same idea should always be written the same way.</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Operation</th>
+            <th className="px-4 py-3">Example</th>
+            <th className="px-4 py-3">Be careful</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3 font-semibold text-violet-300">Collapse whitespace</td><td className="px-4 py-3">Many spaces and line breaks become single spaces</td><td className="px-4 py-3">Keep paragraph breaks if chunking will use them</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-violet-300">Normalize characters</td><td className="px-4 py-3">Non-breaking spaces and fancy variants become plain characters</td><td className="px-4 py-3">Keep accents that change meaning</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-violet-300">Remove boilerplate</td><td className="px-4 py-3">Lines such as Page 3 of 10, repeated headers, cookie notices</td><td className="px-4 py-3">Do not delete real content that looks similar</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-violet-300">Fix encoding errors</td><td className="px-4 py-3">Garbled symbols replaced by the intended characters</td><td className="px-4 py-3">Fix at the source if you can</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-violet-300">Standardize formats</td><td className="px-4 py-3">Dates and units written one consistent way</td><td className="px-4 py-3">Never change the meaning of a number</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Less is more:</strong> modern embedding models understand normal text well. You usually do <em>not</em> need to lowercase everything, remove punctuation or strip common words. Clean away real noise, but keep the natural wording, because aggressive cleaning can destroy meaning.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Duplicate Removal</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Duplicates enter a knowledge base in many ways: the same file saved in two folders, an email thread quoted in every reply, a web page reachable through several URLs. They hurt in three ways: they fill the top-k results with identical text, they waste embedding and storage cost, and they inflate how important a passage looks.</div>
+    <div className="grid gap-5 md:grid-cols-2">
+      <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-emerald-300">Exact duplicates</div>
+        <div className="text-sm leading-7">Compute a <strong className="text-white">hash</strong>, a short fingerprint of the cleaned text. Two texts with the same hash are identical, and the second can be skipped. This is fast and cheap, and it works best after cleaning, because two copies that differ only in spacing become identical.</div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-emerald-300">Near duplicates</div>
+        <div className="text-sm leading-7">Texts that are almost the same, such as a document with one changed sentence. Compare the overlap of their word sets, or use similarity search, and treat pairs above a chosen threshold as duplicates for review.</div>
+      </div>
+    </div>
+    <div>A simple overlap measure is the Jaccard similarity of two word sets $A$ and $B$:</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$J(A,B) = \dfrac{\lvert A \cap B \rvert}{\lvert A \cup B \rvert}$$</div>
+    <div>If two passages each use 8 distinct words and share 7 of them, the union has $8 + 8 - 7 = 9$ words, so $J = 7/9 \approx 0.78$. A value of 1 means identical word sets and 0 means nothing in common.</div>
+    <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-5">
+      <strong className="text-amber-300">Not every repeat is a mistake.</strong> Legal boilerplate or a standard disclaimer may legitimately appear in many documents. Decide per source type whether repeated text should be removed, kept once, or kept everywhere with its metadata.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Metadata, Document IDs and Timestamps</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div><strong className="text-white">Metadata</strong> is data about the data. It does not go into the embedding, but it travels with every chunk and unlocks features later. Plan your fields early, because adding them afterwards means reprocessing everything.</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Field</th>
+            <th className="px-4 py-3">Example</th>
+            <th className="px-4 py-3">What it enables</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Document ID</td><td className="px-4 py-3">doc-5e15a5</td><td className="px-4 py-3">Stable identity, updates and deletions</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Source</td><td className="px-4 py-3">policy.txt or a page URL</td><td className="px-4 py-3">Citations and trust</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Timestamp</td><td className="px-4 py-3">2025-06-15</td><td className="px-4 py-3">Freshness filters and ordering</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Version and status</td><td className="px-4 py-3">v2, active</td><td className="px-4 py-3">Hide outdated versions</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Fingerprint</td><td className="px-4 py-3">a73e2f47</td><td className="px-4 py-3">Detecting duplicates and changes</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-orange-300">Category or owner</td><td className="px-4 py-3">legal, HR, support</td><td className="px-4 py-3">Filtering and access rules</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>Notice that the document ID and the fingerprint are different things. The <strong className="text-white">document ID</strong> is a stable name for the document, derived for example from its source path, so it stays the same across versions. The <strong className="text-white">fingerprint</strong> is a hash of the content, so it changes whenever the text changes. Using both lets you say <em>this is the same document, but its content is new</em>.</div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Document Versioning and Keeping the Index Fresh</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Documents change. A good pipeline treats every incoming file as one of four cases, decided by comparing its document ID and fingerprint with what is already stored:</div>
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">New ID.</strong> A brand-new document. Process it fully and mark it active as version 1.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Same ID, same fingerprint.</strong> Nothing changed. Skip it and save the embedding cost.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Same ID, new fingerprint.</strong> The content was updated. Create the next version, mark the old one superseded, and re-embed the new text.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Same fingerprint, different ID.</strong> A copy of an existing document. Skip it as a duplicate.</div>
+    </div>
+    <div>Marking the old version as superseded matters as much as adding the new one. If the old chunks stay searchable, retrieval can return both the 30-day and the 60-day return policy, and the model has no way to know which is current. Most vector stores let you filter on a status field, or delete the old chunks outright.</div>
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5">
+      <strong className="text-cyan-300">Deletion and audit:</strong> when a document is withdrawn, its chunks must disappear from the index too, otherwise answers keep quoting content that no longer exists. Keeping a history of versions with timestamps also gives you an audit trail: you can explain what the system knew at any past date.
+    </div>
+    <div>Processing only what changed is called <strong className="text-white">incremental ingestion</strong>. It keeps the cost of freshness low, and later production lessons build on it.</div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: From Messy Text to a Versioned Catalog</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Panel A shows a cleaning diff: red lines are removed or changed, green lines are what remains. Panel B replays four documents arriving over time and shows what the pipeline decides for each. Panel C is the metadata card that finally sits beside the text.</div>
+    <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-rose-300">Panel A · Cleaning Diff</span>
+          <span className="text-xs text-slate-400">Before and after for one document</span>
+        </div>
+        <div className="space-y-1 rounded-2xl border border-white/10 bg-black/30 p-4 text-xs leading-6">
+          <div className="rounded bg-rose-500/10 px-2 text-rose-300">− Refund   Policy</div>
+          <div className="rounded bg-emerald-500/10 px-2 text-emerald-300">+ Refund Policy</div>
+          <div className="rounded bg-rose-500/10 px-2 text-rose-300">− Returns accepted within [odd space] 30 days.</div>
+          <div className="rounded bg-emerald-500/10 px-2 text-emerald-300">+ Returns accepted within 30 days.</div>
+          <div className="rounded bg-rose-500/10 px-2 text-rose-300">− Page 1 of 2</div>
+          <div className="px-2 text-slate-300">  Keep your receipt.</div>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · Four Arrivals</span>
+          <span className="text-xs text-slate-400">Time runs from top to bottom</span>
+        </div>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] px-4 py-3 text-xs"><span className="text-slate-400">2025-01-10</span><span className="text-slate-200">policy.txt</span><span className="rounded bg-emerald-500/20 px-2 py-0.5 text-emerald-300">kept · v1 active</span></div>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 py-3 text-xs"><span className="text-slate-400">2025-02-01</span><span className="text-slate-200">policy_copy.txt</span><span className="rounded bg-rose-500/20 px-2 py-0.5 text-rose-300">skipped · same fingerprint</span></div>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] px-4 py-3 text-xs"><span className="text-slate-400">2025-03-05</span><span className="text-slate-200">shipping.txt</span><span className="rounded bg-emerald-500/20 px-2 py-0.5 text-emerald-300">kept · v1 active</span></div>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] px-4 py-3 text-xs"><span className="text-slate-400">2025-06-15</span><span className="text-slate-200">policy.txt</span><span className="rounded bg-amber-500/20 px-2 py-0.5 text-amber-300">new content · v2 active, v1 superseded</span></div>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · The Metadata Card</span>
+          <span className="text-xs text-slate-400">Travels with every chunk</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-xs">
+            <div className="font-bold uppercase tracking-wider text-emerald-300">Metadata</div>
+            <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-200">doc id: doc-5e15a5</div>
+            <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-200">source: policy.txt</div>
+            <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-200">date: 2025-06-15 · version 2</div>
+            <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 font-semibold text-emerald-300">status: active</div>
+          </div>
+          <div className="space-y-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-xs">
+            <div className="font-bold uppercase tracking-wider text-cyan-300">Text that gets embedded</div>
+            <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-3 leading-6 text-slate-200">Refund Policy Returns accepted within 60 days. Keep your receipt.</div>
+          </div>
+        </div>
+        <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+            <span>Click to see why the metadata is not embedded</span>
+            <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-300">Explain <span className="inline-block transition group-open:rotate-180">▼</span></span>
+          </summary>
+          <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Embeddings should capture what the text means. IDs, dates and status flags are better used for exact filtering, such as only active documents or only items from this year, which a vector comparison cannot do reliably.</div>
+        </details>
+      </div>
+    </div>
+    <div>How to read it: Panel A cleans the text, Panel B decides what to keep over time, and Panel C shows the finished record that retrieval will actually search and filter.</div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Clean, Deduplicate and Version Documents</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>The program below processes the same four documents as Panel B. It cleans each one with Unicode normalization, whitespace collapsing and boilerplate removal, fingerprints the result with a SHA-256 hash, skips exact duplicates, and gives each source a stable document ID and a version number. When a new version of a source arrives, the old one is marked superseded. Only the standard library is used.</div>
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+        <span className="font-mono text-xs font-semibold text-teal-400">clean_dedupe_version.py</span>
+        <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span>
+      </div>
+      <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block text-cyan-300">import hashlib</span>
+          <span className="block text-cyan-300">import unicodedata</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># (source, date, lines). chr(160) is a non-breaking space, a common extraction artifact</span>
+          <span className="block">raw_documents = [</span>
+          <span className="block">    (&quot;policy.txt&quot;, &quot;2025-01-10&quot;, [&quot;Refund   Policy&quot;, &quot;Returns accepted within&quot; + chr(160) + &quot;30 days.&quot;, &quot;Page 1 of 2&quot;, &quot;Keep your receipt.&quot;]),</span>
+          <span className="block">    (&quot;policy_copy.txt&quot;, &quot;2025-02-01&quot;, [&quot;Refund Policy&quot;, &quot;Returns accepted within 30 days.&quot;, &quot;Page 1 of 2&quot;, &quot;Keep your receipt.&quot;]),</span>
+          <span className="block">    (&quot;shipping.txt&quot;, &quot;2025-03-05&quot;, [&quot;Shipping Info&quot;, &quot;Delivery takes 5 days.&quot;, &quot;Page 1 of 1&quot;]),</span>
+          <span className="block">    (&quot;policy.txt&quot;, &quot;2025-06-15&quot;, [&quot;Refund Policy&quot;, &quot;Returns accepted within 60 days.&quot;, &quot;Page 1 of 2&quot;, &quot;Keep your receipt.&quot;]),</span>
+          <span className="block">]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 1. Cleaning</span>
+          <span className="block text-cyan-300">def is_boilerplate(line):</span>
+          <span className="block">    lowered = line.lower()</span>
+          <span className="block">    return lowered.startswith(&quot;page &quot;) and &quot; of &quot; in lowered</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def clean(lines):</span>
+          <span className="block">    kept = []</span>
+          <span className="block">    for line in lines:</span>
+          <span className="block">        line = unicodedata.normalize(&quot;NFKC&quot;, line)</span>
+          <span className="block">        line = &quot; &quot;.join(line.split())</span>
+          <span className="block">        if line and not is_boilerplate(line):</span>
+          <span className="block">            kept.append(line)</span>
+          <span className="block">    return &quot; &quot;.join(kept)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 2. Fingerprints and IDs</span>
+          <span className="block text-cyan-300">def short_hash(text):</span>
+          <span className="block">    return hashlib.sha256(text.encode(&quot;utf-8&quot;)).hexdigest()[:8]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 3. The catalog: (doc_id, source, version, date, status, fingerprint, text)</span>
+          <span className="block">catalog = []</span>
+          <span className="block">version_of = dict()</span>
+          <span className="block">seen = set()</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">for source, date, lines in raw_documents:</span>
+          <span className="block">    text = clean(lines)</span>
+          <span className="block">    fingerprint = short_hash(text.lower())</span>
+          <span className="block text-violet-300">    if fingerprint in seen:</span>
+          <span className="block text-violet-300">        print(&quot;SKIP duplicate:&quot;, source, &quot;-&gt;&quot;, fingerprint)</span>
+          <span className="block text-violet-300">        continue</span>
+          <span className="block">    seen.add(fingerprint)</span>
+          <span className="block">    doc_id = &quot;doc-&quot; + short_hash(source)[:6]</span>
+          <span className="block">    version = version_of.get(source, 0) + 1</span>
+          <span className="block">    version_of[source] = version</span>
+          <span className="block text-emerald-300">    for i, old in enumerate(catalog):</span>
+          <span className="block text-emerald-300">        if old[1] == source and old[4] == &quot;active&quot;:</span>
+          <span className="block text-emerald-300">            catalog[i] = old[:4] + (&quot;superseded&quot;,) + old[5:]</span>
+          <span className="block">    catalog.append((doc_id, source, version, date, &quot;active&quot;, fingerprint, text))</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">print(&quot;&quot;)</span>
+          <span className="block">for doc_id, source, version, date, status, fingerprint, text in catalog:</span>
+          <span className="block">    print(doc_id, source.ljust(13), &quot;v&quot; + str(version), date, status.ljust(10), fingerprint)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">print(&quot;&quot;)</span>
+          <span className="block">print(&quot;Searchable text:&quot;)</span>
+          <span className="block">for doc_id, source, version, date, status, fingerprint, text in catalog:</span>
+          <span className="block">    if status == &quot;active&quot;:</span>
+          <span className="block">        print(&quot;-&quot;, source, &quot;|&quot;, text)</span>
+        </code>
+      </pre>
+    </div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+      <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block">SKIP duplicate: policy_copy.txt -&gt; 846d9d7d</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">doc-5e15a5 policy.txt    v1 2025-01-10 superseded 846d9d7d</span>
+          <span className="block">doc-fb5015 shipping.txt  v1 2025-03-05 active     c0064e9f</span>
+          <span className="block">doc-5e15a5 policy.txt    v2 2025-06-15 active     a73e2f47</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">Searchable text:</span>
+          <span className="block">- shipping.txt | Shipping Info Delivery takes 5 days.</span>
+          <span className="block">- policy.txt | Refund Policy Returns accepted within 60 days. Keep your receipt.</span>
+        </code>
+      </pre>
+    </div>
+    <div>Three things happened. The copy was caught because, after cleaning, its text matched the first file exactly, even though the raw lines differed in spacing. Both policy files share one document ID, because the ID comes from the source name, while their fingerprints differ because the content changed. And only the newest policy version is left active, so a search filtered on active status can never return the outdated 30-day rule.</div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+  <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q1. Why is it better to clean text before computing a duplicate fingerprint?</div>
+      <div>
+        <input id="rag5-q1-a" name="rag5-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag5-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Hashes only work on short text</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Hashes work on text of any length.</div>
+      </div>
+      <div>
+        <input id="rag5-q1-b" name="rag5-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag5-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Copies that differ only in spacing or boilerplate become identical, so they are detected</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A single extra space changes a hash completely, so cleaning first makes duplicates match.</div>
+      </div>
+      <div>
+        <input id="rag5-q1-c" name="rag5-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag5-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It makes the hash shorter</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A hash has a fixed length no matter what the text looks like.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q2. A document is re-uploaded with the same ID but a new fingerprint. What should the pipeline do?</div>
+      <div>
+        <input id="rag5-q2-a" name="rag5-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag5-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Ignore it, because the ID already exists</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The new fingerprint says the content changed, so ignoring it would leave outdated text in the index.</div>
+      </div>
+      <div>
+        <input id="rag5-q2-b" name="rag5-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag5-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Add it and keep the old version active too</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Then both versions can be retrieved and the model may quote the old one.</div>
+      </div>
+      <div>
+        <input id="rag5-q2-c" name="rag5-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag5-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) Create the next version, re-embed it, and mark the old version superseded</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> This keeps the index fresh and the history auditable.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q3. Which of these is best stored as metadata instead of inside the embedded text?</div>
+      <div>
+        <input id="rag5-q3-a" name="rag5-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag5-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The document status, such as active or superseded</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Status is used for exact filtering, which metadata does well and embeddings do poorly.</div>
+      </div>
+      <div>
+        <input id="rag5-q3-b" name="rag5-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag5-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The sentence that answers a customer question</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Real content must be in the text, so it can be embedded and retrieved.</div>
+      </div>
+      <div>
+        <input id="rag5-q3-c" name="rag5-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag5-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) A paragraph of the policy</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Paragraphs are content, and content belongs in the embedded text.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+  <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Cleaning removes noise; normalization makes equivalent text look identical.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Do not over-clean: keep natural wording, because aggressive cleaning can damage meaning.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Exact duplicates are found with content hashes; near duplicates with overlap measures such as Jaccard similarity.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Metadata should include document ID, source, timestamp, version, status and ownership or category.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>A stable document ID names the document; a fingerprint detects when its content changes.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>On every update, supersede or delete old chunks, or retrieval will mix old and new facts.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Process only changed documents (incremental ingestion) to keep freshness cheap.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">At this point your documents are clean, unique and labeled. That is the real foundation of a good knowledge base. Every later improvement, from better chunking to reranking, works on top of it, and none of them can repair text that is noisy, duplicated or out of date.</div>
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Extract → Clean → Deduplicate → Add metadata → Version → Ready to chunk</div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Up Next:</strong> Chunking Strategies. With clean, labeled documents in hand, you will learn how to split them into the right-sized pieces, with fixed-size, recursive, sentence, paragraph and semantic chunking, and how overlap and chunk size affect retrieval.
+    </div>
+  </div>
+</section>
+
+</div>

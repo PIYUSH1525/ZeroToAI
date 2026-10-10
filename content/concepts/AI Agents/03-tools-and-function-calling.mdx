@@ -1,0 +1,465 @@
+---
+title: "Tools and Function Calling"
+slug: "03-tools-and-function-calling"
+order: 3
+category: "AI Agents"
+subcategory: "Foundations"
+difficulty: "Beginner"
+readTime: "28 min"
+description: "Learn how agents use tools: what tools are, how function calling works, how tool schemas describe them, how the model selects a tool, how your code executes it, and how ordinary APIs become tools."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A <strong className="text-white">tool</strong> is a function an agent is allowed to call. With <strong className="text-white">function calling</strong>, the model does not run anything. It outputs the <strong className="text-white">name and arguments</strong> of a tool, and <strong className="text-white">your code</strong> runs it and returns the result.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: What Are Tools?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A language model can only produce text. <strong className="text-white">Tools</strong> give it abilities beyond text: reading a database, searching the web, doing exact math, sending an email. A tool is just a normal function in your code that the agent is permitted to use.
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Read tools</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Get information</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Search, database queries, file reads. Low risk.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-violet-300">Compute tools</span>
+            <span className="rounded bg-violet-950/80 px-2 py-0.5 font-mono text-xs text-violet-300">Exact work</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Calculators, code runners, data transforms.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-rose-300">Action tools</span>
+            <span className="rounded bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">Change the world</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Send email, write file, make payment. Higher risk, needs guards.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Remember:</strong> The model gets the <strong className="text-white">description</strong> of each tool, not the code. It decides <em>whether and how</em> to call it.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Function Calling Step by Step
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">You describe the tools:</strong> Name, purpose and parameters are sent to the model with the conversation.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">The model replies with a call:</strong> It outputs the tool name and arguments, for example get_weather with city Delhi.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Your code validates and runs it:</strong> Check the name and arguments, then execute the real function.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">You return the result:</strong> The tool result is added to the conversation as a message.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">The model continues:</strong> It calls another tool or writes the final answer.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Key point:</strong> <strong className="text-white">The model never executes code.</strong> It only asks. This is why you can put checks, permissions and limits between the request and the action.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Tool Schemas
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">tool schema</strong> is the description the model reads. A clear schema is the most important factor in whether the model uses a tool correctly.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Schema part</th>
+              <th className="px-5 py-3">What to write</th>
+              <th className="px-5 py-3">Bad vs. good</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Name</td><td className="px-5 py-3">A short, specific verb phrase</td><td className="px-5 py-3"><em>tool1</em> vs <em>get_order_status</em></td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Description</td><td className="px-5 py-3">What it does and <strong className="text-white">when</strong> to use it</td><td className="px-5 py-3"><em>orders</em> vs <em>Look up the shipping status of one order by its ID</em></td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Parameters</td><td className="px-5 py-3">Names, types, required or optional, allowed values</td><td className="px-5 py-3"><em>data</em> vs <em>order_id (integer, required)</em></td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Return value</td><td className="px-5 py-3">What comes back and its format</td><td className="px-5 py-3">Say it returns JSON with status and eta_days</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Schema tips</div>
+        <div className="text-sm leading-relaxed text-slate-300">Keep the number of tools small, avoid tools that overlap, and put examples of correct input in the description. Vague schemas cause wrong tool calls.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Tool Selection and Execution
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        With several tools available, the model <strong className="text-white">selects</strong> one by comparing the request with each description. After the model asks for a call, your code does the <strong className="text-white">execution</strong>, and it must treat the request as untrusted input:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Check</th>
+              <th className="px-5 py-3">Why</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Does the tool exist?</td><td className="px-5 py-3">The model can invent a name</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Are all required arguments present and of the right type?</td><td className="px-5 py-3">Models sometimes omit or mistype arguments</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Are the values allowed?</td><td className="px-5 py-3">For example a refund amount within a limit</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Is this action permitted for this user?</td><td className="px-5 py-3">Permissions belong in code, not in the prompt</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Did it succeed?</td><td className="px-5 py-3">Return a clear error message the model can react to</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Good practice:</strong> Return <strong className="text-white">helpful errors</strong> such as <em>missing argument: b</em>. The model can read the error and fix its next call.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: APIs as Tools
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Most real tools are wrappers around <strong className="text-white">APIs</strong>: a weather service, a payment provider, an internal company system. The wrapper hides the HTTP details and exposes a simple function with a clear schema.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Wrapper job</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Add authentication</td><td className="px-5 py-3">Read the API key from an environment variable on the server, never from the prompt</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Shape the input</td><td className="px-5 py-3">Accept simple arguments like city and build the request</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Shape the output</td><td className="px-5 py-3">Return only the useful fields so the context stays small</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Handle failures</td><td className="px-5 py-3">Timeouts, rate limits and errors become clear messages</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Limit power</td><td className="px-5 py-3">Expose a read-only version when writing is not needed</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Security:</strong> Never give a tool more power than the task needs, and never put secrets in the description or the prompt.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Who Decides and Who Executes
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure splits a tool call into what the model does and what your code does, then lists the checks your code should make.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-violet-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Part 1 · One Tool Call</span>
+        <span className="text-xs text-slate-400">Who does what</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Model side</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Decide</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Reads the tool descriptions</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Chooses get_weather</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Outputs the arguments: city = Delhi</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">A request, not an action</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Your code side</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Execute</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Validates name and arguments</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Runs the real function</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Sends back: 33C, sunny</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Result goes back to the model</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Three Checks Before Running</span>
+        <span className="text-xs text-slate-400">Never trust the request</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Exists?</div>
+          <div className="mt-2 text-lg font-bold text-white">Tool name</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Reject names the model invented.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Valid?</div>
+          <div className="mt-2 text-lg font-bold text-white">Arguments</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Right keys, right types, allowed values.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Allowed?</div>
+          <div className="mt-2 text-lg font-bold text-white">Permission</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">This user may use this tool.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-violet-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see what a good error looks like</span>
+          <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Instead of failing silently, return a message like missing argument: b. The model reads it as a tool result and corrects the next call. The code below prints several such errors.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows that the model only produces a request. Part 2 lists three checks before anything runs. Open the bar to see what a helpful error looks like.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Tool Registry With Schemas and Validation
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script defines three tools (including an API wrapper), picks a tool for a question, and executes calls with validation so that bad calls return clear errors instead of crashing.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">tool_registry.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># Tools for an agent: a registry, schemas, selection, validation and execution</span>
+            <span className="block text-cyan-300">def get&#95;weather(city):</span>
+            <span className="block">    return &#123;&quot;Paris&quot;: &quot;18C, cloudy&quot;, &quot;Delhi&quot;: &quot;33C, sunny&quot;&#125;.get(city, &quot;unknown city&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def add(a, b):</span>
+            <span className="block">    return a + b</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def call&#95;exchange&#95;api(base, target):</span>
+            <span className="block text-slate-500">    # An API used as a tool: a real version would make an HTTP request here</span>
+            <span className="block">    rates = &#123;(&quot;USD&quot;, &quot;INR&quot;): 83.0, (&quot;USD&quot;, &quot;EUR&quot;): 0.92&#125;</span>
+            <span className="block">    return rates.get((base, target), None)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">TOOLS = &#123;</span>
+            <span className="block">    &quot;get&#95;weather&quot;: &#123;&quot;description&quot;: &quot;weather temperature forecast city&quot;, &quot;params&quot;: &#123;&quot;city&quot;: str&#125;, &quot;fn&quot;: get&#95;weather&#125;,</span>
+            <span className="block">    &quot;add&quot;: &#123;&quot;description&quot;: &quot;add sum total numbers plus&quot;, &quot;params&quot;: &#123;&quot;a&quot;: float, &quot;b&quot;: float&#125;, &quot;fn&quot;: add&#125;,</span>
+            <span className="block">    &quot;exchange&#95;rate&quot;: &#123;&quot;description&quot;: &quot;currency exchange rate convert money&quot;, &quot;params&quot;: &#123;&quot;base&quot;: str, &quot;target&quot;: str&#125;, &quot;fn&quot;: call&#95;exchange&#95;api&#125;,</span>
+            <span className="block">&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def select&#95;tool(question):</span>
+            <span className="block text-slate-500">    # Toy tool selection: score each tool description by word overlap with the question</span>
+            <span className="block">    words = set(question.lower().replace(&quot;?&quot;, &quot;&quot;).split())</span>
+            <span className="block">    scores = &#123;name: len(words &amp; set(t&#91;&quot;description&quot;&#93;.split())) for name, t in TOOLS.items()&#125;</span>
+            <span className="block">    best = max(scores, key=scores.get)</span>
+            <span className="block">    return best if scores&#91;best&#93; &gt; 0 else None</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def execute(name, args):</span>
+            <span className="block">    tool = TOOLS.get(name)</span>
+            <span className="block">    if tool is None:</span>
+            <span className="block">        return &#123;&quot;error&quot;: &quot;unknown tool: &quot; + str(name)&#125;</span>
+            <span className="block">    for key, kind in tool&#91;&quot;params&quot;&#93;.items():</span>
+            <span className="block">        if key not in args:</span>
+            <span className="block">            return &#123;&quot;error&quot;: &quot;missing argument: &quot; + key&#125;</span>
+            <span className="block">        if not isinstance(args&#91;key&#93;, kind):</span>
+            <span className="block">            return &#123;&quot;error&quot;: &quot;wrong type for &quot; + key&#125;</span>
+            <span className="block">    return &#123;&quot;result&quot;: tool&#91;&quot;fn&quot;&#93;(&#42;&#42;args)&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for q in &#91;&quot;What is the weather in Delhi?&quot;, &quot;Convert money from USD to INR&quot;, &quot;Tell me a joke&quot;&#93;:</span>
+            <span className="block">    print(q.ljust(34), &quot;-&gt; selected:&quot;, select&#95;tool(q))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(execute(&quot;get&#95;weather&quot;, &#123;&quot;city&quot;: &quot;Delhi&quot;&#125;))</span>
+            <span className="block">print(execute(&quot;add&quot;, &#123;&quot;a&quot;: 2.0&#125;))</span>
+            <span className="block">print(execute(&quot;add&quot;, &#123;&quot;a&quot;: &quot;two&quot;, &quot;b&quot;: 3.0&#125;))</span>
+            <span className="block">print(execute(&quot;exchange&#95;rate&quot;, &#123;&quot;base&quot;: &quot;USD&quot;, &quot;target&quot;: &quot;INR&quot;&#125;))</span>
+            <span className="block">print(execute(&quot;delete&#95;database&quot;, &#123;&#125;))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>What is the weather in Delhi?      -&gt; selected: get&#95;weather</div>
+          <div>Convert money from USD to INR      -&gt; selected: exchange&#95;rate</div>
+          <div>Tell me a joke                     -&gt; selected: None</div>
+          <div>&#123;&apos;result&apos;: &apos;33C, sunny&apos;&#125;</div>
+          <div>&#123;&apos;error&apos;: &apos;missing argument: b&apos;&#125;</div>
+          <div>&#123;&apos;error&apos;: &apos;wrong type for a&apos;&#125;</div>
+          <div>&#123;&apos;result&apos;: 83.0&#125;</div>
+          <div>&#123;&apos;error&apos;: &apos;unknown tool: delete&#95;database&apos;&#125;</div>
+        </div>
+      </div>
+      <div>
+        The selector matches questions to tool descriptions, and returns nothing for the joke because no tool fits. The last four lines show validation in action: missing argument, wrong type and an unknown tool all return readable errors, while correct calls return results.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: In function calling, who runs the tool?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag03-q1-a" name="ag03-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag03-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Your own code</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The model only outputs the name and arguments of the call.</div>
+          </div>
+          <div>
+            <input id="ag03-q1-b" name="ag03-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag03-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The language model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A model can only generate text.</div>
+          </div>
+          <div>
+            <input id="ag03-q1-c" name="ag03-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag03-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The user</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The user does not execute tools.</div>
+          </div>
+          <div>
+            <input id="ag03-q1-d" name="ag03-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag03-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) The tool schema</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A schema is only a description.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Why return a clear error message when a tool call is invalid?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag03-q2-a" name="ag03-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag03-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The model can read it and fix its next call</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Errors are returned as tool results the model can react to.</div>
+          </div>
+          <div>
+            <input id="ag03-q2-b" name="ag03-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag03-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It makes the model slower on purpose</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Speed is not the goal.</div>
+          </div>
+          <div>
+            <input id="ag03-q2-c" name="ag03-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag03-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It removes the need for validation</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Validation is still required.</div>
+          </div>
+          <div>
+            <input id="ag03-q2-d" name="ag03-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag03-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It hides the problem from the user</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The point is to help the model correct itself.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Tools are functions an agent may call to read, compute or act.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Function calling: the model outputs a tool name and arguments, and your code executes it.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A clear schema (name, description, parameters, return value) is the key to correct tool use.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The model selects tools by comparing the request with their descriptions, so keep tools few and distinct.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Always validate existence, arguments, values and permissions before executing, and return helpful errors.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Most tools wrap APIs. Hide secrets, shape inputs and outputs, and give each tool only the power it needs.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Tools in One Line</div>
+        <div className="text-center font-bold text-white">
+          Describe the tool → the model requests a call → your code validates and runs it → the result goes back
+        </div>
+      </div>
+      <div>
+        Good tools turn a text model into something that can actually get things done.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> A tool is only useful if the agent has the right instructions and context. In <strong className="text-white">Context, Instructions and Structured Outputs</strong> you will learn how to feed the model what it needs and how to get reliable replies.
+      </div>
+    </div>
+  </section>
+
+</div>

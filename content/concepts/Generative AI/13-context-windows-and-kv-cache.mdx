@@ -1,0 +1,428 @@
+---
+title: "Context Windows and the KV Cache"
+slug: "13-context-windows-and-kv-cache"
+order: 13
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Intermediate"
+readTime: "25 min"
+description: "Learn what a context window really is, how to budget tokens, what to do when a conversation gets too long, why very long prompts cost more and can be less accurate, and how the KV cache and prompt caching affect memory and price."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> The <strong className="text-white">context window</strong> is the model&apos;s shared working memory: prompt, history and answer all have to fit. Managing that budget well, and understanding the <strong className="text-white">KV cache</strong> behind it, keeps conversations fast, cheap and accurate.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: What Is a Context Window?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The <strong className="text-white">context window</strong> is the maximum amount of text, measured in <strong className="text-white">tokens</strong>, that a model can look at in one go. It is the model&apos;s working memory. Everything has to fit inside it: your system instructions, the whole conversation so far, any documents you paste in, <strong className="text-white">and</strong> the answer the model is about to write.
+      </div>
+      <div>
+        A token is a piece of a word. A rough rule for English is that <strong className="text-white">1 token is about 0.75 words</strong>, so a 100,000-token window is roughly 75,000 words, about the length of a short novel.
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Key point:</strong> The window is shared. If your prompt uses 7,000 tokens of an 8,000-token window, the answer can be at most about 1,000 tokens long.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: What Happens When the Text Is Too Long?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A model has no memory between requests. A chat application re-sends the <strong className="text-white">whole conversation</strong> with every new message. When that history no longer fits, something must be dropped. Applications use a few strategies:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Strategy</th>
+              <th className="px-5 py-3">How it works</th>
+              <th className="px-5 py-3">Downside</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Truncate the oldest</td><td className="px-5 py-3">Drop the earliest messages first</td><td className="px-5 py-3">Forgets early instructions or facts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Summarize</td><td className="px-5 py-3">Replace old messages with a short summary</td><td className="px-5 py-3">Summaries can lose details</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Retrieve (RAG)</td><td className="px-5 py-3">Store everything outside, fetch only the relevant pieces</td><td className="px-5 py-3">Needs a retrieval system</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Pin important parts</td><td className="px-5 py-3">Always keep the system prompt and key facts</td><td className="px-5 py-3">Uses part of the budget permanently</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Tip:</strong> Always keep the system prompt and the newest message. Drop or compress the <em>middle</em> of the history first.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Longer Is Not Always Better
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A bigger window is useful, but it is not free and it is not perfect:
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-rose-300">Cost</span>
+            <span className="rounded bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">Pay per token</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>You pay for every input token on every request. Re-sending 50,000 tokens of history again and again adds up quickly.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-amber-300">Speed</span>
+            <span className="rounded bg-amber-950/80 px-2 py-0.5 font-mono text-xs text-amber-300">Slower start</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Reading a very long prompt takes longer before the first word appears.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-violet-300">Accuracy</span>
+            <span className="rounded bg-violet-950/80 px-2 py-0.5 font-mono text-xs text-violet-300">Attention is uneven</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Research has found that models often use information at the <strong className="text-white">start and end</strong> of a long prompt better than the middle.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Practical rule:</strong> Put the most important instructions at the beginning or end, and send <strong className="text-white">only the context you need</strong>. A short, focused prompt often beats a huge one.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: The KV Cache and Prompt Caching
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        As you saw in the attention lesson, a model stores the keys and values of earlier tokens in a <strong className="text-white">KV cache</strong> so it does not recompute them. That cache lives in GPU memory and grows with every token of every active conversation.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\text{cache memory} = 2 \times \text{layers} \times \text{KV heads} \times \text{head size} \times \text{tokens} \times \text{bytes}$$
+      </div>
+      <div>
+        <strong className="text-white">Prompt caching</strong> is a related service feature. If many requests start with the <em>same long prefix</em> (a big system prompt, a document, a set of examples), the provider can reuse the already-computed cache for that prefix. Cached input tokens are usually billed at a discount and are faster.
+      </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-blue-300">Design tip:</strong> Put the <strong className="text-white">stable</strong> part of your prompt first and the <strong className="text-white">changing</strong> part last. Then repeated requests share the same prefix and can hit the cache.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Managing Memory in Long Conversations
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Serving many users with long contexts is mainly a <strong className="text-white">memory</strong> problem. Common techniques:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Technique</th>
+              <th className="px-5 py-3">Idea</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">KV cache quantization</td><td className="px-5 py-3">Store the cache in 8-bit or 4-bit numbers instead of 16-bit</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Grouped-query attention</td><td className="px-5 py-3">Share keys and values between heads (smaller cache by design)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Paged KV cache</td><td className="px-5 py-3">Store the cache in small pages instead of one big block, to waste less memory</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Prefix caching</td><td className="px-5 py-3">Reuse the cache of a shared beginning across requests</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Sliding window / eviction</td><td className="px-5 py-3">Keep only recent tokens, or drop the least useful ones</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Advertised vs. effective context</div>
+        <div className="text-sm leading-relaxed text-slate-300">A model may <em>accept</em> 128,000 tokens but still answer worse near its limit. Test your own task at the real length you plan to use.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Context Budget
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows who shares the context window and what to do when the conversation no longer fits.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-cyan-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 1 · Where the Window Goes</span>
+        <span className="text-xs text-slate-400">Everything shares one budget</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Input side</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Your prompt</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">System prompt and rules</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Conversation history</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Pasted documents or retrieved chunks</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Prompt tokens</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Output side</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">The reply</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Reserved space for the answer</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Model writes one token at a time</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Answer tokens (max_tokens)</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · When the History Is Too Long</span>
+        <span className="text-xs text-slate-400">Three ways out</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Option 1 · Truncate</div>
+          <div className="mt-2 text-lg font-bold text-white">Drop oldest</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Fast and simple, but forgets.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Option 2 · Summarize</div>
+          <div className="mt-2 text-lg font-bold text-white">Compress</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Keeps the gist in fewer tokens.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Option 3 · Retrieve</div>
+          <div className="mt-2 text-lg font-bold text-white">Fetch on demand</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Only relevant pieces enter the window.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-cyan-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see the budget formula</span>
+          <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Budget for history = window - reserved answer - system prompt. Walk backwards from the newest message and keep messages until the budget is full. The code below does exactly this.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows the two sides that compete for the same tokens. Part 2 compares the three common ways to make a long history fit. Open the bar for the budget rule used in the code.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Context-Window Manager
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script estimates token counts, keeps the newest messages that fit in a given window while reserving space for the answer, and then compares the cost of a long repeated prefix with and without prompt caching (using an example price and an example 90% discount).
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">context_manager.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># A tiny context-window manager: decide which messages still fit</span>
+            <span className="block text-cyan-300">def count&#95;tokens(text):</span>
+            <span className="block">    return max(1, round(len(text.split()) / 0.75))       # rough rule: 1 token is about 0.75 words</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def fit&#95;to&#95;window(system, messages, window, reserve&#95;for&#95;answer):</span>
+            <span className="block">    budget = window - reserve&#95;for&#95;answer - count&#95;tokens(system)</span>
+            <span className="block">    kept, used = &#91;&#93;, 0</span>
+            <span className="block">    for role, text in reversed(messages):                # walk from the newest message backwards</span>
+            <span className="block">        cost = count&#95;tokens(text)</span>
+            <span className="block">        if used + cost &gt; budget:</span>
+            <span className="block">            break                                        # older messages no longer fit</span>
+            <span className="block">        kept.append((role, text))</span>
+            <span className="block">        used += cost</span>
+            <span className="block">    kept.reverse()</span>
+            <span className="block">    return kept, used</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">system = &quot;You are a helpful tutor.&quot;</span>
+            <span className="block">messages = &#91;</span>
+            <span className="block">    (&quot;user&quot;, &quot;Explain gradient descent &quot; + &quot;in detail &quot; &#42; 30),</span>
+            <span className="block">    (&quot;assistant&quot;, &quot;Gradient descent is a method &quot; + &quot;that repeats small steps &quot; &#42; 25),</span>
+            <span className="block">    (&quot;user&quot;, &quot;Now explain the learning rate &quot; + &quot;with an example &quot; &#42; 20),</span>
+            <span className="block">    (&quot;assistant&quot;, &quot;The learning rate controls &quot; + &quot;how big each step is &quot; &#42; 20),</span>
+            <span className="block">    (&quot;user&quot;, &quot;Summarize everything in one sentence.&quot;),</span>
+            <span className="block">&#93;</span>
+            <span className="block">total = sum(count&#95;tokens(m&#91;1&#93;) for m in messages)</span>
+            <span className="block">print(&quot;Whole conversation:&quot;, total, &quot;tokens&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for window in &#91;2000, 400, 200&#93;:</span>
+            <span className="block">    kept, used = fit&#95;to&#95;window(system, messages, window, reserve&#95;for&#95;answer=50)</span>
+            <span className="block">    print(&quot;Window&quot;, window, &quot;-&gt; kept&quot;, len(kept), &quot;of&quot;, len(messages), &quot;messages,&quot;, used, &quot;tokens used&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Prompt caching: a repeated prefix can be billed at a discount (example discount: 90%)</span>
+            <span className="block text-cyan-300">def cost&#95;usd(prefix&#95;tokens, new&#95;tokens, price&#95;per&#95;million=3.0, cached=False):</span>
+            <span className="block">    prefix&#95;price = price&#95;per&#95;million &#42; (0.1 if cached else 1.0)</span>
+            <span className="block">    return (prefix&#95;tokens &#42; prefix&#95;price + new&#95;tokens &#42; price&#95;per&#95;million) / 1&#95;000&#95;000</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;1,000 calls, 20,000-token prefix, no cache: USD&quot;, round(1000 &#42; cost&#95;usd(20000, 200), 2))</span>
+            <span className="block">print(&quot;1,000 calls, 20,000-token prefix, cached:   USD&quot;, round(1000 &#42; cost&#95;usd(20000, 200, cached=True), 2))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Whole conversation: 457 tokens</div>
+          <div>Window 2000 -&gt; kept 5 of 5 messages, 457 tokens used</div>
+          <div>Window 400 -&gt; kept 3 of 5 messages, 233 tokens used</div>
+          <div>Window 200 -&gt; kept 1 of 5 messages, 7 tokens used</div>
+          <div>1,000 calls, 20,000-token prefix, no cache: USD 60.6</div>
+          <div>1,000 calls, 20,000-token prefix, cached:   USD 6.6</div>
+        </div>
+      </div>
+      <div>
+        As the window shrinks from 2,000 to 400 to 200 tokens, fewer messages survive, and the oldest go first. The cost example shows why caching a large repeated prefix can cut the bill by roughly 90%.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: A model has an 8,000-token window and your prompt is 7,500 tokens. About how long can the answer be?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ctx-q1-a" name="ctx-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ctx-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) About 500 tokens</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The window is shared between the prompt and the answer.</div>
+          </div>
+          <div>
+            <input id="ctx-q1-b" name="ctx-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ctx-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) 8,000 tokens</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The prompt already uses most of the window.</div>
+          </div>
+          <div>
+            <input id="ctx-q1-c" name="ctx-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ctx-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Unlimited</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The window is a hard limit.</div>
+          </div>
+          <div>
+            <input id="ctx-q1-d" name="ctx-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ctx-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Exactly 7,500 tokens</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Only the remaining space is available.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: How should you arrange a prompt to benefit from prompt caching?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ctx-q2-a" name="ctx-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ctx-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Put the stable, repeated part first and the changing part last</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Caching reuses a shared prefix, so the shared part must come first.</div>
+          </div>
+          <div>
+            <input id="ctx-q2-b" name="ctx-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ctx-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Put the changing part first</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A changing start breaks the shared prefix.</div>
+          </div>
+          <div>
+            <input id="ctx-q2-c" name="ctx-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ctx-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Shuffle the parts every request</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Different order means no reusable prefix.</div>
+          </div>
+          <div>
+            <input id="ctx-q2-d" name="ctx-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ctx-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Remove the system prompt</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Removing it is not needed for caching.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The context window is measured in tokens and is shared by the prompt and the answer.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Chat apps re-send the whole history each turn, so long chats cost more and eventually overflow.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Fit long histories by truncating, summarizing or retrieving only what is relevant.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Longer is not always better: cost, speed and accuracy near the middle of long prompts can suffer.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The KV cache grows with every token. Prompt caching reuses a shared prefix at a discount.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Put stable content first and changing content last to benefit from caching.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Context Budgeting in One Line</div>
+        <div className="text-center font-bold text-white">
+          Window = system prompt + history + documents + reserved answer
+        </div>
+      </div>
+      <div>
+        Treat every token as a limited resource. A clear, focused prompt is cheaper, faster and often more accurate than a giant one.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Memory is the real limit of LLMs. In <strong className="text-white">VRAM, Precision and Quantization</strong> you will learn how many bytes each number takes and how shrinking them lets big models fit on smaller GPUs.
+      </div>
+    </div>
+  </section>
+
+</div>

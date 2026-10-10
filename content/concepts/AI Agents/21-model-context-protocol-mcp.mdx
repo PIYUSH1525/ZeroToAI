@@ -1,0 +1,476 @@
+---
+title: "Model Context Protocol (MCP)"
+slug: "21-model-context-protocol-mcp"
+order: 21
+category: "AI Agents"
+subcategory: "Frameworks"
+difficulty: "Intermediate"
+readTime: "30 min"
+description: "Learn the Model Context Protocol: what MCP is, how clients and servers communicate, the three server features (tools, resources and prompts), and how MCP connects agents to external systems in a standard way."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> <strong className="text-white">MCP</strong> is an open protocol that standardizes how AI applications connect to <strong className="text-white">tools, data and prompts</strong>. An <strong className="text-white">MCP client</strong> talks to <strong className="text-white">MCP servers</strong> using simple JSON messages, so any compatible app can use any compatible server without custom integration code.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: MCP Fundamentals
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Before MCP, connecting an AI application to a new tool or data source meant writing a custom integration for each pair. With <strong className="text-white">N</strong> applications and <strong className="text-white">M</strong> tools, that is up to N × M integrations. MCP replaces this with <strong className="text-white">one standard</strong>: each application speaks MCP once, and each tool exposes MCP once.
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Analogy:</strong> Think of USB. Instead of a different cable for every device and computer, one standard port connects them all.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Without a standard</th>
+              <th className="px-5 py-3">With MCP</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Custom integration per app and tool</td><td className="px-5 py-3">One protocol both sides understand</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Work is repeated by every team</td><td className="px-5 py-3">A server is written once and reused</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Hard to swap tools</td><td className="px-5 py-3">Plug in a different server</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        MCP was introduced by Anthropic as an open standard and is now supported by many AI applications and tool providers. The protocol keeps evolving, so check the official specification for current details.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: MCP Clients and Servers
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Part</th>
+              <th className="px-5 py-3">Role</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Host</td><td className="px-5 py-3">The AI application the user interacts with</td><td className="px-5 py-3">A chat app or an IDE with an agent</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">MCP client</td><td className="px-5 py-3">A connection inside the host that talks to one server</td><td className="px-5 py-3">The code that sends requests</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">MCP server</td><td className="px-5 py-3">A program that exposes capabilities</td><td className="px-5 py-3">A server for files, a database or a calendar</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        Messages use <strong className="text-white">JSON-RPC 2.0</strong>: a request has an id, a method and parameters, and the server replies with a result or an error. They travel over a <strong className="text-white">transport</strong>: a local process using standard input and output (stdio), or HTTP for remote servers.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">In the code:</strong> The client and server in the example exchange real JSON-RPC messages in memory, with no network.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Tools
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Tools</strong> are actions the model can request, exactly like the function calling you already know. The server describes each tool with a name, a description and a JSON schema for its arguments. The client lists them with tools/list and runs one with tools/call.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Message</th>
+              <th className="px-5 py-3">Purpose</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">tools/list</td><td className="px-5 py-3">Discover available tools and their schemas</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">tools/call</td><td className="px-5 py-3">Run a tool with arguments and get content back</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> The agent asked the server for its tools, found get_weather, and called it for Delhi to receive 33C, sunny.
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Security:</strong> A tool is still code that can act. The host should show or confirm risky calls, and servers should expose only the minimum.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Resources and Prompts
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Besides tools, a server can offer two other kinds of capability:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Feature</th>
+              <th className="px-5 py-3">What it is</th>
+              <th className="px-5 py-3">Who controls it</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Resources</td><td className="px-5 py-3">Data the application can read, identified by a URI</td><td className="px-5 py-3">Usually the application</td><td className="px-5 py-3">A file, a database record, a document</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Prompts</td><td className="px-5 py-3">Reusable prompt templates with arguments</td><td className="px-5 py-3">Usually the user</td><td className="px-5 py-3">A summarize template for selected text</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        Resources use resources/list and resources/read. Prompts use prompts/list and prompts/get. In the code, the client read a todo file as a resource and fetched a summarize prompt filled with an argument.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Tools vs. resources</div>
+        <div className="text-sm leading-relaxed text-slate-300">Use a <strong className="text-white">tool</strong> when the model should <em>do</em> something or compute something. Use a <strong className="text-white">resource</strong> when it should <em>read</em> data that already exists.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Connecting Agents to External Systems
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Connect:</strong> The client starts or opens a server and sends initialize. Both sides share which features they support.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Discover:</strong> List tools, resources and prompts.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Use:</strong> Add the tools to the agent&apos;s tool list. Read resources into context when needed.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Handle errors:</strong> Servers return errors, such as <em>method not found</em>, that the client must handle.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Secure:</strong> Authenticate remote servers, limit permissions and require confirmation for risky tools.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Trust:</strong> Only connect to servers you trust. A malicious or compromised server can return harmful text or tool descriptions. Treat everything a server sends as untrusted data, as the security lesson explains.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Why it matters for agents:</strong> Instead of writing a new integration per tool, an agent can discover and use whatever MCP servers are connected, which makes tool sets easy to extend.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: One MCP Conversation and Three Server Features
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure walks through the messages in the code, then summarizes the three things an MCP server can offer.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-violet-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Part 1 · One Conversation</span>
+        <span className="text-xs text-slate-400">Messages in the code</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Connect</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">initialize</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Client says hello</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Server returns its name and features</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">demo-server ready</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Discover and use</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">tools/list, tools/call</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Server lists get_weather</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Client calls it with city = Delhi</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">33C, sunny</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Read</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">resources and prompts</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Reads todo.txt as a resource</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Fetches the summarize prompt</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Data and a ready prompt</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The Three Server Features</span>
+        <span className="text-xs text-slate-400">What a server can offer</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Tools</div>
+          <div className="mt-2 text-lg font-bold text-white">Actions</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">The model asks, the client runs.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Resources</div>
+          <div className="mt-2 text-lg font-bold text-white">Data</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Read by URI.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Prompts</div>
+          <div className="mt-2 text-lg font-bold text-white">Templates</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Reusable and parameterized.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Errors</div>
+          <div className="mt-2 text-lg font-bold text-white">JSON-RPC</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Unknown method returns -32601.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-violet-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why MCP removes N times M integrations</span>
+          <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">With 5 apps and 20 tools you would need up to 100 custom connectors. With MCP, 5 apps speak the protocol and 20 tools expose it, which is 25 pieces of work, and any app can use any tool.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows the sequence: connect, discover and use, then read. Part 2 shows tools, resources, prompts and errors. Open the bar to see the arithmetic behind the integration problem.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Tiny MCP Server and Client
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script implements a small MCP-style server and client that exchange JSON-RPC 2.0 messages in memory. It covers initialize, tools/list, tools/call, resources/list, resources/read, prompts/get and an error for an unknown method. It follows the shape of the protocol but is a teaching sketch, not the official SDK.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">mcp_demo.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import json</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># A tiny MCP-style server and client talking JSON-RPC 2.0 (in memory, no network)</span>
+            <span className="block text-cyan-300">class Server:</span>
+            <span className="block text-cyan-300">    def &#95;&#95;init&#95;&#95;(self):</span>
+            <span className="block">        self.tools = &#123;&quot;get&#95;weather&quot;: &#123;</span>
+            <span className="block">            &quot;description&quot;: &quot;Get the current weather for a city&quot;,</span>
+            <span className="block">            &quot;inputSchema&quot;: &#123;&quot;type&quot;: &quot;object&quot;, &quot;properties&quot;: &#123;&quot;city&quot;: &#123;&quot;type&quot;: &quot;string&quot;&#125;&#125;, &quot;required&quot;: &#91;&quot;city&quot;&#93;&#125;,</span>
+            <span className="block">            &quot;fn&quot;: lambda args: &#123;&quot;Paris&quot;: &quot;18C, cloudy&quot;, &quot;Delhi&quot;: &quot;33C, sunny&quot;&#125;.get(args&#91;&quot;city&quot;&#93;, &quot;unknown city&quot;)&#125;&#125;</span>
+            <span className="block">        self.resources = &#123;&quot;file:///notes/todo.txt&quot;: &quot;buy milk&#92;nfinish lesson&quot;&#125;</span>
+            <span className="block">        self.prompts = &#123;&quot;summarize&quot;: &quot;Summarize this in one sentence: &#123;text&#125;&quot;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">    def handle(self, request):</span>
+            <span className="block">        method, params, rid = request&#91;&quot;method&quot;&#93;, request.get(&quot;params&quot;, &#123;&#125;), request&#91;&quot;id&quot;&#93;</span>
+            <span className="block">        if method == &quot;initialize&quot;:</span>
+            <span className="block">            result = &#123;&quot;protocolVersion&quot;: &quot;2024-11-05&quot;, &quot;capabilities&quot;: &#123;&quot;tools&quot;: &#123;&#125;, &quot;resources&quot;: &#123;&#125;, &quot;prompts&quot;: &#123;&#125;&#125;,</span>
+            <span className="block">                      &quot;serverInfo&quot;: &#123;&quot;name&quot;: &quot;demo-server&quot;, &quot;version&quot;: &quot;0.1&quot;&#125;&#125;</span>
+            <span className="block">        elif method == &quot;tools/list&quot;:</span>
+            <span className="block">            result = &#123;&quot;tools&quot;: &#91;&#123;&quot;name&quot;: n, &quot;description&quot;: t&#91;&quot;description&quot;&#93;, &quot;inputSchema&quot;: t&#91;&quot;inputSchema&quot;&#93;&#125; for n, t in self.tools.items()&#93;&#125;</span>
+            <span className="block">        elif method == &quot;tools/call&quot;:</span>
+            <span className="block">            text = self.tools&#91;params&#91;&quot;name&quot;&#93;&#93;&#91;&quot;fn&quot;&#93;(params&#91;&quot;arguments&quot;&#93;)</span>
+            <span className="block">            result = &#123;&quot;content&quot;: &#91;&#123;&quot;type&quot;: &quot;text&quot;, &quot;text&quot;: text&#125;&#93;, &quot;isError&quot;: False&#125;</span>
+            <span className="block">        elif method == &quot;resources/list&quot;:</span>
+            <span className="block">            result = &#123;&quot;resources&quot;: &#91;&#123;&quot;uri&quot;: uri, &quot;name&quot;: uri.split(&quot;/&quot;)&#91;-1&#93;&#125; for uri in self.resources&#93;&#125;</span>
+            <span className="block">        elif method == &quot;resources/read&quot;:</span>
+            <span className="block">            result = &#123;&quot;contents&quot;: &#91;&#123;&quot;uri&quot;: params&#91;&quot;uri&quot;&#93;, &quot;text&quot;: self.resources&#91;params&#91;&quot;uri&quot;&#93;&#93;&#125;&#93;&#125;</span>
+            <span className="block">        elif method == &quot;prompts/get&quot;:</span>
+            <span className="block">            text = self.prompts&#91;params&#91;&quot;name&quot;&#93;&#93;.format(&#42;&#42;params&#91;&quot;arguments&quot;&#93;)</span>
+            <span className="block">            result = &#123;&quot;messages&quot;: &#91;&#123;&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &#123;&quot;type&quot;: &quot;text&quot;, &quot;text&quot;: text&#125;&#125;&#93;&#125;</span>
+            <span className="block">        else:</span>
+            <span className="block">            return &#123;&quot;jsonrpc&quot;: &quot;2.0&quot;, &quot;id&quot;: rid, &quot;error&quot;: &#123;&quot;code&quot;: -32601, &quot;message&quot;: &quot;Method not found&quot;&#125;&#125;</span>
+            <span className="block">        return &#123;&quot;jsonrpc&quot;: &quot;2.0&quot;, &quot;id&quot;: rid, &quot;result&quot;: result&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">class Client:</span>
+            <span className="block text-cyan-300">    def &#95;&#95;init&#95;&#95;(self, server):</span>
+            <span className="block">        self.server, self.next&#95;id = server, 1</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">    def request(self, method, params=None):</span>
+            <span className="block">        message = &#123;&quot;jsonrpc&quot;: &quot;2.0&quot;, &quot;id&quot;: self.next&#95;id, &quot;method&quot;: method, &quot;params&quot;: params or &#123;&#125;&#125;</span>
+            <span className="block">        self.next&#95;id += 1</span>
+            <span className="block">        return self.server.handle(json.loads(json.dumps(message)))      # sent as JSON, as on a real transport</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">client = Client(Server())</span>
+            <span className="block">print(&quot;initialize -&gt;&quot;, client.request(&quot;initialize&quot;)&#91;&quot;result&quot;&#93;&#91;&quot;serverInfo&quot;&#93;)</span>
+            <span className="block">tools = client.request(&quot;tools/list&quot;)&#91;&quot;result&quot;&#93;&#91;&quot;tools&quot;&#93;</span>
+            <span className="block">print(&quot;tools/list -&gt;&quot;, &#91;t&#91;&quot;name&quot;&#93; for t in tools&#93;)</span>
+            <span className="block">print(&quot;tools/call -&gt;&quot;, client.request(&quot;tools/call&quot;, &#123;&quot;name&quot;: &quot;get&#95;weather&quot;, &quot;arguments&quot;: &#123;&quot;city&quot;: &quot;Delhi&quot;&#125;&#125;)&#91;&quot;result&quot;&#93;&#91;&quot;content&quot;&#93;&#91;0&#93;&#91;&quot;text&quot;&#93;)</span>
+            <span className="block">print(&quot;resources/list -&gt;&quot;, &#91;r&#91;&quot;name&quot;&#93; for r in client.request(&quot;resources/list&quot;)&#91;&quot;result&quot;&#93;&#91;&quot;resources&quot;&#93;&#93;)</span>
+            <span className="block">print(&quot;resources/read -&gt;&quot;, client.request(&quot;resources/read&quot;, &#123;&quot;uri&quot;: &quot;file:///notes/todo.txt&quot;&#125;)&#91;&quot;result&quot;&#93;&#91;&quot;contents&quot;&#93;&#91;0&#93;&#91;&quot;text&quot;&#93;.replace(&quot;&#92;n&quot;, &quot; | &quot;))</span>
+            <span className="block">print(&quot;prompts/get -&gt;&quot;, client.request(&quot;prompts/get&quot;, &#123;&quot;name&quot;: &quot;summarize&quot;, &quot;arguments&quot;: &#123;&quot;text&quot;: &quot;MCP connects agents to tools&quot;&#125;&#125;)&#91;&quot;result&quot;&#93;&#91;&quot;messages&quot;&#93;&#91;0&#93;&#91;&quot;content&quot;&#93;&#91;&quot;text&quot;&#93;)</span>
+            <span className="block">print(&quot;unknown method -&gt;&quot;, client.request(&quot;tools/delete&quot;)&#91;&quot;error&quot;&#93;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>initialize -&gt; &#123;&apos;name&apos;: &apos;demo-server&apos;, &apos;version&apos;: &apos;0.1&apos;&#125;</div>
+          <div>tools/list -&gt; &#91;&apos;get&#95;weather&apos;&#93;</div>
+          <div>tools/call -&gt; 33C, sunny</div>
+          <div>resources/list -&gt; &#91;&apos;todo.txt&apos;&#93;</div>
+          <div>resources/read -&gt; buy milk | finish lesson</div>
+          <div>prompts/get -&gt; Summarize this in one sentence: MCP connects agents to tools</div>
+          <div>unknown method -&gt; &#123;&apos;code&apos;: -32601, &apos;message&apos;: &apos;Method not found&apos;&#125;</div>
+        </div>
+      </div>
+      <div>
+        Every line of output is the result of one JSON-RPC request. The unknown method returns a standard error code instead of crashing. For real projects, use an official MCP SDK, which also handles transports, capability negotiation and authentication.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What problem does MCP mainly solve?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag21-q1-a" name="ag21-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag21-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Custom integrations for every pair of application and tool</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> One standard replaces many one-off connectors.</div>
+          </div>
+          <div>
+            <input id="ag21-q1-b" name="ag21-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag21-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Training larger models</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> MCP is about connecting, not training.</div>
+          </div>
+          <div>
+            <input id="ag21-q1-c" name="ag21-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag21-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Making GPUs faster</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It is unrelated to hardware.</div>
+          </div>
+          <div>
+            <input id="ag21-q1-d" name="ag21-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag21-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Replacing JSON</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> MCP uses JSON-RPC.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Which MCP feature should you use for reading existing data such as a file?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag21-q2-a" name="ag21-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag21-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) A resource</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Resources expose data identified by a URI.</div>
+          </div>
+          <div>
+            <input id="ag21-q2-b" name="ag21-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag21-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) A tool that deletes things</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Reading does not need a destructive tool.</div>
+          </div>
+          <div>
+            <input id="ag21-q2-c" name="ag21-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag21-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) An error code</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Errors report failures.</div>
+          </div>
+          <div>
+            <input id="ag21-q2-d" name="ag21-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag21-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) A transport</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A transport carries messages.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>MCP is an open protocol that standardizes how AI apps connect to tools, data and prompts.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A host contains MCP clients, and each client talks to one MCP server.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Messages are JSON-RPC 2.0 over stdio for local servers or HTTP for remote ones.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Tools are actions, resources are readable data and prompts are reusable templates.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use tools/list and tools/call, resources/list and resources/read, prompts/list and prompts/get.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Only connect to trusted servers, limit permissions and treat server output as untrusted.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">MCP in One Line</div>
+        <div className="text-center font-bold text-white">
+          One protocol → servers expose tools, resources and prompts → any compatible agent can use them
+        </div>
+      </div>
+      <div>
+        MCP makes tool ecosystems reusable, but trust and security remain your responsibility.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Connecting to many tools and servers expands what an agent can be tricked into doing. In <strong className="text-white">Agent Security</strong> you will study prompt injection, tool security and safe execution.
+      </div>
+    </div>
+  </section>
+
+</div>

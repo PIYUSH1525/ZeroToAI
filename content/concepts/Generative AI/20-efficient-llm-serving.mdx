@@ -1,0 +1,455 @@
+---
+title: "Efficient LLM Serving: Batching, PagedAttention and Speculative Decoding"
+slug: "20-efficient-llm-serving"
+order: 20
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Advanced"
+readTime: "30 min"
+description: "Learn how production systems serve LLMs fast and cheaply: prefill vs. decode, latency and throughput metrics, continuous batching, PagedAttention, prefix caching, quantization and speculative decoding."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Serving is a <strong className="text-white">memory-bandwidth</strong> game. The big wins come from sharing each weight load across many requests (<strong className="text-white">continuous batching</strong>), wasting less cache memory (<strong className="text-white">paging</strong>), and getting more tokens out of every big-model pass (<strong className="text-white">speculative decoding</strong>).
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Serving Is a Different Problem From Training
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Training happens once. <strong className="text-white">Serving</strong> (also called <strong className="text-white">inference</strong>) happens millions of times, for many users at once, and users are waiting for each answer. Serving well means answering <strong className="text-white">fast</strong>, serving <strong className="text-white">many people per GPU</strong> and keeping the <strong className="text-white">cost per token</strong> low.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Metric</th>
+              <th className="px-5 py-3">Meaning</th>
+              <th className="px-5 py-3">Who feels it</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Time to first token (TTFT)</td><td className="px-5 py-3">How long until the first word appears</td><td className="px-5 py-3">Every user, as the <em>wait</em></td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Tokens per second per user</td><td className="px-5 py-3">How fast the answer streams</td><td className="px-5 py-3">Every user, as the <em>reading speed</em></td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Throughput</td><td className="px-5 py-3">Total tokens per second across all users</td><td className="px-5 py-3">The company, as cost</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Cost per million tokens</td><td className="px-5 py-3">Hardware cost divided by tokens served</td><td className="px-5 py-3">The company</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">The core tension:</strong> Handling more requests at once raises <strong className="text-white">throughput</strong> and lowers cost, but can slow each individual user down. Good serving finds the best balance.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Prefill and Decode
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Every request has two phases with very different behavior:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Prefill</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Read the prompt</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">What:</strong> Process all prompt tokens at once and fill the KV cache.</div>
+            <div><strong className="text-white">Bottleneck:</strong> <strong className="text-white">Compute</strong>. Big parallel matrix math keeps the GPU busy.</div>
+            <div><strong className="text-white">User feels:</strong> Time to first token</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Decode</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Write the answer</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">What:</strong> Generate one token at a time, reading the whole model and the cache for each token.</div>
+            <div><strong className="text-white">Bottleneck:</strong> <strong className="text-white">Memory bandwidth</strong>. Little math per byte moved.</div>
+            <div><strong className="text-white">User feels:</strong> Streaming speed</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Why this matters:</strong> Decode is slow because the GPU spends most of its time <em>loading weights from memory</em> to produce a single token. Anything that lets one weight load serve <strong className="text-white">more tokens</strong> speeds things up a lot.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Batching and Continuous Batching
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Because loading the weights is the expensive part, serving <strong className="text-white">many requests together</strong> is nearly free per request: one trip to memory feeds a whole batch of tokens. That is <strong className="text-white">batching</strong>.
+      </div>
+      <div>
+        But requests finish at different times. With <strong className="text-white">static batching</strong>, the whole batch waits for its longest request, and short requests leave slots empty. With <strong className="text-white">continuous batching</strong> (also called in-flight batching), the moment a request finishes, a waiting request takes its slot, so the GPU stays busy.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3"></th>
+              <th className="px-5 py-3">Static batching</th>
+              <th className="px-5 py-3">Continuous batching</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Slot freed when a request ends</td><td className="px-5 py-3">Stays empty until the whole batch ends</td><td className="px-5 py-3">Immediately refilled from the queue</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">GPU utilization</td><td className="px-5 py-3">Low and uneven</td><td className="px-5 py-3">High</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Short requests</td><td className="px-5 py-3">Wait for long ones</td><td className="px-5 py-3">Leave right away</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Result:</strong> In the simulation below, continuous batching keeps the GPU about 80% busy versus about 60% for static batching, finishing the same work in fewer steps.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: PagedAttention and Prefix Caching
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Each request needs a KV cache, and its final length is not known in advance. A naive server <strong className="text-white">reserves the maximum length</strong> for every request, wasting most of the memory.
+      </div>
+      <div>
+        <strong className="text-white">PagedAttention</strong> (introduced by the vLLM project) stores the cache in small fixed-size <strong className="text-white">pages</strong>, allocated only as needed, like virtual memory in an operating system. Little memory is wasted, so many more requests fit on the same GPU.
+      </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-blue-300">Prefix caching:</strong> If many requests start with the same system prompt, their first pages of the cache are identical and can be <strong className="text-white">shared</strong> instead of recomputed, which cuts both time and memory.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Quantization helps too</div>
+        <div className="text-sm leading-relaxed text-slate-300">Smaller weights (8-bit, 4-bit) mean fewer bytes to load per token, which directly speeds up memory-bound decoding. Quantizing the KV cache lets even more requests fit.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Speculative Decoding
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Decode produces one token per expensive pass. <strong className="text-white">Speculative decoding</strong> uses a small, fast <strong className="text-white">draft model</strong> to guess the next few tokens (for example 4), then asks the big model to <strong className="text-white">check all of them in a single pass</strong>. The big model keeps the correct prefix and fixes the first mistake.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\text{expected tokens per big-model step} = \frac{1 - \alpha^{k+1}}{1 - \alpha}$$
+      </div>
+      <div>
+        Here $\alpha$ is the chance that the big model accepts a drafted token and $k$ is how many tokens are drafted. The final answer has <strong className="text-white">exactly the same quality</strong> as running the big model alone, because the big model verifies everything.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Accept rate α</th>
+              <th className="px-5 py-3">Tokens per big step (k = 4)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">0.6</td><td className="px-5 py-3">about 2.3</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">0.8</td><td className="px-5 py-3">about 3.4</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">0.9</td><td className="px-5 py-3">about 4.1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Trade-off:</strong> It needs an extra draft model and works best when the draft often agrees with the big model, for example on predictable text such as code.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Keeping the GPU Busy
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure compares static and continuous batching using the numbers from the simulation below, then summarizes four ways to speed up serving.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-emerald-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 1 · Static vs. Continuous Batching</span>
+        <span className="text-xs text-slate-400">Keep the GPU busy</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Static batching</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Wasteful</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">8 requests start together</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Short ones finish early</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Their slots sit empty until the longest ends</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-300">About 61% of GPU slots used</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Continuous batching</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Efficient</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Request finishes</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Next request in the queue takes the slot at once</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">No idle waiting</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">About 82% of GPU slots used</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 2 · Four Big Speed-Ups</span>
+        <span className="text-xs text-slate-400">Different bottlenecks, different tricks</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Batching</div>
+          <div className="mt-2 text-lg font-bold text-white">Share weight loads</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">One memory trip feeds many requests.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Paged KV cache</div>
+          <div className="mt-2 text-lg font-bold text-white">Waste less memory</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Pages allocated only when needed.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Prefix cache</div>
+          <div className="mt-2 text-lg font-bold text-white">Reuse work</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Shared prompts are computed once.</div>
+        </div>
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Speculative decoding</div>
+          <div className="mt-2 text-lg font-bold text-white">More tokens per step</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">A draft model proposes, the big model verifies.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-emerald-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see where the numbers come from</span>
+          <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Static batching: each group of 8 waits for its longest request. Continuous: a slot is refilled the instant it frees. Paged cache: reserving 4,096 slots for 100 requests needs 409,600 slots, but paging by 16 uses only about 80,000 for the lengths in the simulation.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows why waiting for the longest request wastes slots. Part 2 pairs each trick with the bottleneck it fixes. Open the bar to see where the numbers come from.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Batching, Speculative Decoding and Paged Memory
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script simulates 32 requests of random length on a GPU with 8 slots under static and continuous batching, calculates the expected speed-up of speculative decoding, and compares reserving the maximum cache length against paging.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">serving_simulation.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Static vs continuous batching</span>
+            <span className="block">rng = np.random.default&#95;rng(0)</span>
+            <span className="block">lengths = rng.integers(10, 200, size=32)                 # how many tokens each request will generate</span>
+            <span className="block">slots = 8                                                # requests the GPU can handle at once</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def static&#95;batching(lengths, slots):</span>
+            <span className="block">    steps = 0</span>
+            <span className="block">    for i in range(0, len(lengths), slots):</span>
+            <span className="block">        steps += lengths&#91;i:i + slots&#93;.max()              # the whole batch waits for its longest request</span>
+            <span className="block">    return steps</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def continuous&#95;batching(lengths, slots):</span>
+            <span className="block">    queue = list(lengths)</span>
+            <span className="block">    running, steps = &#91;&#93;, 0</span>
+            <span className="block">    while queue or running:</span>
+            <span className="block">        while queue and len(running) &lt; slots:            # refill a slot the moment one frees up</span>
+            <span className="block">            running.append(queue.pop(0))</span>
+            <span className="block">        steps += 1</span>
+            <span className="block">        running = &#91;r - 1 for r in running if r - 1 &gt; 0&#93;</span>
+            <span className="block">    return steps</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">useful = int(lengths.sum())</span>
+            <span className="block">s, c = static&#95;batching(lengths, slots), continuous&#95;batching(lengths, slots)</span>
+            <span className="block">print(&quot;Useful tokens to generate:&quot;, useful)</span>
+            <span className="block">print(&quot;Static batching steps:&quot;, int(s), &quot;| GPU busy&quot;, round(100 &#42; useful / (s &#42; slots)), &quot;%&quot;)</span>
+            <span className="block">print(&quot;Continuous batching steps:&quot;, int(c), &quot;| GPU busy&quot;, round(100 &#42; useful / (c &#42; slots)), &quot;%&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Speculative decoding: a small model drafts k tokens, the big model checks them at once</span>
+            <span className="block text-cyan-300">def expected&#95;tokens&#95;per&#95;step(accept&#95;rate, k):</span>
+            <span className="block">    return (1 - accept&#95;rate &#42;&#42; (k + 1)) / (1 - accept&#95;rate)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for a in &#91;0.6, 0.8, 0.9&#93;:</span>
+            <span className="block">    print(&quot;accept rate&quot;, a, &quot;| draft 4 tokens -&gt; about&quot;, round(expected&#95;tokens&#95;per&#95;step(a, 4), 2), &quot;tokens per big-model step&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Paged KV cache: memory wasted by reserving the maximum length for every request</span>
+            <span className="block">max&#95;len, page = 4096, 16</span>
+            <span className="block">used = rng.integers(50, 1500, size=100)</span>
+            <span className="block">reserved = len(used) &#42; max&#95;len</span>
+            <span className="block">paged = int(np.sum(np.ceil(used / page) &#42; page))</span>
+            <span className="block">print(&quot;Reserved up front:&quot;, format(reserved, &quot;,&quot;), &quot;token slots | paged:&quot;, format(paged, &quot;,&quot;), &quot;token slots&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Useful tokens to generate: 3510</div>
+          <div>Static batching steps: 724 | GPU busy 61 %</div>
+          <div>Continuous batching steps: 533 | GPU busy 82 %</div>
+          <div>accept rate 0.6 | draft 4 tokens -&gt; about 2.31 tokens per big-model step</div>
+          <div>accept rate 0.8 | draft 4 tokens -&gt; about 3.36 tokens per big-model step</div>
+          <div>accept rate 0.9 | draft 4 tokens -&gt; about 4.1 tokens per big-model step</div>
+          <div>Reserved up front: 409,600 token slots | paged: 80,048 token slots</div>
+        </div>
+      </div>
+      <div>
+        Continuous batching finishes the same 3,510 tokens in about a quarter fewer steps. Speculative decoding yields between about 2 and 4 tokens per big-model step depending on how often the draft is accepted. Paging uses roughly one fifth of the memory that up-front reservation does.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Why is decoding usually limited by memory bandwidth?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="serve-q1-a" name="serve-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="serve-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Each new token requires loading the whole model from memory but does little math per byte</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Moving the weights, not calculating, dominates the time.</div>
+          </div>
+          <div>
+            <input id="serve-q1-b" name="serve-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="serve-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Because the GPU has no math units</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> GPUs have plenty of math units.</div>
+          </div>
+          <div>
+            <input id="serve-q1-c" name="serve-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="serve-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Because tokens are very long</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Tokens are short.</div>
+          </div>
+          <div>
+            <input id="serve-q1-d" name="serve-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="serve-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Because decoding uses the internet</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Decoding runs locally on the GPU.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What is the benefit of continuous batching?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="serve-q2-a" name="serve-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="serve-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Freed slots are refilled immediately, keeping the GPU busier</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Short requests leave early and waiting requests start at once.</div>
+          </div>
+          <div>
+            <input id="serve-q2-b" name="serve-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="serve-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It makes every answer longer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It does not change answer length.</div>
+          </div>
+          <div>
+            <input id="serve-q2-c" name="serve-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="serve-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It trains the model while serving</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Serving does not train the model.</div>
+          </div>
+          <div>
+            <input id="serve-q2-d" name="serve-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="serve-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It removes the KV cache</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The cache is still used.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Serving is judged by time to first token, streaming speed, throughput and cost per token.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Prefill</strong> is compute-bound. <strong className="text-white">Decode</strong> is memory-bandwidth-bound.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Continuous batching</strong> refills freed slots immediately and keeps the GPU busy.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">PagedAttention</strong> stores the KV cache in small pages so little memory is wasted.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Prefix caching</strong> shares the computed cache of common prompts across requests.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Speculative decoding</strong> drafts several tokens cheaply and verifies them in one pass without changing quality.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Serving in One Line</div>
+        <div className="text-center font-bold text-white">
+          Batch continuously + page the cache + reuse prefixes + draft and verify = more users per GPU
+        </div>
+      </div>
+      <div>
+        These techniques are why one GPU can serve many users and why API prices keep falling.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You can now build and serve a model, but how do you know it is any good? In <strong className="text-white">LLM Evaluation</strong> you will learn benchmarks, metrics, judges and how to measure honestly.
+      </div>
+    </div>
+  </section>
+
+</div>

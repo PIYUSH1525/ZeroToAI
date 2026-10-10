@@ -1,0 +1,387 @@
+---
+title: "Multimodal and Specialized Data RAG"
+slug: "multimodal-specialized-data-rag"
+order: 22
+category: "RAG"
+subcategory: "Advanced RAG"
+difficulty: "Advanced"
+readTime: "25 min"
+description: "Extend RAG to PDFs, tables, images, code, audio transcripts and mixed-format knowledge bases, with locators that make every answer traceable."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> Real knowledge is not only paragraphs. It lives in scanned PDFs, tables, screenshots, diagrams, source code and recorded meetings. RAG can handle all of them with one idea: <strong className="text-white">turn each kind of content into searchable records that keep a pointer back to the original</strong>, either by converting it to text or by embedding it directly. This lesson shows how each format is handled and how to combine them.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Intermediate: Two Strategies for Non-Text Content</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>There are two ways to make an image, a table or a recording searchable.</div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Convert to text</div>
+          <div className="text-sm leading-7">Run OCR on scans, write captions for images, transcribe audio, turn tables into sentences. Then index the text like any other. Simple and works with any text retriever.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Embed natively</div>
+          <div className="text-sm leading-7">Use a multimodal embedding model that places images and text in one shared space, so a text query can retrieve a picture directly. Keeps visual detail that captions miss.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5"><strong className="text-blue-300">Common practice:</strong> start with conversion to text, which is cheaper and easier to debug. Add native image embeddings when captions lose information your users ask about. Either way, store the original file and a locator with every record.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: PDF and Table RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">PDF RAG</strong> depends on extraction quality, as in the document processing lesson: layout-aware parsing, repeated headers removed, OCR for scanned pages, and the page number stored with every chunk so citations can point to it.</div>
+      <div><strong className="text-white">Table RAG</strong> needs extra care, because a table is meaningful only as a whole grid. Three common techniques are used:</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Technique</th><th className="px-4 py-3">How</th><th className="px-4 py-3">Best for</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Row sentences</td><td className="px-4 py-3">Turn each row into a sentence that repeats the column names</td><td className="px-4 py-3">Lookup questions about single rows</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Markdown or HTML table</td><td className="px-4 py-3">Keep the small table intact in one chunk</td><td className="px-4 py-3">Small tables the model can read as a grid</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Table summary</td><td className="px-4 py-3">Index a text summary and keep the full table linked to it</td><td className="px-4 py-3">Large tables and numeric analysis</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">For calculations:</strong> if the question needs sums or comparisons across many rows, load the table into a database and use the SQL approach from the previous lesson.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Image and Multimodal RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Image RAG</strong> retrieves pictures, charts and diagrams. With the convert-to-text strategy, each image gets a caption and any text read from it, and those are searched. With native embeddings, the image vector is compared to the query vector directly.</div>
+      <div><strong className="text-white">Multimodal RAG</strong> then sends the retrieved images, together with text, to a model that can read images, so it can answer questions about a chart or a screenshot. The same discipline applies: the answer should cite the image file, and a person should be able to open it.</div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Watch out:</strong> captions are written by a model and can be wrong or vague. Review a sample, and keep captions specific, for example bar chart of quarterly revenue with the Q3 growth value, not just a chart.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Code RAG and Audio RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Code RAG</strong> treats a function or class, not a fixed number of lines, as a chunk, because a cut through the middle of a function is meaningless. A syntax tree gives the exact boundaries. Each chunk should include the file path, the signature and the docstring, since developers search by what code does, and those parts describe it.</div>
+      <div><strong className="text-white">Audio RAG</strong> begins with speech-to-text. The transcript is chunked by time or by topic, and each chunk keeps its start time and, when available, the speaker. Answers can then link to the exact moment of a recording. Transcription errors on names and technical words are common, so spell-check against a glossary when possible.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Content</th><th className="px-4 py-3">Natural chunk</th><th className="px-4 py-3">Locator to keep</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Code</td><td className="px-4 py-3">Function or class</td><td className="px-4 py-3">File path and line range</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Audio</td><td className="px-4 py-3">A few sentences or a topic span</td><td className="px-4 py-3">Timestamp and speaker</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Image</td><td className="px-4 py-3">One image with caption and text</td><td className="px-4 py-3">File name or URL</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">PDF</td><td className="px-4 py-3">Section or paragraph</td><td className="px-4 py-3">Page number</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Table</td><td className="px-4 py-3">Row or whole small table</td><td className="px-4 py-3">Table id and row</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Mixed-Format Knowledge Bases</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A real company knowledge base holds all of the above. Two designs are common.</div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-cyan-300">One unified index</div>
+          <div className="text-sm leading-7">Every record has a modality tag, a locator and text. One search covers everything and ranks across formats. Simple, but one embedding model must suit all content.</div>
+        </div>
+        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-orange-300">Separate indexes per modality</div>
+          <div className="text-sm leading-7">Each type gets the best model and settings. A router, or a fusion step, combines the results. More flexible and more work.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Define</strong> a shared record shape: modality, locator, text, metadata and permissions.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Process</strong> each format with its best tool, as in the document processing lesson.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Evaluate</strong> separately per modality, since an average hides a weak format.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Cite</strong> with the locator so users can open the exact page, timestamp, file or row.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Every Format Becomes a Record with a Locator</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A shows the conversion step for each format. Panel B lists the results of a search across mixed content from the code below. Panel C is a format explorer.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel A · Format to Record</span><span className="text-xs text-slate-400">Everything ends up searchable</span></div>
+          <div className="grid gap-5 md:grid-cols-3">
+            <div className="space-y-3 rounded-2xl border border-blue-500/25 bg-blue-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-blue-300">Documents</div>
+              <div><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200">PDF and tables</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Parse layout, OCR scans</div>
+              <div className="text-center text-blue-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Rows to sentences</div>
+              <div className="text-center text-blue-400">↓</div>
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Text with page and row</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-violet-300">Media</div>
+              <div><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Images and audio</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Captions and text from images</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Speech to text with timestamps</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Text with file and time</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-orange-500/25 bg-orange-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-orange-300">Code</div>
+              <div><span className="rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-[11px] text-orange-200">Source files</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Parse into functions</div>
+              <div className="text-center text-orange-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Keep name and docstring</div>
+              <div className="text-center text-orange-400">↓</div>
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Text with path and name</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel B · One Search, Four Kinds of Content</span><span className="text-xs text-slate-400">From the code in section 7</span></div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-white/[0.04] text-slate-300">
+                <tr><th className="px-4 py-3 text-center">Question</th><th className="px-4 py-3 text-center">Found in</th><th className="px-4 py-3 text-center">Locator</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300">
+                <tr><td className="px-4 py-3 text-center">refund amount with tax</td><td className="px-4 py-3 text-center text-orange-300">code</td><td className="px-4 py-3 text-center">function refund_total</td></tr>
+                <tr><td className="px-4 py-3 text-center">when do they mention free shipping</td><td className="px-4 py-3 text-center text-violet-300">transcript</td><td className="px-4 py-3 text-center">at 00:45</td></tr>
+                <tr><td className="px-4 py-3 text-center">show me revenue growth</td><td className="px-4 py-3 text-center text-emerald-300">image</td><td className="px-4 py-3 text-center">chart_q3.png</td></tr>
+                <tr><td className="px-4 py-3 text-center">how many users in the Pro plan</td><td className="px-4 py-3 text-center text-blue-300">table</td><td className="px-4 py-3 text-center">row Pro</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Format Explorer</span><span className="text-xs text-slate-400">Click a format to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c22-fmt-0" name="c22-fmt" type="radio" className="peer sr-only" />
+              <label htmlFor="c22-fmt-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">Scanned PDF</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-rose-300">Needs:</strong> OCR before anything else</div>
+                <div><strong className="text-rose-300">Check:</strong> Pages with extracted text</div>
+              </div>
+            </div>
+            <div>
+              <input id="c22-fmt-1" name="c22-fmt" type="radio" className="peer sr-only" />
+              <label htmlFor="c22-fmt-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">Large table</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Needs:</strong> A summary plus the linked full table, or a database</div>
+                <div><strong className="text-orange-300">Check:</strong> Numeric answers against the source</div>
+              </div>
+            </div>
+            <div>
+              <input id="c22-fmt-2" name="c22-fmt" type="radio" className="peer sr-only" />
+              <label htmlFor="c22-fmt-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">Screenshots and diagrams</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-emerald-300">Needs:</strong> Specific captions or image embeddings</div>
+                <div><strong className="text-emerald-300">Check:</strong> Caption accuracy on a sample</div>
+              </div>
+            </div>
+            <div>
+              <input id="c22-fmt-3" name="c22-fmt" type="radio" className="peer sr-only" />
+              <label htmlFor="c22-fmt-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Meeting recordings</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Needs:</strong> Transcript with timestamps and speakers</div>
+                <div><strong className="text-violet-300">Check:</strong> Names and jargon in the transcript</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why every record keeps a locator</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">A locator such as a page, timestamp or function name lets the answer point to the exact place in the original, which makes citations and verification possible in every format.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A shows how each format is converted, Panel B proves a single search can cover them, and Panel C lists what each format needs.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: One Index for Code, Audio, Images and Tables</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program builds a single list of records from four kinds of content. Python code is split into functions with the standard ast module, and each function becomes a record from its name and docstring. An audio transcript becomes records with time stamps. Two images are represented by captions. Table rows become sentences. Every record has a modality, a locator and text, so one simple search can rank across all of them.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">mixed_format_rag.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import ast</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">stop_words = set([&quot;the&quot;, &quot;a&quot;, &quot;of&quot;, &quot;how&quot;, &quot;is&quot;, &quot;do&quot;, &quot;does&quot;, &quot;in&quot;, &quot;to&quot;, &quot;what&quot;, &quot;for&quot;, &quot;and&quot;, &quot;show&quot;, &quot;me&quot;])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def words(text):</span>
+            <span className="block">    cleaned = &quot;&quot;.join(ch if ch.isalnum() else &quot; &quot; for ch in text.lower()).split()</span>
+            <span className="block">    return set(w[:-1] if w.endswith(&quot;s&quot;) and len(w) &gt; 3 else w for w in cleaned if w not in stop_words)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">records = []</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Code: one chunk per function, found with the ast module</span>
+            <span className="block">source = chr(10).join([</span>
+            <span className="block">    &quot;def refund_total(price, tax):&quot;,</span>
+            <span className="block">    &apos;    &quot;&quot;&quot;Return the refund amount including tax.&quot;&quot;&quot;&apos;,</span>
+            <span className="block">    &quot;    return price + tax&quot;,</span>
+            <span className="block">    &quot;&quot;,</span>
+            <span className="block">    &quot;def shipping_cost(weight):&quot;,</span>
+            <span className="block">    &apos;    &quot;&quot;&quot;Return the shipping fee for a parcel weight in kilograms.&quot;&quot;&quot;&apos;,</span>
+            <span className="block">    &quot;    return 5 + 2 * weight&quot;,</span>
+            <span className="block">])</span>
+            <span className="block">for node in ast.parse(source).body:</span>
+            <span className="block">    if isinstance(node, ast.FunctionDef):</span>
+            <span className="block">        doc = ast.get_docstring(node)</span>
+            <span className="block">        records.append((&quot;code&quot;, &quot;function &quot; + node.name, node.name.replace(chr(95), &quot; &quot;) + &quot; &quot; + doc))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Audio transcript: chunks keep their timestamps</span>
+            <span className="block">transcript = [(0, &quot;Welcome to the product demo.&quot;), (45, &quot;Premium members get free shipping on every order.&quot;), (95, &quot;Refunds take five business days to arrive.&quot;)]</span>
+            <span className="block">for start, text in transcript:</span>
+            <span className="block">    stamp = str(start // 60).zfill(2) + &quot;:&quot; + str(start % 60).zfill(2)</span>
+            <span className="block">    records.append((&quot;transcript&quot;, &quot;at &quot; + stamp, text))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Images: searched through captions or text read from the image</span>
+            <span className="block">images = [(&quot;chart_q3.png&quot;, &quot;bar chart showing quarterly revenue growth of 12 percent&quot;), (&quot;diagram_flow.png&quot;, &quot;diagram of the order shipping workflow&quot;)]</span>
+            <span className="block">for name, caption in images:</span>
+            <span className="block">    records.append((&quot;image&quot;, name, caption))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 4. Table rows turned into sentences</span>
+            <span className="block">table = [(&quot;Basic&quot;, &quot;10&quot;, &quot;5 users&quot;), (&quot;Pro&quot;, &quot;25&quot;, &quot;50 users&quot;)]</span>
+            <span className="block">for plan, price, limit in table:</span>
+            <span className="block">    records.append((&quot;table&quot;, &quot;row &quot; + plan, &quot;The &quot; + plan + &quot; plan costs &quot; + price + &quot; dollars and allows &quot; + limit + &quot;.&quot;))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def search(query):</span>
+            <span className="block">    q = words(query)</span>
+            <span className="block">    return max(records, key=lambda r: len(q &amp; words(r[2])))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Indexed&quot;, len(records), &quot;records from 4 kinds of content&quot;)</span>
+            <span className="block">for query in [&quot;refund amount with tax&quot;, &quot;when do they mention free shipping&quot;, &quot;show me revenue growth&quot;, &quot;how many users in the Pro plan&quot;]:</span>
+            <span className="block">    kind, where, text = search(query)</span>
+            <span className="block">    print(query.ljust(36), &quot;-&gt;&quot;, kind.ljust(10), where)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Indexed 9 records from 4 kinds of content</span>
+            <span className="block">refund amount with tax               -&gt; code       function refund_total</span>
+            <span className="block">when do they mention free shipping   -&gt; transcript at 00:45</span>
+            <span className="block">show me revenue growth               -&gt; image      chart_q3.png</span>
+            <span className="block">how many users in the Pro plan       -&gt; table      row Pro</span>
+          </code>
+        </pre>
+      </div>
+      <div>Each question lands on a different kind of content, and every result carries a locator that a user interface could turn into a link: a function name, a time in the recording, an image file or a table row. The search itself is word matching here. In a real system the text would be embedded, images might also get native image embeddings, and speech and OCR models would produce the text, but the record shape would stay the same.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. Why is a code function a better chunk than a fixed number of lines?</div>
+        <div>
+          <input id="rag22-q1-a" name="rag22-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag22-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Functions are always shorter</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Length varies; meaning is the reason.</div>
+        </div>
+        <div>
+          <input id="rag22-q1-b" name="rag22-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag22-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) A cut through the middle of a function loses its meaning, and the function is the natural unit</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Syntax-aware chunking keeps whole functions.</div>
+        </div>
+        <div>
+          <input id="rag22-q1-c" name="rag22-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag22-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Fixed chunks cannot be embedded</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They can, but they cut through logic.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. What must every record keep to support citations across formats?</div>
+        <div>
+          <input id="rag22-q2-a" name="rag22-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag22-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Only the embedding vector</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A vector cannot be shown to a user.</div>
+        </div>
+        <div>
+          <input id="rag22-q2-b" name="rag22-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag22-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The name of the embedding model</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That helps maintenance, not citations.</div>
+        </div>
+        <div>
+          <input id="rag22-q2-c" name="rag22-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag22-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) A locator such as a page, timestamp, file or row</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It lets users open the exact place in the original.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. A question needs the sum of a large table column. What is the best approach?</div>
+        <div>
+          <input id="rag22-q3-a" name="rag22-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag22-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Use a database and SQL for the aggregate</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Exact arithmetic over many rows belongs in a database.</div>
+        </div>
+        <div>
+          <input id="rag22-q3-b" name="rag22-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag22-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Ask the model to add numbers from retrieved row chunks</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Models make arithmetic errors, especially over many rows.</div>
+        </div>
+        <div>
+          <input id="rag22-q3-c" name="rag22-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag22-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Embed the whole table as one vector</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A vector cannot give exact sums.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Non-text content becomes searchable by converting it to text or by embedding it natively.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>PDF RAG depends on extraction quality, page numbers and OCR for scans.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Tables work as row sentences, intact small tables or summaries linked to the full table; use SQL for calculations.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Image RAG uses captions and extracted text or multimodal embeddings; captions must be specific and checked.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Code is chunked by function or class with path, signature and docstring; audio by time with timestamps and speakers.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Mixed knowledge bases need a shared record shape with modality, locator, text, metadata and permissions.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Evaluate each modality separately, and cite with the locator.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">The architecture of RAG does not change when the content does. Only the front door changes: each format needs its own parser, converter or embedding step, and a locator that leads back to the original. After that, retrieval, context building and citation work as before.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Any format → Searchable record with locator → Retrieve → Ground → Cite with the locator</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> RAG Evaluation. You are entering the Evaluation phase. You will learn retrieval metrics, generation metrics, golden datasets, LLM-as-a-judge and failure analysis, so you can prove that your RAG system actually works.</div>
+    </div>
+  </section>
+</div>

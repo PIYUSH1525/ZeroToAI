@@ -1,0 +1,463 @@
+---
+title: "Text Generation and Sampling: Temperature, Top-k and Top-p"
+slug: "12-text-generation-and-sampling"
+order: 12
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Beginner"
+readTime: "25 min"
+description: "Learn how an LLM turns probabilities into text: greedy decoding, temperature, top-k and top-p sampling, repetition penalties, seeds and stop sequences, with every method built from scratch in code."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> An LLM only produces <strong className="text-white">probabilities</strong> for the next token. A <strong className="text-white">sampling method</strong> chooses one. Temperature, top-k and top-p let you trade <strong className="text-white">predictability</strong> for <strong className="text-white">variety</strong> without retraining anything.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: The Model Only Gives Probabilities
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        An LLM does not produce a sentence directly. At every step it produces a <strong className="text-white">score for every word</strong> in its vocabulary, which is turned into a <strong className="text-white">probability distribution</strong>. Something then has to pick one word. That choice rule is called a <strong className="text-white">decoding strategy</strong> or <strong className="text-white">sampling method</strong>.
+      </div>
+      <div>
+        The same model can sound careful, boring, creative or chaotic depending only on this rule. No retraining is needed.
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Step 1</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Scores (logits)</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>The model scores every possible next token.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-violet-300">Step 2</span>
+            <span className="rounded bg-violet-950/80 px-2 py-0.5 font-mono text-xs text-violet-300">Probabilities</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Softmax turns the scores into numbers that add up to 1.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Step 3</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Pick one</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>A rule chooses a token. It is added to the text and the loop repeats.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Greedy Decoding and Why It Is Not Enough
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The simplest rule is <strong className="text-white">greedy decoding</strong>: always take the most likely token. It is fast and gives the same answer every time, which is great for facts and code.
+      </div>
+      <div>
+        But greedy has two problems. It can get stuck in <strong className="text-white">repetitive loops</strong>, and it makes writing feel flat because it never takes a less obvious but still good word. Sampling fixes this by choosing <em>randomly according to the probabilities</em>, so likely words win most of the time but not always.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Beam search:</strong> Another classic method keeps the best few partial sentences at once. It works well for translation, but for open-ended chat it tends to produce dull text, so chat models usually sample instead.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Temperature, the Creativity Dial
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Temperature</strong> $T$ divides the scores before the softmax. It reshapes the probabilities without changing their order:
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$p_i = \frac{e^{z_i / T}}{\sum_j e^{z_j / T}}$$
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Temperature</th>
+              <th className="px-5 py-3">Effect</th>
+              <th className="px-5 py-3">Good for</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Close to 0</td><td className="px-5 py-3">The top token gets almost all the probability. Behaves like greedy.</td><td className="px-5 py-3">Facts, extraction, code, math</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Around 0.7</td><td className="px-5 py-3">Mostly the top choices, with some variety</td><td className="px-5 py-3">General chat and writing</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">1.0</td><td className="px-5 py-3">The model&apos;s natural distribution</td><td className="px-5 py-3">Brainstorming</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Above 1.5</td><td className="px-5 py-3">Rare tokens become likely. Text may turn into nonsense.</td><td className="px-5 py-3">Rarely useful</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Remember:</strong> Low temperature does not make the model smarter. It only makes it <strong className="text-white">more predictable</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Top-k and Top-p, Cutting Off the Bad Tail
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Even at a sensible temperature, a vocabulary of 100,000 tokens has a long tail of silly words. Each one has a tiny probability, but together they can add up and occasionally derail a sentence. Two filters remove the tail:
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Top-k</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Fixed size list</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Rule:</strong> Keep only the $k$ most likely tokens (for example 40), then renormalize.</div>
+            <div><strong className="text-white">Weakness:</strong> Same $k$ even when the model is very sure or very unsure.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Top-p (nucleus)</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Adaptive size</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Rule:</strong> Keep the smallest group of tokens whose probabilities add up to $p$ (for example 0.9).</div>
+            <div><strong className="text-white">Strength:</strong> Few tokens when the model is confident, more when it is unsure.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Practical default:</strong> Many applications use temperature around 0.7 with top-p around 0.9 to 0.95. Change <strong className="text-white">one</strong> knob at a time so you can see what it does.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Repetition, Seeds and Stopping
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Real systems add a few more controls around the main sampler:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Control</th>
+              <th className="px-5 py-3">What it does</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Repetition / frequency penalty</td><td className="px-5 py-3">Lowers the score of tokens already used, to avoid loops</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Seed</td><td className="px-5 py-3">Fixes the random choices so a sampled answer can be repeated (not always guaranteed across hardware)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Stop sequences</td><td className="px-5 py-3">Ends generation when a chosen string appears, such as a closing tag</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Max tokens</td><td className="px-5 py-3">A hard limit on the length of the answer</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Min-p and similar</td><td className="px-5 py-3">Newer filters that keep tokens above a fraction of the top probability</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Why answers still differ at temperature 0</div>
+        <div className="text-sm leading-relaxed text-slate-300">Tiny numerical differences on the GPU, or ties between tokens, can occasionally change the winner. Temperature 0 is <em>nearly</em> deterministic, not a guarantee.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: How a Word Gets Chosen
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure follows one next-word decision using the numbers from the code below: five candidate words with scores that become probabilities.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-violet-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Part 1 · From Scores to a Chosen Word</span>
+        <span className="text-xs text-slate-400">Same model, different rules</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Greedy</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Temperature ≈ 0</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Probabilities: the 0.47, a 0.29, cat 0.17</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Always take the highest</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Picks: the (every time)</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Temperature 1</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Sampling</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Probabilities: the 0.47, a 0.29, cat 0.17</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Draw a random token by probability</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Mostly the, sometimes a or cat</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Top-p 0.9</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Sampling + cut</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Drop the unlikely tail (dog, banana)</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Renormalize what is left, then draw</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Safe variety only</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · What Each Dial Changes</span>
+        <span className="text-xs text-slate-400">Tune one at a time</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Temperature</div>
+          <div className="mt-2 text-lg font-bold text-white">Sharper or flatter</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Changes how spread out the probabilities are.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Top-k</div>
+          <div className="mt-2 text-lg font-bold text-white">Fixed cut</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Keeps exactly the k best tokens.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Top-p</div>
+          <div className="mt-2 text-lg font-bold text-white">Adaptive cut</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Keeps the smallest group reaching probability p.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-violet-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see a quick rule of thumb</span>
+          <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Need exact, repeatable output (code, JSON, facts)? Use temperature near 0. Need natural variety (writing, ideas)? Use temperature 0.7 to 1 with top-p 0.9 to 0.95. Seeing weird rare words? Lower top-p or temperature.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        In Part 1, every card starts from the same probabilities and applies a different rule. Part 2 summarizes what each dial changes. Open the bar for a rule of thumb.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Temperature, Top-k and Top-p
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script builds each sampling method from scratch on a five-word example, then draws 1,000 samples to show how the choices spread out.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">sampling_methods.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">words = &#91;&quot;the&quot;, &quot;a&quot;, &quot;cat&quot;, &quot;dog&quot;, &quot;banana&quot;&#93;</span>
+            <span className="block">logits = np.array(&#91;3.0, 2.5, 2.0, 1.0, -1.0&#93;)    # raw scores from a model</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def softmax(z, temperature=1.0):</span>
+            <span className="block">    z = z / temperature</span>
+            <span className="block">    z = z - z.max()</span>
+            <span className="block">    e = np.exp(z)</span>
+            <span className="block">    return e / e.sum()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def show(title, p):</span>
+            <span className="block">    print(title.ljust(22), &#123;w: round(float(x), 3) for w, x in zip(words, p)&#125;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Temperature reshapes the probabilities</span>
+            <span className="block">for T in &#91;0.5, 1.0, 2.0&#93;:</span>
+            <span className="block">    show(&quot;temperature &quot; + str(T), softmax(logits, T))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Top-k: keep only the k most likely words, then renormalize</span>
+            <span className="block text-cyan-300">def top&#95;k(p, k):</span>
+            <span className="block">    keep = np.argsort(p)&#91;::-1&#93;&#91;:k&#93;</span>
+            <span className="block">    out = np.zeros&#95;like(p)</span>
+            <span className="block">    out&#91;keep&#93; = p&#91;keep&#93;</span>
+            <span className="block">    return out / out.sum()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">show(&quot;top-k (k=2)&quot;, top&#95;k(softmax(logits), 2))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Top-p (nucleus): keep the smallest set whose probabilities add up to p</span>
+            <span className="block text-cyan-300">def top&#95;p(p, threshold):</span>
+            <span className="block">    order = np.argsort(p)&#91;::-1&#93;</span>
+            <span className="block">    cumulative = np.cumsum(p&#91;order&#93;)</span>
+            <span className="block">    cutoff = np.searchsorted(cumulative, threshold) + 1</span>
+            <span className="block">    out = np.zeros&#95;like(p)</span>
+            <span className="block">    out&#91;order&#91;:cutoff&#93;&#93; = p&#91;order&#91;:cutoff&#93;&#93;</span>
+            <span className="block">    return out / out.sum()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">show(&quot;top-p (p=0.9)&quot;, top&#95;p(softmax(logits), 0.9))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 4. Greedy vs sampling over 1,000 draws</span>
+            <span className="block">rng = np.random.default&#95;rng(0)</span>
+            <span className="block">p = softmax(logits)</span>
+            <span className="block">draws = rng.choice(words, size=1000, p=p)</span>
+            <span className="block">print(&quot;Greedy always picks:&quot;, words&#91;int(np.argmax(p))&#93;)</span>
+            <span className="block">print(&quot;Sampling 1,000 times:&quot;, &#123;w: int((draws == w).sum()) for w in words&#125;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>temperature 0.5        &#123;&apos;the&apos;: 0.657, &apos;a&apos;: 0.242, &apos;cat&apos;: 0.089, &apos;dog&apos;: 0.012, &apos;banana&apos;: 0.0&#125;</div>
+          <div>temperature 1.0        &#123;&apos;the&apos;: 0.47, &apos;a&apos;: 0.285, &apos;cat&apos;: 0.173, &apos;dog&apos;: 0.064, &apos;banana&apos;: 0.009&#125;</div>
+          <div>temperature 2.0        &#123;&apos;the&apos;: 0.346, &apos;a&apos;: 0.27, &apos;cat&apos;: 0.21, &apos;dog&apos;: 0.127, &apos;banana&apos;: 0.047&#125;</div>
+          <div>top-k (k=2)            &#123;&apos;the&apos;: 0.622, &apos;a&apos;: 0.378, &apos;cat&apos;: 0.0, &apos;dog&apos;: 0.0, &apos;banana&apos;: 0.0&#125;</div>
+          <div>top-p (p=0.9)          &#123;&apos;the&apos;: 0.506, &apos;a&apos;: 0.307, &apos;cat&apos;: 0.186, &apos;dog&apos;: 0.0, &apos;banana&apos;: 0.0&#125;</div>
+          <div>Greedy always picks: the</div>
+          <div>Sampling 1,000 times: &#123;&apos;the&apos;: 440, &apos;a&apos;: 297, &apos;cat&apos;: 192, &apos;dog&apos;: 61, &apos;banana&apos;: 10&#125;</div>
+        </div>
+      </div>
+      <div>
+        Notice how a low temperature piles probability on <em>the</em>, while a high temperature spreads it out. Top-k with $k=2$ keeps just two words, while top-p keeps three because it needs three to reach 0.9. In the 1,000 draws, <em>the</em> wins about 44% of the time but not always.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What does lowering the temperature do?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="sample-q1-a" name="sample-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="sample-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Makes the model&apos;s choices more predictable</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Probabilities are sharpened toward the top token.</div>
+          </div>
+          <div>
+            <input id="sample-q1-b" name="sample-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="sample-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Makes the model smarter</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Intelligence is not changed, only how choices are made.</div>
+          </div>
+          <div>
+            <input id="sample-q1-c" name="sample-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="sample-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Makes the answer longer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Length is controlled by other settings.</div>
+          </div>
+          <div>
+            <input id="sample-q1-d" name="sample-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="sample-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Deletes the vocabulary</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> All tokens still exist.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What is the main advantage of top-p over top-k?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="sample-q2-a" name="sample-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="sample-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) It adapts the number of candidate tokens to how confident the model is</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Few tokens are kept when one is very likely, more when many are plausible.</div>
+          </div>
+          <div>
+            <input id="sample-q2-b" name="sample-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="sample-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It always keeps exactly 40 tokens</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That describes a fixed top-k value.</div>
+          </div>
+          <div>
+            <input id="sample-q2-c" name="sample-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="sample-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It removes the need for probabilities</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Top-p works directly on probabilities.</div>
+          </div>
+          <div>
+            <input id="sample-q2-d" name="sample-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="sample-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It makes the model faster to train</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Sampling happens at inference, not training.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The model outputs a probability for every token. A decoding rule picks one.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Greedy</strong> always takes the top token: repeatable but can loop and sounds flat.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Temperature</strong> reshapes probabilities: near 0 is predictable, higher is more varied.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Top-k</strong> keeps a fixed number of best tokens. <strong className="text-white">Top-p</strong> keeps the smallest set reaching probability p.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Repetition penalties, stop sequences and max tokens give extra control.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use low temperature for exact tasks and moderate temperature with top-p for writing.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Sampling in One Line</div>
+        <div className="text-center font-bold text-white">
+          Scores → probabilities → (temperature, top-k, top-p) → pick one token → repeat
+        </div>
+      </div>
+      <div>
+        Two users can run the same model and get very different feelings simply by changing these dials. Knowing them lets you debug strange or repetitive output quickly.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Every token you generate, and every token in your prompt, has to fit inside a limit. In <strong className="text-white">Context Windows and the KV Cache</strong> you will learn how to budget that space and keep long conversations affordable.
+      </div>
+    </div>
+  </section>
+
+</div>

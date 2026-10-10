@@ -1,0 +1,381 @@
+---
+title: "Advanced Chunking and Document Structure"
+slug: "advanced-chunking-document-structure"
+order: 7
+category: "RAG"
+subcategory: "Data"
+difficulty: "Intermediate"
+readTime: "25 min"
+description: "Learn parent-child and hierarchical chunks, structure-aware splitting by headers, how to handle tables and lists, and how to keep relationships between chunks."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> Plain chunking treats a document as a flat stream of words. Real documents have <strong className="text-white">structure</strong>: titles, sections, lists, tables and links between parts. Advanced chunking uses that structure so the retriever can find small precise pieces while the model still receives enough surrounding context to answer correctly.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Intermediate: The Small-to-Big Problem</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Retrieval and generation want opposite things. <strong className="text-white">Retrieval</strong> works best with small, focused chunks, because a short chunk produces a sharp embedding. <strong className="text-white">Generation</strong> works best with larger passages, because the model needs surrounding sentences to answer fully and correctly.</div>
+      <div>The fix is to separate the unit you <strong className="text-white">search</strong> from the unit you <strong className="text-white">read</strong>: search over small pieces, then hand the model a larger piece around the match. This idea is often called small-to-big retrieval.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Search small</div>
+          <div className="text-sm leading-7">Index short chunks, such as single sentences or short paragraphs, for precise matching.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Read big</div>
+          <div className="text-sm leading-7">After a match, expand to the surrounding paragraph or section before building the prompt.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Link them</div>
+          <div className="text-sm leading-7">Store an id on every small chunk that points to its larger parent so the expansion is a quick lookup.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: Parent-Child and Hierarchical Chunks</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>In <strong className="text-white">parent-child chunking</strong> every small <strong className="text-white">child</strong> chunk keeps the id of the larger <strong className="text-white">parent</strong> chunk it was cut from. Only children are embedded and searched. When a child matches, the system returns its parent.</div>
+      <div><strong className="text-white">Hierarchical chunking</strong> extends this to many levels: document, section, paragraph, sentence. Matches can be expanded one level or several, depending on how much context the question needs.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Expansion method</th><th className="px-4 py-3">What the model receives</th><th className="px-4 py-3">Best when</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Parent chunk</td><td className="px-4 py-3">The whole parent of the matching child</td><td className="px-4 py-3">Documents have clear sections</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Sentence window</td><td className="px-4 py-3">The matching sentence plus a few neighbors on each side</td><td className="px-4 py-3">Dense prose without headings</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Auto-merge</td><td className="px-4 py-3">The parent, but only if many of its children matched</td><td className="px-4 py-3">Questions that span a whole section</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Watch the budget:</strong> bigger context can bury the answer and use up prompt space. Expand only as far as needed, and merge duplicates when several children share one parent.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Structure-Aware Chunking</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Many documents announce their own structure through headings: Markdown headers, HTML heading tags, numbered sections in PDFs. <strong className="text-white">Structure-aware chunking</strong> splits at those boundaries so a chunk never mixes two sections.</div>
+      <div>A powerful trick is to keep the <strong className="text-white">heading path</strong> with each chunk, for example Returns, then Refunds. The path can be stored as metadata and also placed at the start of the chunk text. A sentence like They take 5 business days becomes self-explanatory once it begins with the heading it belongs to, and the embedding captures that topic too.</div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Rule of thumb:</strong> split on the biggest structural boundary available first, and fall back to size-based splitting only for sections that are still too long.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Tables, Lists and Special Content</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Content that is not ordinary prose needs its own rules, because cutting it carelessly destroys its meaning.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-orange-300">Tables</div>
+          <div className="text-sm leading-7">Never cut a row in half. For small tables keep the whole table in one chunk. For large ones turn each row into a line that repeats the column names, such as Plan Basic, Price 10.</div>
+        </div>
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-amber-300">Lists</div>
+          <div className="text-sm leading-7">Keep a list together with the sentence that introduces it. A bullet list without its lead-in often has no meaning.</div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-rose-300">Code and figures</div>
+          <div className="text-sm leading-7">Keep code blocks whole and attach captions or alt text to figures, so the surrounding explanation travels with them.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5"><strong className="text-orange-300">Check by reading:</strong> print a few table and list chunks and ask whether a person could answer a question from that chunk alone. If not, the chunking needs more context.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Relationships Between Chunks</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Chunks are not independent. Sections refer to each other, a summary points at the details, and versions replace older ones. Recording these links lets the retriever follow them.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Link</th><th className="px-4 py-3">Stored as</th><th className="px-4 py-3">Used for</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Parent</td><td className="px-4 py-3">A parent id on each child</td><td className="px-4 py-3">Small-to-big expansion</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Neighbors</td><td className="px-4 py-3">Previous and next chunk ids</td><td className="px-4 py-3">Sentence windows and reading on</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">References</td><td className="px-4 py-3">Ids of sections that are mentioned, such as see section 4</td><td className="px-4 py-3">Following citations inside documents</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Versions</td><td className="px-4 py-3">Document id plus version and status</td><td className="px-4 py-3">Hiding outdated chunks</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>Each extra link adds indexing work and more ways for the system to go wrong, for example expanding too far and flooding the prompt. Add relationships when evaluation shows that single chunks are missing context, not before.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Search Small, Read Big</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A shows the hierarchy of a document. Panel B contrasts the unit that is searched with the unit that is read. Panel C is an explorer of special content types.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · The Hierarchy</span><span className="text-xs text-slate-400">Each level can be a chunk size</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Document</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Sections</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Paragraphs</span><span className="text-blue-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Sentences</span></div>
+          <div className="text-center text-xs text-slate-300">Search at the lowest level, read at a higher level</div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · Child Searched, Parent Read</span><span className="text-xs text-slate-400">Two jobs, two sizes</span></div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-cyan-300">Child chunk</div>
+              <div><span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Used for search</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Short and focused</div>
+              <div className="text-center text-cyan-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Sharp embedding</div>
+              <div className="text-center text-cyan-400">↓</div>
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Finds the exact match</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-violet-300">Parent chunk</div>
+              <div><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Used for reading</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Whole section with heading</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Full context</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Goes into the prompt</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Special Content</span><span className="text-xs text-slate-400">Click a type to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c07-kind-0" name="c07-kind" type="radio" className="peer sr-only" />
+              <label htmlFor="c07-kind-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">Headings</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-emerald-300">Rule:</strong> Split at headers and keep the heading path</div>
+                <div><strong className="text-emerald-300">Mistake:</strong> Cutting across two sections</div>
+              </div>
+            </div>
+            <div>
+              <input id="c07-kind-1" name="c07-kind" type="radio" className="peer sr-only" />
+              <label htmlFor="c07-kind-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">Tables</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Rule:</strong> Repeat column names in every row chunk</div>
+                <div><strong className="text-orange-300">Mistake:</strong> Splitting a row or losing the header</div>
+              </div>
+            </div>
+            <div>
+              <input id="c07-kind-2" name="c07-kind" type="radio" className="peer sr-only" />
+              <label htmlFor="c07-kind-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-amber-400/50 peer-checked:bg-amber-500/10 peer-checked:text-amber-300">Lists</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-amber-300">Rule:</strong> Keep the lead-in sentence with the items</div>
+                <div><strong className="text-amber-300">Mistake:</strong> Indexing bullets with no context</div>
+              </div>
+            </div>
+            <div>
+              <input id="c07-kind-3" name="c07-kind" type="radio" className="peer sr-only" />
+              <label htmlFor="c07-kind-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-cyan-400/50 peer-checked:bg-cyan-500/10 peer-checked:text-cyan-300">Cross references</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-cyan-300">Rule:</strong> Store ids of referenced sections</div>
+                <div><strong className="text-cyan-300">Mistake:</strong> Treating every chunk as independent</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see the cost of bigger context</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">Returning a parent is safer for answers, but it uses more prompt space and can include unrelated text. Measure whether the extra context really improves answers before expanding everywhere.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A names the levels, Panel B assigns each a job, and Panel C lists the traps that special content sets for a careless splitter.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Header Paths, Parent-Child Search and Table Rows</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program splits a small Markdown document into sections and keeps the heading path. Every sentence becomes a child chunk that remembers its parent section. A search matches the best child, then returns the whole parent section for the model to read. The last lines turn table rows into self-contained chunks that repeat their column names.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">structure_chunking.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">doc_lines = [</span>
+            <span className="block">    &quot;# Returns&quot;,</span>
+            <span className="block">    &quot;## Refunds&quot;,</span>
+            <span className="block">    &quot;Refunds go to the original payment method. They take 5 business days.&quot;,</span>
+            <span className="block">    &quot;## Exchanges&quot;,</span>
+            <span className="block">    &quot;Exchanges are free within 30 days. Items must be unused.&quot;,</span>
+            <span className="block">    &quot;# Shipping&quot;,</span>
+            <span className="block">    &quot;## Delivery&quot;,</span>
+            <span className="block">    &quot;Standard delivery takes 5 days. Express delivery takes 2 days.&quot;,</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def words(text):</span>
+            <span className="block">    cleaned = &quot;&quot;.join(ch for ch in text.lower() if ch.isalnum() or ch == &quot; &quot;)</span>
+            <span className="block">    return set(cleaned.split())</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def split_sections(lines):</span>
+            <span className="block">    sections = []</span>
+            <span className="block">    h1 = &quot;&quot;</span>
+            <span className="block">    h2 = &quot;&quot;</span>
+            <span className="block">    for line in lines:</span>
+            <span className="block">        if line.startswith(&quot;## &quot;):</span>
+            <span className="block">            h2 = line[3:]</span>
+            <span className="block">            sections.append([h1 + &quot; &gt; &quot; + h2, &quot;&quot;])</span>
+            <span className="block">        elif line.startswith(&quot;# &quot;):</span>
+            <span className="block">            h1 = line[2:]</span>
+            <span className="block">        else:</span>
+            <span className="block">            sections[-1][1] = (sections[-1][1] + &quot; &quot; + line).strip()</span>
+            <span className="block">    return sections</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def make_children(sections):</span>
+            <span className="block">    children = []</span>
+            <span className="block">    for parent_id, (path, text) in enumerate(sections):</span>
+            <span className="block">        for sentence in text.split(&quot;.&quot;):</span>
+            <span className="block">            if sentence.strip():</span>
+            <span className="block">                children.append((parent_id, path + &quot;: &quot; + sentence.strip() + &quot;.&quot;))</span>
+            <span className="block">    return children</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def search(question, children, sections):</span>
+            <span className="block">    q = words(question)</span>
+            <span className="block">    best = max(children, key=lambda child: len(q &amp; words(child[1])))</span>
+            <span className="block">    parent_path, parent_text = sections[best[0]]</span>
+            <span className="block">    return best[1], parent_path + &quot;: &quot; + parent_text</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">sections = split_sections(doc_lines)</span>
+            <span className="block">children = make_children(sections)</span>
+            <span className="block">print(&quot;Sections:&quot;, len(sections), &quot;| child chunks:&quot;, len(children))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">question = &quot;How long do refunds take?&quot;</span>
+            <span className="block">child, parent = search(question, children, sections)</span>
+            <span className="block">print(&quot;Question:&quot;, question)</span>
+            <span className="block">print(&quot;Child (searched):&quot;, child)</span>
+            <span className="block">print(&quot;Parent (sent to the model):&quot;, parent)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def table_row_chunks(header, rows):</span>
+            <span className="block">    return [&quot; | &quot;.join(h + &quot;: &quot; + v for h, v in zip(header, row)) for row in rows]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">for line in table_row_chunks([&quot;Plan&quot;, &quot;Price&quot;, &quot;Users&quot;], [[&quot;Basic&quot;, &quot;10&quot;, &quot;5&quot;], [&quot;Pro&quot;, &quot;25&quot;, &quot;50&quot;]]):</span>
+            <span className="block">    print(line)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Sections: 3 | child chunks: 6</span>
+            <span className="block">Question: How long do refunds take?</span>
+            <span className="block">Child (searched): Returns &gt; Refunds: They take 5 business days.</span>
+            <span className="block">Parent (sent to the model): Returns &gt; Refunds: Refunds go to the original payment method. They take 5 business days.</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Plan: Basic | Price: 10 | Users: 5</span>
+            <span className="block">Plan: Pro | Price: 25 | Users: 50</span>
+          </code>
+        </pre>
+      </div>
+      <div>The question matched one precise sentence, yet the model would receive the full Refunds section with its heading path. Notice that the heading path appears inside every child, so even a bare sentence stays understandable. The table rows each carry their column names, so a retrieved row still makes sense on its own.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. In parent-child chunking, which chunks are embedded and searched?</div>
+        <div>
+          <input id="rag7-q1-a" name="rag7-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag7-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Only the large parent chunks</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Parents are used for reading, not for searching.</div>
+        </div>
+        <div>
+          <input id="rag7-q1-b" name="rag7-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag7-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) The small child chunks</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Children give sharp matches; the parent is only fetched afterwards.</div>
+        </div>
+        <div>
+          <input id="rag7-q1-c" name="rag7-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag7-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Neither, the system searches raw files</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Both levels are prepared during indexing.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. Why keep the heading path with each chunk?</div>
+        <div>
+          <input id="rag7-q2-a" name="rag7-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag7-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) It makes chunks shorter</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The path adds a little text, so chunks get slightly longer.</div>
+        </div>
+        <div>
+          <input id="rag7-q2-b" name="rag7-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag7-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It removes the need for metadata</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Heading paths complement metadata and do not replace it.</div>
+        </div>
+        <div>
+          <input id="rag7-q2-c" name="rag7-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag7-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) It gives a sentence its topic, which helps both understanding and embedding</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A sentence such as They take 5 days is meaningless without its heading.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. How should a large table be chunked?</div>
+        <div>
+          <input id="rag7-q3-a" name="rag7-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag7-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Turn each row into a chunk that repeats the column names</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Each row then stays meaningful on its own.</div>
+        </div>
+        <div>
+          <input id="rag7-q3-b" name="rag7-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag7-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Cut it every 200 words</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That can slice a row in half and lose the header.</div>
+        </div>
+        <div>
+          <input id="rag7-q3-c" name="rag7-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag7-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Drop the header row</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Without column names the numbers lose their meaning.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Retrieval prefers small chunks and generation prefers large ones, so separate the search unit from the reading unit.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Parent-child chunking searches children and returns their parent section.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Hierarchical chunking supports several levels, from document down to sentence.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Structure-aware chunking splits at headings and keeps the heading path with each chunk.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Tables, lists and code need special rules so their meaning survives splitting.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Store links such as parent id, neighbors, references and versions, but add them only when evaluation shows a need.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Expanding context too far wastes prompt space, so measure the benefit.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Good chunking respects how people wrote the document. By searching small pieces and reading larger ones, and by keeping headings and relationships, you give retrieval precision and give the model context in the same system.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Detect structure → Cut at boundaries → Link children to parents → Search small → Read big</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Embeddings for RAG. With the data side complete, you move to the representation side: what embeddings are, how meaning becomes numbers, and why similar texts end up close together.</div>
+    </div>
+  </section>
+</div>

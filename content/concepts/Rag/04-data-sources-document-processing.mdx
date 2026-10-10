@@ -1,0 +1,428 @@
+---
+title: "Data Sources and Document Processing"
+slug: "data-sources-document-processing"
+order: 4
+category: "RAG"
+subcategory: "Data"
+difficulty: "Beginner"
+readTime: "35 min"
+description: "Learn where RAG knowledge comes from and how PDFs, web pages, Markdown, CSV, JSON and databases are parsed into clean text with useful metadata."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+<section>
+  <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300">
+    <strong className="text-cyan-400">The Core Idea:</strong> A RAG system can only retrieve what was successfully read into the index. Real knowledge lives in many formats: PDFs, Word files, web pages, spreadsheets, JSON exports and databases. <strong className="text-white">Document processing</strong> is the first stage of the offline pipeline. It opens each format, extracts clean text, and attaches metadata, so that everything ends up in one simple, uniform shape that the rest of the pipeline understands. If this stage is sloppy, every later stage inherits the mess.
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: Where RAG Knowledge Comes From</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Imagine moving into a new office where every colleague hands you notes in a different format: printed reports, sticky notes, spreadsheets, a filing cabinet. Before you can use any of it, you have to read it all and copy the useful parts into one notebook. That notebook is your knowledge base, and the copying work is document processing.</div>
+    <div>Data sources fall into three broad families:</div>
+    <div className="grid gap-5 md:grid-cols-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-blue-400">Unstructured</div>
+        <div className="mt-2 text-sm leading-7">Free-flowing text with no fixed fields: PDFs, Word documents, emails, meeting notes, transcripts.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-violet-400">Semi-structured</div>
+        <div className="mt-2 text-sm leading-7">Text wrapped in markup that adds structure: HTML pages, Markdown files, JSON documents, XML.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">Structured</div>
+        <div className="mt-2 text-sm leading-7">Data in rows and columns with named fields: CSV files, spreadsheets, SQL databases.</div>
+      </div>
+    </div>
+    <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5">
+      <strong className="text-blue-300">Key point:</strong> the model never sees a PDF or a database. It only ever sees text in a prompt. Everything in this lesson is about converting each format into trustworthy text.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: Document Parsing and Text Extraction</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div><strong className="text-white">Parsing</strong> means reading a file according to the rules of its format. <strong className="text-white">Text extraction</strong> means pulling the human-readable content out of that parsed file. Together they turn a file into a record with three parts:</div>
+    <div className="grid gap-5 md:grid-cols-3">
+      <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-violet-300">Text</div>
+        <div className="text-sm leading-7">The clean content itself, with menus, scripts and layout noise removed.</div>
+      </div>
+      <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-violet-300">Structure</div>
+        <div className="text-sm leading-7">Useful shape worth keeping, such as headings, page numbers, list items and table cells.</div>
+      </div>
+      <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-violet-300">Metadata</div>
+        <div className="text-sm leading-7">Facts about the text: source path or URL, file type, title, author, date, access level.</div>
+      </div>
+    </div>
+    <div>The steps are always the same: <em>fetch</em> the raw file, <em>parse</em> it with a tool that understands the format, <em>extract</em> text and structure, and <em>attach</em> metadata. Only the parser changes from format to format.</div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Garbage in, garbage out:</strong> if a PDF parser merges two columns into one jumbled line, the chunk is unreadable, its embedding is meaningless, and no retrieval trick can recover it later. Always read some extracted text yourself.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: PDFs, Office Files and Web Pages</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div><strong className="text-white">PDFs</strong> are the most common and the trickiest source. A PDF is designed to look the same on every screen, so it stores characters at exact positions on a page rather than as flowing paragraphs. A parser has to rebuild the reading order, and that can go wrong in four typical ways:</div>
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Multiple columns.</strong> Lines from neighboring columns get interleaved.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Headers and footers.</strong> Page numbers and running titles repeat inside every page of text.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Tables.</strong> Cells flatten into a stream of numbers with no labels.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Scanned pages.</strong> A scan is just a picture of text, so a normal parser finds nothing. It needs <strong className="text-white">OCR</strong> (optical character recognition), which reads text out of images.</div>
+    </div>
+    <div>Libraries such as pypdf, PyMuPDF and pdfplumber extract text from digital PDFs; OCR tools such as Tesseract handle scans. <strong className="text-white">Word documents</strong> (.docx) are easier because they store real paragraphs and headings; a library such as python-docx reads them directly.</div>
+    <div><strong className="text-white">Web pages</strong> bring a different problem: the useful article is surrounded by navigation menus, cookie banners, ads, footers and scripts. If you index all of it, those repeated fragments appear in thousands of chunks and pollute search results. Good extraction keeps the main content and the page title, and drops the boilerplate. Also remember that some pages build their content with JavaScript after loading, so a simple download may return an almost empty page.</div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <strong className="text-emerald-300">Markdown and plain text</strong> are the friendliest sources: they are already close to clean text, and their headings mark natural boundaries that later chunking steps can use.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Structured Sources: CSV, JSON and Databases</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Rows and columns are easy for a computer to read but awkward for a language search. A row such as <em>Pro plan, 25, available</em> has no meaning without its column names. The standard fix is to <strong className="text-white">verbalize</strong> each row: turn it into a short sentence that carries the labels, for example <em>The Pro plan costs 25 dollars and is available.</em> That sentence can be embedded and retrieved like any other text.</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Source</th>
+            <th className="px-4 py-3">How to turn it into text</th>
+            <th className="px-4 py-3">Watch out for</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3 font-semibold text-white">CSV</td><td className="px-4 py-3">One sentence per row, using the header names</td><td className="px-4 py-3 text-rose-300">Huge numeric tables embed poorly</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">JSON</td><td className="px-4 py-3">Choose the text fields; keep key names for meaning</td><td className="px-4 py-3 text-rose-300">Deep nesting and irrelevant fields</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Database</td><td className="px-4 py-3">Run a query or view, then verbalize the result rows</td><td className="px-4 py-3 text-rose-300">Permissions and data that changes quickly</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>Databases deserve one extra thought. Do not dump a whole table into the index. Select only the columns that carry meaning, and decide whether the data should be copied into the index (fast, but can go stale) or queried live (fresh, but slower). For numeric questions such as <em>what was total revenue in March?</em>, retrieving text is the wrong tool; a later lesson on SQL and structured-data RAG covers that case.</div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Extraction Quality and Metadata You Cannot Skip</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Strong teams measure extraction instead of trusting it. Here are four cheap checks:</div>
+    <div className="space-y-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Read samples.</strong> Open ten random extracted documents and read them next to the originals.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Check lengths.</strong> A 40-page report that yields 200 characters has clearly failed. Very short or very long outputs deserve a look.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Look for garbled characters.</strong> Strange symbols usually mean a wrong text encoding or a broken font mapping.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Measure coverage.</strong> For PDFs, count how many pages produced text.</div>
+    </div>
+    <div>Coverage gives a quick scan detector:</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$\text{coverage} = \dfrac{\text{pages with extracted text}}{\text{total pages}}$$</div>
+    <div>If only 12 of 40 pages produce text, the coverage is $12 / 40 = 0.30$. That strongly suggests that most pages are scanned images, so those pages need OCR instead of normal extraction.</div>
+    <div><strong className="text-white">Metadata</strong> is the second thing teams regret skipping. Record it at extraction time, because it is almost impossible to reconstruct later:</div>
+    <div className="grid gap-5 md:grid-cols-2">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5">
+        <div className="mb-2 font-semibold text-cyan-300">What to record</div>
+        <div className="text-sm leading-7">Source path or URL, file type, title, page or section, author or owner, last modified date, and an access label saying who may see it.</div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5">
+        <div className="mb-2 font-semibold text-cyan-300">What it enables later</div>
+        <div className="text-sm leading-7">Citations, filtering by date or department, duplicate detection, freshness checks and permission-aware retrieval.</div>
+      </div>
+    </div>
+    <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-5">
+      <strong className="text-amber-300">A responsibility note:</strong> only index content you are allowed to use, and carry its access rules along as metadata. Once a confidential file is mixed into a shared index without labels, it is very hard to separate again.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Many Formats, One Clean Record</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Panel A shows how many formats funnel into one record shape. Panel B rates how hard each source usually is. Panel C lets you flip between a raw HTML page and what extraction keeps.</div>
+    <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · The Funnel</span>
+          <span className="text-xs text-slate-400">Different inputs, one output shape</span>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="text-xs font-bold uppercase tracking-wider text-blue-300">Raw sources</div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">PDF</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">Word</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">Web page</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">Markdown</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">CSV</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">JSON</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-blue-200">Database</span>
+          </div>
+        </div>
+        <div className="text-center text-xs text-violet-300">↓ parsers and extractors ↓</div>
+        <div className="space-y-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.05] p-5 text-xs">
+          <div className="font-bold uppercase tracking-wider text-emerald-300">One common record</div>
+          <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-200">source: shipping.html</div>
+          <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-slate-200">type: html · title · date · access level</div>
+          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 font-semibold text-emerald-300">text: clean, readable content</div>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · Difficulty Meter</span>
+          <span className="text-xs text-slate-400">More filled squares means more work</span>
+        </div>
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-white/[0.04] text-slate-300">
+              <tr>
+                <th className="px-4 py-3">Source</th>
+                <th className="px-4 py-3">Difficulty</th>
+                <th className="px-4 py-3">Main pitfall</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-slate-300">
+              <tr><td className="px-4 py-3 text-violet-300">Markdown</td><td className="px-4 py-3"><span className="text-emerald-400">■</span><span className="text-slate-700">□□□□</span></td><td className="px-4 py-3">Leftover markup symbols</td></tr>
+              <tr><td className="px-4 py-3 text-violet-300">CSV and JSON</td><td className="px-4 py-3"><span className="text-emerald-400">■■</span><span className="text-slate-700">□□□</span></td><td className="px-4 py-3">Labels lost when rows become text</td></tr>
+              <tr><td className="px-4 py-3 text-violet-300">Word files</td><td className="px-4 py-3"><span className="text-amber-400">■■</span><span className="text-slate-700">□□□</span></td><td className="px-4 py-3">Tables and tracked changes</td></tr>
+              <tr><td className="px-4 py-3 text-violet-300">Databases</td><td className="px-4 py-3"><span className="text-amber-400">■■■</span><span className="text-slate-700">□□</span></td><td className="px-4 py-3">Permissions and stale copies</td></tr>
+              <tr><td className="px-4 py-3 text-violet-300">Web pages</td><td className="px-4 py-3"><span className="text-orange-400">■■■■</span><span className="text-slate-700">□</span></td><td className="px-4 py-3">Menus, ads and scripts everywhere</td></tr>
+              <tr><td className="px-4 py-3 text-violet-300">PDFs</td><td className="px-4 py-3"><span className="text-rose-400">■■■■■</span></td><td className="px-4 py-3">Columns, tables and scans</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Raw vs Extracted</span>
+          <span className="text-xs text-slate-400">Click a button to compare</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <input id="ds4-view-raw" name="ds4-view" type="radio" className="peer sr-only" />
+            <label htmlFor="ds4-view-raw" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">Show the raw HTML</label>
+            <div className="mt-3 hidden space-y-1 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs leading-6 text-slate-200 peer-checked:block">
+              <div>&lt;style&gt;p color red&lt;/style&gt;</div>
+              <div>&lt;h1&gt;Shipping&lt;/h1&gt;</div>
+              <div>&lt;p&gt;We ship worldwide.&lt;/p&gt;</div>
+              <div>&lt;script&gt;track()&lt;/script&gt;</div>
+              <div>&lt;p&gt;Delivery takes 5 days.&lt;/p&gt;</div>
+              <div className="pt-1 text-rose-300">Tags, styles and scripts mixed in with the content.</div>
+            </div>
+          </div>
+          <div>
+            <input id="ds4-view-clean" name="ds4-view" type="radio" className="peer sr-only" />
+            <label htmlFor="ds4-view-clean" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">Show the extracted text</label>
+            <div className="mt-3 hidden space-y-1 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs leading-6 text-slate-200 peer-checked:block">
+              <div>Shipping</div>
+              <div>We ship worldwide.</div>
+              <div>Delivery takes 5 days.</div>
+              <div className="pt-1 text-emerald-300">Only the readable content survives, ready to be chunked.</div>
+            </div>
+          </div>
+        </div>
+        <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+            <span>Click to see why the style and script text is dropped</span>
+            <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-300">Explain <span className="inline-block transition group-open:rotate-180">▼</span></span>
+          </summary>
+          <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Text inside style and script tags is instructions for the browser, not content for readers. If it is left in, it gets embedded and retrieved like real knowledge, and users end up seeing code fragments inside answers.</div>
+        </details>
+      </div>
+    </div>
+    <div>How to read it: Panel A is the goal, Panel B warns you where effort will go, and Panel C shows the kind of cleaning every parser performs.</div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Five Sources, One Record Format</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>The program below builds five tiny sources in memory: an HTML page, Markdown lines, CSV lines, a JSON string and an in-memory SQLite database. One small function per format turns each into clean text, and all results are collected into the same <code>(source, type, text)</code> record shape. It uses only the Python standard library. PDFs are left out because they need a third-party library; the same record shape would apply to them.</div>
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+        <span className="font-mono text-xs font-semibold text-teal-400">document_processing.py</span>
+        <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span>
+      </div>
+      <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block text-cyan-300">import csv</span>
+          <span className="block text-cyan-300">import json</span>
+          <span className="block text-cyan-300">import sqlite3</span>
+          <span className="block text-cyan-300">from html.parser import HTMLParser</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 1. HTML: keep visible text, skip style and script content</span>
+          <span className="block text-violet-300">class TextExtractor(HTMLParser):</span>
+          <span className="block">    def reset(self):</span>
+          <span className="block">        super().reset()</span>
+          <span className="block">        self.parts = []</span>
+          <span className="block">        self.skip = 0</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">    def handle_starttag(self, tag, attrs):</span>
+          <span className="block">        if tag in (&quot;script&quot;, &quot;style&quot;):</span>
+          <span className="block">            self.skip += 1</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">    def handle_endtag(self, tag):</span>
+          <span className="block">        if tag in (&quot;script&quot;, &quot;style&quot;):</span>
+          <span className="block">            self.skip -= 1</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">    def handle_data(self, data):</span>
+          <span className="block">        if self.skip == 0 and data.strip():</span>
+          <span className="block">            self.parts.append(data.strip())</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def from_html(html):</span>
+          <span className="block">    parser = TextExtractor()</span>
+          <span className="block">    parser.feed(html)</span>
+          <span className="block">    return &quot; &quot;.join(parser.parts)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 2. Markdown: remove heading and bullet symbols at the start of lines</span>
+          <span className="block text-cyan-300">def from_markdown(lines):</span>
+          <span className="block">    cleaned = [line.lstrip(&quot;#- &quot;).strip() for line in lines]</span>
+          <span className="block">    return &quot; &quot;.join(cleaned)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 3. CSV: turn every row into a sentence that keeps the column meaning</span>
+          <span className="block text-cyan-300">def from_csv(lines):</span>
+          <span className="block">    sentences = []</span>
+          <span className="block">    for row in csv.DictReader(lines):</span>
+          <span className="block text-emerald-300">        sentences.append(row[&quot;product&quot;] + &quot; costs &quot; + row[&quot;price&quot;] + &quot; dollars and is &quot; + row[&quot;status&quot;] + &quot;.&quot;)</span>
+          <span className="block">    return &quot; &quot;.join(sentences)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 4. JSON: pick the text fields we care about</span>
+          <span className="block text-cyan-300">def from_json(text):</span>
+          <span className="block">    return &quot; &quot;.join(item[&quot;question&quot;] + &quot; &quot; + item[&quot;answer&quot;] for item in json.loads(text))</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 5. Database: query only the useful columns, then verbalize the rows</span>
+          <span className="block text-cyan-300">def from_database():</span>
+          <span className="block">    conn = sqlite3.connect(&quot;:memory:&quot;)</span>
+          <span className="block">    conn.execute(&quot;CREATE TABLE faq (topic TEXT, answer TEXT)&quot;)</span>
+          <span className="block">    conn.executemany(&quot;INSERT INTO faq VALUES (?, ?)&quot;, [(&quot;returns&quot;, &quot;Items can be returned within 30 days.&quot;), (&quot;support&quot;, &quot;Support answers within 24 hours.&quot;)])</span>
+          <span className="block">    rows = conn.execute(&quot;SELECT topic, answer FROM faq&quot;).fetchall()</span>
+          <span className="block">    conn.close()</span>
+          <span className="block">    return &quot; &quot;.join(topic + &quot;: &quot; + answer for topic, answer in rows)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Tiny sample sources</span>
+          <span className="block">html_page = &quot;&lt;html&gt;&lt;head&gt;&lt;style&gt;p color red&lt;/style&gt;&lt;/head&gt;&lt;body&gt;&lt;h1&gt;Shipping&lt;/h1&gt;&lt;p&gt;We ship worldwide.&lt;/p&gt;&lt;script&gt;track()&lt;/script&gt;&lt;p&gt;Delivery takes 5 days.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;&quot;</span>
+          <span className="block">markdown_lines = [&quot;# Return Policy&quot;, &quot;Items can be returned within 30 days.&quot;, &quot;- Keep the receipt&quot;, &quot;- Item must be unused&quot;]</span>
+          <span className="block">csv_lines = [&quot;product,price,status&quot;, &quot;Basic plan,10,available&quot;, &quot;Pro plan,25,available&quot;, &quot;Legacy plan,5,discontinued&quot;]</span>
+          <span className="block">json_text = &apos;[&#123;&quot;question&quot;: &quot;Do you ship abroad?&quot;, &quot;answer&quot;: &quot;Yes, to 40 countries.&quot;&#125;]&apos;</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Collect everything into one uniform record shape: (source, type, text)</span>
+          <span className="block">records = [</span>
+          <span className="block">    (&quot;shipping.html&quot;, &quot;html&quot;, from_html(html_page)),</span>
+          <span className="block">    (&quot;returns.md&quot;, &quot;markdown&quot;, from_markdown(markdown_lines)),</span>
+          <span className="block">    (&quot;plans.csv&quot;, &quot;csv&quot;, from_csv(csv_lines)),</span>
+          <span className="block">    (&quot;faq.json&quot;, &quot;json&quot;, from_json(json_text)),</span>
+          <span className="block">    (&quot;faq.db&quot;, &quot;database&quot;, from_database()),</span>
+          <span className="block">]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">for source, kind, text in records:</span>
+          <span className="block">    print(kind.ljust(9), &quot;|&quot;, source.ljust(13), &quot;|&quot;, text)</span>
+          <span className="block">print(&quot;&quot;)</span>
+          <span className="block">print(&quot;Total records:&quot;, len(records))</span>
+        </code>
+      </pre>
+    </div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+      <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block">html      | shipping.html | Shipping We ship worldwide. Delivery takes 5 days.</span>
+          <span className="block">markdown  | returns.md    | Return Policy Items can be returned within 30 days. Keep the receipt Item must be unused</span>
+          <span className="block">csv       | plans.csv     | Basic plan costs 10 dollars and is available. Pro plan costs 25 dollars and is available. Legacy plan costs 5 dollars and is discontinued.</span>
+          <span className="block">json      | faq.json      | Do you ship abroad? Yes, to 40 countries.</span>
+          <span className="block">database  | faq.db        | returns: Items can be returned within 30 days. support: Support answers within 24 hours.</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">Total records: 5</span>
+        </code>
+      </pre>
+    </div>
+    <div>Look at the results. The style and script text is gone from the HTML record, the heading and bullet symbols are gone from the Markdown record, and the CSV rows read like sentences instead of bare numbers. Notice also that the last CSV row says the Legacy plan is discontinued. Extraction can only copy what the source says, so deciding whether discontinued items should be indexed at all is a data-cleaning decision, which is the topic of the next lesson.</div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+  <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q1. A 40-page PDF produces text for only 3 pages. What is the most likely explanation?</div>
+      <div>
+        <input id="rag4-q1-a" name="rag4-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag4-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Most pages are scanned images that need OCR</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A scan is a picture of text. Low page coverage is the classic sign.</div>
+      </div>
+      <div>
+        <input id="rag4-q1-b" name="rag4-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag4-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The embedding model is too small</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Embedding happens after extraction. Nothing was extracted to embed.</div>
+      </div>
+      <div>
+        <input id="rag4-q1-c" name="rag4-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag4-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The user asked the wrong question</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> This happens offline, long before any user question.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q2. Why is the CSV row Pro plan, 25, available converted into a full sentence?</div>
+      <div>
+        <input id="rag4-q2-a" name="rag4-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag4-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Sentences use less storage</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The sentence is actually longer. The goal is meaning, not size.</div>
+      </div>
+      <div>
+        <input id="rag4-q2-b" name="rag4-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag4-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) The bare values lose their meaning without the column names</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Verbalizing keeps the labels, so the text can be embedded and found by a natural question.</div>
+      </div>
+      <div>
+        <input id="rag4-q2-c" name="rag4-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag4-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) CSV files cannot be opened by Python</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Python reads CSV easily. The issue is meaning, not access.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q3. What is the main risk of indexing raw web pages without extraction?</div>
+      <div>
+        <input id="rag4-q3-a" name="rag4-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag4-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Pages become too short</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The opposite happens. Markup and boilerplate make them longer and noisier.</div>
+      </div>
+      <div>
+        <input id="rag4-q3-b" name="rag4-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag4-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The web server blocks retrieval</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Retrieval searches your index, not the live website.</div>
+      </div>
+      <div>
+        <input id="rag4-q3-c" name="rag4-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag4-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) Menus, scripts and footers get embedded and pollute search results</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Repeated boilerplate appears in many chunks and drowns out the real content.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+  <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>The model only sees text, so every source must be parsed and converted into clean text first.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Sources are unstructured (PDF, Word), semi-structured (HTML, Markdown, JSON) or structured (CSV, databases).</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Each record should contain clean text, useful structure and metadata.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>PDFs are hardest: watch for columns, repeated headers, flattened tables and scans that need OCR.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Web pages need boilerplate removal; structured rows need verbalizing so labels are not lost.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Measure extraction quality: read samples, check lengths and encodings, and compute page coverage.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Capture metadata at extraction time, including source and access rules, because it cannot be rebuilt later.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Document processing is the front door of the offline pipeline. It does not make the system clever, but it decides the ceiling on quality: a document that was extracted badly, or never extracted, can never be retrieved well. Time spent reading real extraction output is among the best investments in any RAG project.</div>
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Raw file → Parse → Extract text and structure → Attach metadata → Clean record</div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Up Next:</strong> Data Cleaning and Metadata. Extracted text still contains duplicates, noise and inconsistencies. You will learn how to clean and normalize it, remove duplicates, and design the metadata and versioning that keep a knowledge base trustworthy.
+    </div>
+  </div>
+</section>
+
+</div>

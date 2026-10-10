@@ -1,0 +1,458 @@
+---
+title: "Planning and Task Decomposition"
+slug: "10-planning-and-task-decomposition"
+order: 10
+category: "AI Agents"
+subcategory: "Reasoning"
+difficulty: "Intermediate"
+readTime: "30 min"
+description: "Learn how agents plan: breaking a complex task into subtasks, ordering them with dependencies, executing the plan sequentially, planning dynamically as new information arrives, and replanning after a failure."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Big goals are solved by <strong className="text-white">breaking them into subtasks</strong>, ordering them by <strong className="text-white">dependencies</strong>, executing them, and <strong className="text-white">replanning</strong> when something fails or something new is learned, while keeping the work that is already done.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why Plan?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Some tasks are too large to handle with one decision at a time. <em>Write a report comparing electric-car markets and battery technology</em> involves research, comparison and writing. Without a plan an agent may wander, repeat itself, or forget a part.
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-rose-300">Without a plan</span>
+            <span className="rounded bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">Step by step guessing</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Easy to get lost</div>
+            <div>Repeats or skips work</div>
+            <div>Hard to explain or check</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">With a plan</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">A clear route</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Each subtask is small and testable</div>
+            <div>Progress can be shown</div>
+            <div>Failures are easy to locate</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Analogy:</strong> A plan is a map. You can still change the route, but you know where you are and where you are going.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Breaking Complex Tasks Into Subtasks
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Task decomposition</strong> splits a large goal into smaller pieces that are each easy to do and check.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Good subtask</th>
+              <th className="px-5 py-3">Why</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Has one clear outcome</td><td className="px-5 py-3">Easy to tell when it is done</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Small enough for a few tool calls</td><td className="px-5 py-3">Fits one focused step</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">States its inputs</td><td className="px-5 py-3">Knows what it needs from earlier subtasks</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Can be checked</td><td className="px-5 py-3">A test or a rule says whether it worked</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Example</div>
+        <div className="text-sm leading-relaxed text-slate-300">Goal: write a market and technology report. Subtasks: find market data, find technology data, compare the two, write the report.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Planning and Sequential Execution
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A plan is more than a list: some subtasks <strong className="text-white">depend</strong> on others. In the example, <em>compare</em> needs both data subtasks, and <em>write the report</em> needs the comparison. Drawing these links gives a <strong className="text-white">dependency graph</strong>.
+      </div>
+      <div>
+        <strong className="text-white">Sequential execution</strong> runs subtasks one after another in a valid order. Independent subtasks (the two data searches) could even run in parallel, which a later lesson covers.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> Python&apos;s graph tools list a valid order in which every subtask comes after the ones it depends on.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Two planning styles:</strong> <strong className="text-white">Plan first, then execute</strong> (predictable, but the plan can go stale) and <strong className="text-white">plan a little, act, plan again</strong> (flexible, but more model calls).
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Dynamic Planning
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The world rarely follows the plan exactly. <strong className="text-white">Dynamic planning</strong> means the plan is a living document: after each result, the agent can add, remove or reorder subtasks.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">New information</th>
+              <th className="px-5 py-3">Plan change</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">A search shows the topic is bigger than expected</td><td className="px-5 py-3">Add more research subtasks</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">A needed tool is unavailable</td><td className="px-5 py-3">Choose another route</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">An early result makes a later step unnecessary</td><td className="px-5 py-3">Remove the step</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">The user changes the goal</td><td className="px-5 py-3">Rewrite the plan, keep reusable results</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Rule of thumb:</strong> Plan in <strong className="text-white">enough</strong> detail for the next few steps and keep the rest loose. Over-detailed long plans break first.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Replanning After Failure
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When a subtask fails, the agent should not start from zero. <strong className="text-white">Replanning</strong> keeps the completed work and changes only what is broken.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Detect the failure:</strong> A tool error, a bad result or a failed check.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Keep finished work:</strong> Results from completed subtasks are reused.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Change the plan:</strong> Swap the failed subtask for an alternative or a fix.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Continue:</strong> Execute only the subtasks that are not yet done.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Limit it:</strong> Allow a few replans, then stop or ask a human.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Danger:</strong> Unlimited replanning is a loop in disguise. Always cap the number of replans.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: A Plan With Dependencies and a Replan
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows the dependency structure of the plan in the code, then what happens when one subtask fails and the plan is replaced.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-emerald-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 1 · A Plan With Dependencies</span>
+        <span className="text-xs text-slate-400">Four subtasks</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Gather</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Parallel-ready</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">find_market_data</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">find_tech_data</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Independent subtasks</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Combine</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Needs both</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">compare</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Waits for both data subtasks</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Deliver</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Needs compare</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">write_report</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">The final result</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · What Happened When One Subtask Failed</span>
+        <span className="text-xs text-slate-400">Replanning in the code</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Failure</div>
+          <div className="mt-2 text-lg font-bold text-white">Plan 1</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">find_market_data fails.</div>
+        </div>
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Kept</div>
+          <div className="mt-2 text-lg font-bold text-white">Done work</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">find_tech_data stays finished.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Swap</div>
+          <div className="mt-2 text-lg font-bold text-white">Plan 2</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">find_market_data_backup replaces it.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Finish</div>
+          <div className="mt-2 text-lg font-bold text-white">Continue</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">compare and write_report run.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-emerald-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why we keep finished work</span>
+          <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Redoing completed subtasks wastes time and money. Keeping a record of completed subtasks lets the new plan skip them. The code shows the technology data being reused instead of re-fetched.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows the order constraints. Part 2 shows the failure and the swap. Open the bar to see why finished work is kept.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Dependency Planning and Replanning
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script builds a plan as a dependency graph, finds a valid execution order, runs it until one subtask fails, then replans by swapping in a backup subtask while keeping the completed work.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">planning_and_replanning.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">from graphlib import TopologicalSorter</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># A plan is a set of subtasks and what each one depends on</span>
+            <span className="block">plan = &#123;</span>
+            <span className="block">    &quot;find&#95;market&#95;data&quot;: &#91;&#93;,</span>
+            <span className="block">    &quot;find&#95;tech&#95;data&quot;: &#91;&#93;,</span>
+            <span className="block">    &quot;compare&quot;: &#91;&quot;find&#95;market&#95;data&quot;, &quot;find&#95;tech&#95;data&quot;&#93;,</span>
+            <span className="block">    &quot;write&#95;report&quot;: &#91;&quot;compare&quot;&#93;,</span>
+            <span className="block">&#125;</span>
+            <span className="block">completed = set()</span>
+            <span className="block">broken = &#123;&quot;find&#95;market&#95;data&quot;&#125;            # this subtask will fail the first time</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def execute(plan, completed, broken):</span>
+            <span className="block">    ts = TopologicalSorter(plan)</span>
+            <span className="block">    ts.prepare()</span>
+            <span className="block">    while ts.is&#95;active():</span>
+            <span className="block">        failed = &#91;&#93;</span>
+            <span className="block">        for task in sorted(ts.get&#95;ready()):</span>
+            <span className="block">            if task in completed:</span>
+            <span className="block">                ts.done(task)            # already finished earlier: skip</span>
+            <span className="block">            elif task in broken:</span>
+            <span className="block">                failed.append(task)</span>
+            <span className="block">            else:</span>
+            <span className="block">                print(&quot;  ran:&quot;, task)</span>
+            <span className="block">                completed.add(task)</span>
+            <span className="block">                ts.done(task)</span>
+            <span className="block">        if failed:</span>
+            <span className="block">            return failed</span>
+            <span className="block">    return &#91;&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Plan 1 order if nothing fails:&quot;, list(TopologicalSorter(plan).static&#95;order()))</span>
+            <span className="block">print(&quot;Executing plan 1&quot;)</span>
+            <span className="block">failed = execute(plan, completed, broken)</span>
+            <span className="block">print(&quot;  FAILED:&quot;, failed)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Replanning: swap the failed subtask for a backup, keep the finished work</span>
+            <span className="block text-cyan-300">def replace(plan, old, new):</span>
+            <span className="block">    return &#123;(new if k == old else k): &#91;new if d == old else d for d in deps&#93; for k, deps in plan.items()&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">plan2 = replace(plan, &quot;find&#95;market&#95;data&quot;, &quot;find&#95;market&#95;data&#95;backup&quot;)</span>
+            <span className="block">print(&quot;Executing plan 2 (replanned)&quot;)</span>
+            <span className="block">failed = execute(plan2, completed, broken)</span>
+            <span className="block">print(&quot;  Finished. Everything done:&quot;, sorted(completed))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Plan 1 order if nothing fails: &#91;&apos;find&#95;market&#95;data&apos;, &apos;find&#95;tech&#95;data&apos;, &apos;compare&apos;, &apos;write&#95;report&apos;&#93;</div>
+          <div>Executing plan 1</div>
+          <div>  ran: find&#95;tech&#95;data</div>
+          <div>  FAILED: &#91;&apos;find&#95;market&#95;data&apos;&#93;</div>
+          <div>Executing plan 2 (replanned)</div>
+          <div>  ran: find&#95;market&#95;data&#95;backup</div>
+          <div>  ran: compare</div>
+          <div>  ran: write&#95;report</div>
+          <div>  Finished. Everything done: &#91;&apos;compare&apos;, &apos;find&#95;market&#95;data&#95;backup&apos;, &apos;find&#95;tech&#95;data&apos;, &apos;write&#95;report&apos;&#93;</div>
+        </div>
+      </div>
+      <div>
+        The first execution completes the technology search and then stops at the failed market search. The replanned run swaps in the backup subtask and runs only the remaining work: the backup, the comparison and the report.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What is a dependency in a plan?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag10-q1-a" name="ag10-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag10-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) A subtask that needs the result of another subtask first</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Dependencies decide a valid order of execution.</div>
+          </div>
+          <div>
+            <input id="ag10-q1-b" name="ag10-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag10-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) A tool that is unavailable</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is a failure, not a dependency.</div>
+          </div>
+          <div>
+            <input id="ag10-q1-c" name="ag10-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag10-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) A rule about the prompt length</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Dependencies concern subtasks.</div>
+          </div>
+          <div>
+            <input id="ag10-q1-d" name="ag10-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag10-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) The final answer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The answer is an outcome.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What should the agent do with finished work when replanning?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag10-q2-a" name="ag10-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag10-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Keep and reuse it</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Only the failed or invalid subtasks should change.</div>
+          </div>
+          <div>
+            <input id="ag10-q2-b" name="ag10-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag10-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Delete all of it and start over</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> This wastes time and money.</div>
+          </div>
+          <div>
+            <input id="ag10-q2-c" name="ag10-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag10-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Run it again to be safe</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Repeating finished work is waste.</div>
+          </div>
+          <div>
+            <input id="ag10-q2-d" name="ag10-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag10-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Hide it from the model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The model needs to know what is done.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Planning breaks a big goal into subtasks with clear outcomes.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Good subtasks are small, have clear inputs and outputs, and can be checked.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Dependencies decide the valid order. Independent subtasks can run in parallel.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Dynamic planning updates the plan as new information arrives.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Replanning swaps broken subtasks and keeps completed work.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Cap the number of replans to avoid disguised infinite loops.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Planning in One Line</div>
+        <div className="text-center font-bold text-white">
+          Decompose → order by dependencies → execute → replan the broken parts only
+        </div>
+      </div>
+      <div>
+        A good plan turns a vague goal into small steps the agent can do and check.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Plans work best when the agent thinks, acts and learns from each result. In <strong className="text-white">ReAct, Reflection and Self-Correction</strong> you will see how agents reason while acting and fix their own mistakes.
+      </div>
+    </div>
+  </section>
+
+</div>

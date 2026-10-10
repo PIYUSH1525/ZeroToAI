@@ -1,0 +1,447 @@
+---
+title: "Multi-Agent Architectures"
+slug: "18-multi-agent-architectures"
+order: 18
+category: "AI Agents"
+subcategory: "Multi-Agent"
+difficulty: "Advanced"
+readTime: "30 min"
+description: "Compare the main ways to organize multiple agents: sequential pipelines, parallel agents, supervisor agents, hierarchical teams and peer-to-peer networks, with a simple model of time and message cost."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> The <strong className="text-white">shape</strong> of a team matters. <strong className="text-white">Sequential</strong> chains are simple, <strong className="text-white">parallel</strong> teams are fast, a <strong className="text-white">supervisor</strong> adds control, a <strong className="text-white">hierarchy</strong> scales to big jobs, and <strong className="text-white">peer-to-peer</strong> networks give flexibility at the price of many messages.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Sequential Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In a <strong className="text-white">sequential</strong> architecture, agents work one after another like a production line. The output of one agent is the input of the next: research, then write, then review.
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Strengths</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Simple</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Easy to understand and debug</div>
+            <div>Each step has a clear input and output</div>
+            <div>Few messages: one handoff between steps</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-rose-300">Weaknesses</span>
+            <span className="rounded bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">Slow</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Total time is the sum of all steps</div>
+            <div>An early mistake flows to the end</div>
+            <div>No parallelism</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Use when:</strong> Each step truly needs the result of the previous one.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Parallel Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In a <strong className="text-white">parallel</strong> architecture, independent tasks go to several agents <strong className="text-white">at the same time</strong>, and their results are combined afterwards (fan-out, then fan-in).
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> The six subtasks take 23 seconds in sequence but only 10 seconds with three parallel workers.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Needs:</strong> Tasks that do not depend on each other, and a way to merge the results without conflicts.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Supervisor Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">supervisor</strong> agent receives the goal, splits it into tasks, <strong className="text-white">delegates</strong> them to worker agents, collects the results and <strong className="text-white">synthesizes</strong> the final answer. Workers do not need to know about each other.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Plan:</strong> The supervisor breaks down the goal.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Delegate:</strong> It sends each task to the best worker.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Collect:</strong> Workers return results.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Synthesize:</strong> The supervisor checks and merges them.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Benefit:</strong> One place for control, checks and error handling.
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Cost:</strong> The supervisor is a bottleneck and a single point of failure, and it adds overhead. In the code the supervisor design takes 15 seconds, 5 more than pure parallel, because of planning, delegation and synthesis.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Hierarchical Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        For very large jobs one supervisor cannot manage everything. In a <strong className="text-white">hierarchy</strong>, a top-level agent manages <strong className="text-white">team leads</strong>, and each lead manages its own workers. It mirrors how companies are organized.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Fair comparison:</strong> In the code the hierarchy finishes in 9 seconds, faster than the 10-second parallel design, but it used <strong className="text-white">six workers instead of three</strong>, and it sends the most messages among the manager designs. More workers cost more.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">When it helps</div>
+        <div className="text-sm leading-relaxed text-slate-300">Hierarchies keep each manager&apos;s context small, because a team lead only sees its own team&apos;s work. That is the main reason to use them.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Peer-to-Peer Agents and How to Choose
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In a <strong className="text-white">peer-to-peer</strong> (network) design, any agent can message any other without a central manager. It is flexible and has no single bottleneck, but messages grow fast: with $n$ agents, one round of everyone talking to everyone is $n(n-1)$ messages.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Architecture</th>
+              <th className="px-5 py-3">Time (s)</th>
+              <th className="px-5 py-3">Messages</th>
+              <th className="px-5 py-3">Best for</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Sequential</td><td className="px-5 py-3">23</td><td className="px-5 py-3">5</td><td className="px-5 py-3">Strictly ordered steps</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Parallel</td><td className="px-5 py-3">10</td><td className="px-5 py-3">12</td><td className="px-5 py-3">Independent tasks</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Supervisor</td><td className="px-5 py-3">15.0</td><td className="px-5 py-3">12</td><td className="px-5 py-3">Control and quality checks</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Hierarchical</td><td className="px-5 py-3">9.0</td><td className="px-5 py-3">16</td><td className="px-5 py-3">Large jobs, small contexts per manager</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Peer-to-peer</td><td className="px-5 py-3">10.0</td><td className="px-5 py-3">24</td><td className="px-5 py-3">Open-ended collaboration and debate</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Choose the simplest shape that works.</strong> Sequential or supervisor designs cover most real needs. Peer-to-peer designs are the hardest to predict and debug.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Five Team Shapes Compared
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure lists the five architectures with the time and message numbers from the code, then summarizes what each trade-off buys you.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-cyan-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 1 · The Five Shapes</span>
+        <span className="text-xs text-slate-400">Same six subtasks</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-5">
+        <div className="space-y-3 rounded-2xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-300">Sequential</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200">23 s</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">A → B → C → D</div>
+          <div className="text-center text-blue-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">5 messages</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Parallel</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">10 s</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Workers at the same time</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">12 messages</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Supervisor</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">15 s</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Manager delegates and merges</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">12 messages</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-orange-500/25 bg-orange-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-orange-300">Hierarchy</span>
+            <span className="rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-[11px] text-orange-200">9 s</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Manager, leads, workers</div>
+          <div className="text-center text-orange-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">16 messages</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Peer-to-peer</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">10 s</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Everyone talks to everyone</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">24 messages</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Trade-Offs</span>
+        <span className="text-xs text-slate-400">What you gain and pay</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Speed</div>
+          <div className="mt-2 text-lg font-bold text-white">Parallel work</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Helps independent tasks.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Control</div>
+          <div className="mt-2 text-lg font-bold text-white">Supervisor</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Checks and error handling.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Scale</div>
+          <div className="mt-2 text-lg font-bold text-white">Hierarchy</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Small context per manager.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Complexity</div>
+          <div className="mt-2 text-lg font-bold text-white">Network</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Hardest to predict.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-cyan-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why the hierarchy is faster here</span>
+          <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">The hierarchy uses six workers while the parallel design uses three. With the same number of workers the comparison would look different. Always compare designs under equal resources.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows time and message count per design for the same six tasks. Part 2 lists the main trade-offs. Open the bar for an important caveat about the hierarchy.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Simple Model of Time and Messages
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script computes the completion time and the number of messages for the same six subtasks under five architectures: sequential, parallel, supervisor, hierarchical and peer-to-peer. It is a simplified model with fixed overheads, meant to show the trade-offs.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">architecture_comparison.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># Compare multi-agent architectures on the same six subtasks (durations in seconds)</span>
+            <span className="block">tasks = &#91;4, 3, 5, 2, 6, 3&#93;</span>
+            <span className="block">workers = 3</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def makespan(durations, n&#95;workers):</span>
+            <span className="block">    loads = &#91;0&#93; &#42; n&#95;workers</span>
+            <span className="block">    for d in durations:</span>
+            <span className="block">        loads&#91;loads.index(min(loads))&#93; += d              # give the task to the least busy worker</span>
+            <span className="block">    return max(loads)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def sequential():</span>
+            <span className="block">    return sum(tasks), len(tasks) - 1                    # each step hands over to the next</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def parallel():</span>
+            <span className="block">    return makespan(tasks, workers), len(tasks) &#42; 2      # each task: start message and result message</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def supervisor():</span>
+            <span className="block">    plan, delegate, synthesize = 1.0, 0.5, 1.0</span>
+            <span className="block">    time = plan + delegate &#42; len(tasks) + makespan(tasks, workers) + synthesize</span>
+            <span className="block">    return time, len(tasks) &#42; 2</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def hierarchical():</span>
+            <span className="block">    team&#95;a, team&#95;b = tasks&#91;:3&#93;, tasks&#91;3:&#93;</span>
+            <span className="block">    time = 1.0 + 1.0 + max(makespan(team&#95;a, 3), makespan(team&#95;b, 3)) + 1.0     # top planner, team lead, work, merge</span>
+            <span className="block">    return time, 2 &#42; 2 + len(tasks) &#42; 2</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def peer&#95;to&#95;peer(agents=4, rounds=2):</span>
+            <span className="block">    return makespan(tasks, agents) + rounds &#42; 1.0, agents &#42; (agents - 1) &#42; rounds     # everyone talks to everyone</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Architecture&quot;.ljust(14), &quot;time (s)&quot;.ljust(10), &quot;messages&quot;)</span>
+            <span className="block">for name, fn in &#91;(&quot;sequential&quot;, sequential), (&quot;parallel&quot;, parallel), (&quot;supervisor&quot;, supervisor), (&quot;hierarchical&quot;, hierarchical), (&quot;peer-to-peer&quot;, peer&#95;to&#95;peer)&#93;:</span>
+            <span className="block">    time, msgs = fn()</span>
+            <span className="block">    print(name.ljust(14), str(time).ljust(10), msgs)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Architecture   time (s)   messages</div>
+          <div>sequential     23         5</div>
+          <div>parallel       10         12</div>
+          <div>supervisor     15.0       12</div>
+          <div>hierarchical   9.0        16</div>
+          <div>peer-to-peer   10.0       24</div>
+        </div>
+      </div>
+      <div>
+        Sequential is slowest but sends the fewest messages. Parallel is fast. The supervisor adds control overhead. The hierarchy and peer-to-peer designs are quick but use more workers or many more messages. The numbers come from the assumptions in the code, so change them and observe.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What is the main weakness of a supervisor design?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag18-q1-a" name="ag18-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag18-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The supervisor adds overhead and is a bottleneck and single point of failure</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> All work flows through one agent.</div>
+          </div>
+          <div>
+            <input id="ag18-q1-b" name="ag18-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag18-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Workers cannot run in parallel</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They can.</div>
+          </div>
+          <div>
+            <input id="ag18-q1-c" name="ag18-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag18-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It needs no model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The supervisor is usually a model.</div>
+          </div>
+          <div>
+            <input id="ag18-q1-d" name="ag18-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag18-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It cannot delegate</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Delegation is its main job.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Why do peer-to-peer designs get expensive quickly?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag18-q2-a" name="ag18-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag18-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Messages grow as n times (n minus 1) when everyone talks to everyone</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> More agents means many more possible conversations.</div>
+          </div>
+          <div>
+            <input id="ag18-q2-b" name="ag18-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag18-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) They need no messages</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They need many.</div>
+          </div>
+          <div>
+            <input id="ag18-q2-c" name="ag18-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag18-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) They always run on one agent</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They use several agents.</div>
+          </div>
+          <div>
+            <input id="ag18-q2-d" name="ag18-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag18-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) They cannot use tools</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They can use tools.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Sequential designs are simple but slow, and errors flow downstream.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Parallel designs are fast for independent tasks but need a merge step.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A supervisor delegates, collects and synthesizes. It gives control at the cost of overhead.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Hierarchies scale to large jobs and keep each manager&apos;s context small.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Peer-to-peer networks are flexible but message cost grows as n(n-1).</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Choose the simplest architecture that works, and compare designs with equal resources.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Architecture in One Line</div>
+        <div className="text-center font-bold text-white">
+          Order for dependencies, parallel for speed, a supervisor for control, a hierarchy for scale
+        </div>
+      </div>
+      <div>
+        The best team shape is the simplest one that meets your quality and speed needs.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Once you pick a shape, something has to run it. In <strong className="text-white">Multi-Agent Orchestration</strong> you will study routing, delegation, coordination and shared state.
+      </div>
+    </div>
+  </section>
+
+</div>

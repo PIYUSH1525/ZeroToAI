@@ -1,0 +1,471 @@
+---
+title: "How AI Agents Work"
+slug: "02-how-ai-agents-work"
+order: 2
+category: "AI Agents"
+subcategory: "Foundations"
+difficulty: "Beginner"
+readTime: "25 min"
+description: "Understand the architecture of an AI agent: the observe, reason, act loop, the LLM as the reasoning engine, agent state and the basic lifecycle from start to finish, with a working loop in Python."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Every agent is built around one loop: <strong className="text-white">observe</strong> the situation, <strong className="text-white">reason</strong> about what to do, <strong className="text-white">act</strong>, then observe again. The <strong className="text-white">LLM</strong> is the reasoning engine, and the <strong className="text-white">state</strong> is everything the agent remembers about the task so far.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Agent Architecture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Under the hood, almost every agent has the same five parts. Learning them once lets you understand any agent framework later.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Part</th>
+              <th className="px-5 py-3">Job</th>
+              <th className="px-5 py-3">Analogy</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Instructions</td><td className="px-5 py-3">Rules and role: who the agent is and what it must never do</td><td className="px-5 py-3">A job description</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">LLM (reasoning engine)</td><td className="px-5 py-3">Reads the situation and decides the next action</td><td className="px-5 py-3">The brain</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Tools</td><td className="px-5 py-3">Functions the agent can call</td><td className="px-5 py-3">Hands and senses</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">State / memory</td><td className="px-5 py-3">What has happened so far and what is known</td><td className="px-5 py-3">A notebook</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Loop controller</td><td className="px-5 py-3">Your code that runs the cycle and enforces limits</td><td className="px-5 py-3">A manager with a stopwatch</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Key idea:</strong> The model does not run by itself. <strong className="text-white">Your code</strong> calls the model, runs the tools it asks for, updates the state and decides when to stop.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: The Observe → Reason → Act Loop
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The agent loop is a simple cycle that repeats:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Observe:</strong> Collect the latest information: the user goal, tool results, new messages, the current state.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Reason:</strong> The LLM decides what to do next, or decides that the goal is reached.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Act:</strong> Your code runs the chosen tool or sends the final answer.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Repeat:</strong> The result becomes the next observation.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Why a loop?</strong> A single model call has no way to look at the result of its own action. The loop is what lets the agent <em>see the consequences</em> and adapt, for example by retrying with different input.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: The LLM as the Reasoning Engine
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The LLM is <strong className="text-white">not</strong> the whole agent. It plays one role: given the instructions, the history and the list of tools, it outputs the <strong className="text-white">next step</strong>, either a tool call or a final answer. It does this by predicting text, so its output must be checked by your code.
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">What the LLM does well</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Strengths</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Understand fuzzy language</div>
+            <div>Choose between tools</div>
+            <div>Write plans and summaries</div>
+            <div>Adapt when results surprise it</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-rose-300">What it needs help with</span>
+            <span className="rounded bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">Limits</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Exact arithmetic and live facts (use tools)</div>
+            <div>Remembering beyond its context window (use memory)</div>
+            <div>Guaranteeing safety (use guardrails)</div>
+            <div>Stopping on its own (use step limits)</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Remember:</strong> Give the model the <strong className="text-white">judgment</strong> work and give tools and code the <strong className="text-white">exact</strong> work.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Agent State
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">State</strong> is the agent&apos;s working memory for one task. It is usually a small data structure that your loop updates after every step.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">State item</th>
+              <th className="px-5 py-3">Example</th>
+              <th className="px-5 py-3">Why it matters</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Goal</td><td className="px-5 py-3">Reach 22 degrees</td><td className="px-5 py-3">Tells the agent when to stop</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Status</td><td className="px-5 py-3">created, running, succeeded, failed</td><td className="px-5 py-3">Lets your code control the lifecycle</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Step counter</td><td className="px-5 py-3">7 of 10</td><td className="px-5 py-3">Prevents endless loops</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Observations / history</td><td className="px-5 py-3">Every tool call and result so far</td><td className="px-5 py-3">Becomes the context for the next model call</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Scratch data</td><td className="px-5 py-3">Intermediate values, found IDs</td><td className="px-5 py-3">Saves recomputing</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">State vs. memory</div>
+        <div className="text-sm leading-relaxed text-slate-300">State lives for <strong className="text-white">one task</strong>. Long-term memory across tasks is a separate topic covered later in this series.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: The Basic Agent Lifecycle
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A run of an agent moves through clear stages. Making them explicit makes your agent easier to debug and control:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Stage</th>
+              <th className="px-5 py-3">What happens</th>
+              <th className="px-5 py-3">Typical exit</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Created</td><td className="px-5 py-3">Goal and tools are set, state is empty</td><td className="px-5 py-3">Start the loop</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Running</td><td className="px-5 py-3">Observe, reason, act repeat</td><td className="px-5 py-3">Goal reached, error, or step limit</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Succeeded</td><td className="px-5 py-3">The model reports the goal is done and the result is checked</td><td className="px-5 py-3">Return the answer</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Failed</td><td className="px-5 py-3">Step limit, repeated errors or an unsafe action</td><td className="px-5 py-3">Return an error and the trace</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Waiting (optional)</td><td className="px-5 py-3">Paused for a human or a slow tool</td><td className="px-5 py-3">Resume with new input</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Always set a step limit.</strong> Without a maximum number of steps, a confused agent can loop forever and run up your bill. The code below includes the limit in its state.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Agent Loop and Its Five Parts
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows one turn of the loop, then lists the five parts every agent shares.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-emerald-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 1 · The Loop</span>
+        <span className="text-xs text-slate-400">Round and round until done</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Observe</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Input</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Goal and state</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Latest tool result</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">What is true right now?</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Reason</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">LLM</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Reads instructions and history</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Picks the next action</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Tool call or final answer</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Act</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Your code</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Runs the tool</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Updates the state</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">New observation for the next turn</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The Five Parts</span>
+        <span className="text-xs text-slate-400">Same in every agent</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-5">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Instructions</div>
+          <div className="mt-2 text-lg font-bold text-white">Role and rules</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">What it is and must never do.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">LLM</div>
+          <div className="mt-2 text-lg font-bold text-white">Reasoning</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Chooses the next step.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Tools</div>
+          <div className="mt-2 text-lg font-bold text-white">Acting</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Functions it can call.</div>
+        </div>
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">State</div>
+          <div className="mt-2 text-lg font-bold text-white">Memory</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">What happened so far.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Controller</div>
+          <div className="mt-2 text-lg font-bold text-white">Your code</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Runs the loop and limits.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-emerald-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see what a step limit prevents</span>
+          <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If the target can never be reached, the loop would run forever. A maximum step count turns that into a clean failed status. The code below shows a status moving from created to running to succeeded or failed.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 reads left to right and then starts again. Part 2 lists the parts. Open the bar to see why every loop needs a step limit.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: An Observe, Reason, Act Loop With State
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script is a tiny thermostat agent. It observes the temperature, reasons about what to do, and acts, while a state dictionary tracks the goal, the step count, the observations and the lifecycle status.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">observe_reason_act.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># The Observe -&gt; Reason -&gt; Act loop with explicit agent state and lifecycle</span>
+            <span className="block">room = &#123;&quot;temp&quot;: 15.0&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def observe():</span>
+            <span className="block">    return room&#91;&quot;temp&quot;&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def reason(observation, target):</span>
+            <span className="block">    if abs(observation - target) &lt;= 0.5:</span>
+            <span className="block">        return &quot;stop&quot;</span>
+            <span className="block">    return &quot;heat&quot; if observation &lt; target else &quot;cool&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def act(action):</span>
+            <span className="block">    room&#91;&quot;temp&quot;&#93; += 1.0 if action == &quot;heat&quot; else -1.0</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">state = &#123;&quot;status&quot;: &quot;created&quot;, &quot;goal&quot;: 22.0, &quot;steps&quot;: 0, &quot;observations&quot;: &#91;&#93;, &quot;max&#95;steps&quot;: 10&#125;</span>
+            <span className="block">state&#91;&quot;status&quot;&#93; = &quot;running&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">while state&#91;&quot;status&quot;&#93; == &quot;running&quot;:</span>
+            <span className="block">    obs = observe()                                   # 1. Observe</span>
+            <span className="block">    state&#91;&quot;observations&quot;&#93;.append(obs)</span>
+            <span className="block">    decision = reason(obs, state&#91;&quot;goal&quot;&#93;)             # 2. Reason</span>
+            <span className="block">    state&#91;&quot;steps&quot;&#93; += 1</span>
+            <span className="block">    print(&quot;Step&quot;, state&#91;&quot;steps&quot;&#93;, &quot;| sees&quot;, obs, &quot;| decides&quot;, decision)</span>
+            <span className="block">    if decision == &quot;stop&quot;:</span>
+            <span className="block">        state&#91;&quot;status&quot;&#93; = &quot;succeeded&quot;</span>
+            <span className="block">    elif state&#91;&quot;steps&quot;&#93; &gt;= state&#91;&quot;max&#95;steps&quot;&#93;:</span>
+            <span className="block">        state&#91;&quot;status&quot;&#93; = &quot;failed&quot;</span>
+            <span className="block">    else:</span>
+            <span className="block">        act(decision)                                 # 3. Act</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Lifecycle ended with status:&quot;, state&#91;&quot;status&quot;&#93;, &quot;after&quot;, state&#91;&quot;steps&quot;&#93;, &quot;steps&quot;)</span>
+            <span className="block">print(&quot;Everything the agent remembers:&quot;, state&#91;&quot;observations&quot;&#93;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Step 1 | sees 15.0 | decides heat</div>
+          <div>Step 2 | sees 16.0 | decides heat</div>
+          <div>Step 3 | sees 17.0 | decides heat</div>
+          <div>Step 4 | sees 18.0 | decides heat</div>
+          <div>Step 5 | sees 19.0 | decides heat</div>
+          <div>Step 6 | sees 20.0 | decides heat</div>
+          <div>Step 7 | sees 21.0 | decides heat</div>
+          <div>Step 8 | sees 22.0 | decides stop</div>
+          <div>Lifecycle ended with status: succeeded after 8 steps</div>
+          <div>Everything the agent remembers: &#91;15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0&#93;</div>
+        </div>
+      </div>
+      <div>
+        The agent warms the room one step at a time and stops as soon as it is within tolerance of the goal. Notice that the <strong className="text-white">state</strong> holds everything it remembers. If you set the goal to something unreachable, the step limit would end the run with the failed status.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What does the Reason step of the loop do?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag02-q1-a" name="ag02-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag02-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Decides the next action or decides the goal is reached</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The model chooses a tool call or a final answer.</div>
+          </div>
+          <div>
+            <input id="ag02-q1-b" name="ag02-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag02-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Runs the tool</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Running the tool is the Act step.</div>
+          </div>
+          <div>
+            <input id="ag02-q1-c" name="ag02-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag02-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Reads the tool result</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Reading results is the Observe step.</div>
+          </div>
+          <div>
+            <input id="ag02-q1-d" name="ag02-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag02-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Trains the model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Training does not happen inside the loop.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Why should every agent have a step limit?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag02-q2-a" name="ag02-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag02-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) To stop endless loops that waste time and money</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A confused agent may never reach its goal, so the limit forces a clean stop.</div>
+          </div>
+          <div>
+            <input id="ag02-q2-b" name="ag02-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag02-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) To make the model smarter</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A limit does not improve reasoning.</div>
+          </div>
+          <div>
+            <input id="ag02-q2-c" name="ag02-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag02-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) To avoid using tools</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Tools are still used.</div>
+          </div>
+          <div>
+            <input id="ag02-q2-d" name="ag02-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag02-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) To remove the need for state</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> State is still required.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>An agent has instructions, an LLM, tools, state and a loop controller.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The loop is observe, reason, act, then observe the result again.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The LLM is the reasoning engine. Your code runs tools, updates state and enforces limits.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>State holds the goal, status, step count and history for one task.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The lifecycle runs created, running, then succeeded or failed.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Always set a maximum number of steps.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">How Agents Work in One Line</div>
+        <div className="text-center font-bold text-white">
+          Observe → Reason (LLM) → Act (tool) → update state → repeat → stop at the goal or the limit
+        </div>
+      </div>
+      <div>
+        Frameworks differ in names and style, but they all implement this same loop.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> The agent&apos;s hands are its tools. In <strong className="text-white">Tools and Function Calling</strong> you will learn how tools are described, chosen and run.
+      </div>
+    </div>
+  </section>
+
+</div>

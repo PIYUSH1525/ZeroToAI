@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
-import { Concept, ConceptMeta, TocItem } from "./types";
+import { Concept, ConceptMeta, SECTION_TYPES, SectionType, TocItem } from "./types";
 import {
   CURRICULUM_CATEGORIES,
   TOPIC_PEDAGOGICAL_ORDER,
@@ -46,7 +46,34 @@ function slugify(text: string, index: number): string {
   return clean || `section-${index + 1}`;
 }
 
-function extractTocAndInjectIds(raw: string): { content: string; toc: TocItem[] } {
+// Remembers warnings already printed so the same typo is not reported repeatedly.
+const warnedTypes = new Set<string>();
+
+function parseSectionType(attrs: string, title: string, slug: string): SectionType | undefined {
+  const match = attrs.match(/\bdata-type=["']([^"']*)["']/i);
+  if (!match) return undefined;
+
+  const value = match[1].trim().toLowerCase();
+  if ((SECTION_TYPES as readonly string[]).includes(value)) {
+    return value as SectionType;
+  }
+
+  // Build-time check: catches typos such as data-type="vizualization"
+  const key = `${slug}::${title}::${value}`;
+  if (!warnedTypes.has(key)) {
+    warnedTypes.add(key);
+    console.warn(
+      `\n[MDX WARNING] Lesson "${slug}": section "${title}" has an invalid data-type="${match[1]}". ` +
+        `Allowed values: ${SECTION_TYPES.join(", ")}. The type was ignored, so its button will not work.\n`
+    );
+  }
+  return undefined;
+}
+
+function extractTocAndInjectIds(
+  raw: string,
+  slug: string
+): { content: string; toc: TocItem[] } {
   const toc: TocItem[] = [];
   let idx = 0;
 
@@ -58,7 +85,8 @@ function extractTocAndInjectIds(raw: string): { content: string; toc: TocItem[] 
 
     const existingId = String(attrs).match(/\bid=["']([^"']+)["']/i);
     const id = existingId ? existingId[1] : slugify(title, idx++);
-    toc.push({ id, title });
+    const type = parseSectionType(String(attrs), title, slug);
+    toc.push(type ? { id, title, type } : { id, title });
 
     if (existingId) return match;
     return `<h2 id="${id}"${attrs}>${inner}</h2>`;
@@ -158,7 +186,7 @@ export function getConceptBySlug(slug: string): Concept | null {
 
   const rawFile = fs.readFileSync(targetPath, "utf8");
   const { content: raw } = matter(rawFile);
-  const { content, toc } = extractTocAndInjectIds(raw);
+  const { content, toc } = extractTocAndInjectIds(raw, slug);
 
   const sameCat = all.filter((c) => c.categorySlug === meta.categorySlug);
   const catIdx = sameCat.findIndex((c) => c.slug === slug);

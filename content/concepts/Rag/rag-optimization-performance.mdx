@@ -1,0 +1,396 @@
+---
+title: "RAG Optimization and Performance"
+slug: "rag-optimization-performance"
+order: 24
+category: "RAG"
+subcategory: "Production"
+difficulty: "Advanced"
+readTime: "20 min"
+description: "Tune a RAG system for quality, speed and cost: chunk, embedding, retrieval, reranking and context optimization, plus caching, latency, throughput and cost control."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> A RAG system that is accurate but takes ten seconds, or that costs more than the problem is worth, will not survive in production. <strong className="text-white">Optimization</strong> is the work of improving quality, latency and cost without sacrificing one for another by accident. The key discipline is simple: measure first, change one thing at a time, and check quality again after every speed or cost improvement.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Intermediate: Where Time and Money Go</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Before optimizing, find out where the budget is actually spent. In a typical query the large costs are the language model call and, if used, the reranker. Embedding the query and searching the index are usually small.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Stage</th><th className="px-4 py-3">Latency</th><th className="px-4 py-3">Cost driver</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Query embedding</td><td className="px-4 py-3">Small</td><td className="px-4 py-3">Tokens in the query</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Vector search</td><td className="px-4 py-3">Small, grows with index size</td><td className="px-4 py-3">Compute and memory for the index</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Reranking</td><td className="px-4 py-3">Grows with the number of candidates</td><td className="px-4 py-3">Model calls per candidate</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Generation</td><td className="px-4 py-3">Usually the largest share</td><td className="px-4 py-3">Prompt tokens plus answer tokens</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5"><strong className="text-blue-300">Rule:</strong> instrument every stage, measure on realistic traffic, and optimize the stage that dominates. Guessing leads to speeding up what was already fast.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: Optimizing for Quality</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Each component of the pipeline has its own knobs. Change one at a time and measure on the golden dataset.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Component</th><th className="px-4 py-3">What to tune</th><th className="px-4 py-3">How you know it helped</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Chunking</td><td className="px-4 py-3">Size, overlap, structure rules</td><td className="px-4 py-3">Context recall rises</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Embeddings</td><td className="px-4 py-3">Model choice, dimensions, query and document settings</td><td className="px-4 py-3">Hit rate at k rises</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Retrieval</td><td className="px-4 py-3">Top-k, hybrid weights, filters, thresholds</td><td className="px-4 py-3">Recall rises without more noise</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Reranking</td><td className="px-4 py-3">Number of candidates, reranker model</td><td className="px-4 py-3">MRR and precision at the prompt size rise</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Context</td><td className="px-4 py-3">Number and order of chunks, compression</td><td className="px-4 py-3">Faithfulness and correctness rise, tokens fall</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">One change at a time:</strong> if you change chunking and the reranker together and quality moves, you will not know which change caused it.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Caching</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The fastest request is the one you never repeat. Caches store results that are expensive to compute and likely to be needed again.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Embedding cache</div>
+          <div className="text-sm leading-7">Store the vector for each normalized query, so repeated questions skip the embedding call.</div>
+        </div>
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Retrieval cache</div>
+          <div className="text-sm leading-7">Store the retrieved chunk ids for a query, valid until the index changes.</div>
+        </div>
+        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-orange-300">Semantic cache</div>
+          <div className="text-sm leading-7">Reuse a stored answer when a new question is very similar to an earlier one. Large savings, but a wrong match returns a wrong answer.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Cache safely:</strong> invalidate cached answers when their source documents change, and include user permissions in the cache key, otherwise one user may receive an answer built from documents another user is allowed to see. Normalizing queries first, such as lowercasing and removing punctuation, raises the hit rate.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Latency and Throughput</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Latency</strong> is how long one request takes. <strong className="text-white">Throughput</strong> is how many requests the system completes per second. They are related by a simple rule of queues: the number of requests in progress at once equals the arrival rate times the time each takes.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$\text{concurrent requests} = \text{requests per second} \times \text{seconds per request}$$</div>
+      <div>At 20 requests per second and 1.5 seconds per request, about 30 requests are in flight at any moment, so slower requests need more capacity. Track latency by percentile, such as p50 and p95, not by average. A p95 of 4 seconds means one user in twenty waits that long, even if the average looks fine.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Parallelize</strong> independent work, for example dense and sparse search at the same time.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Reduce candidates</strong> sent to the reranker, since its time grows with their number.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Stream</strong> the answer as it is generated so the user sees the first words early.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Use smaller models</strong> for routing and grading steps.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Batch</strong> embedding work during ingestion.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Optimizing Cost Without Losing Quality</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Prompt tokens usually dominate the cost of a query. The most effective savings come from sending less text that matters more.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Lever</th><th className="px-4 py-3">Effect</th><th className="px-4 py-3">Risk</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Fewer, better chunks (reranking)</td><td className="px-4 py-3">Fewer prompt tokens</td><td className="px-4 py-3">May cut a needed chunk</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Contextual compression</td><td className="px-4 py-3">Shorter chunks</td><td className="px-4 py-3">May drop a qualifier</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Route easy questions to a cheaper model</td><td className="px-4 py-3">Large savings on common questions</td><td className="px-4 py-3">A wrong route lowers quality</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Caching</td><td className="px-4 py-3">Skips whole calls</td><td className="px-4 py-3">Stale or mismatched answers</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Smaller or quantized embeddings</td><td className="px-4 py-3">Less storage and faster search</td><td className="px-4 py-3">Small recall loss</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5"><strong className="text-cyan-300">Track a pair of numbers:</strong> cost per query and quality on the golden set, together. A cost cut that quietly lowers correctness is a hidden bill that users pay.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Spending Less Without Getting Worse</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A shows the three goals and their main levers. Panel B uses the numbers from the code below to compare latency and cost before and after tuning. Panel C is a lever explorer.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel A · Three Goals</span><span className="text-xs text-slate-400">Optimize them together</span></div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Quality</div>
+              <div className="mt-2 text-lg font-bold text-white">Better answers</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">Chunks, embeddings, reranking, context</div>
+            </div>
+            <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.05] p-5 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Speed</div>
+              <div className="mt-2 text-lg font-bold text-white">Lower latency</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">Caching, parallelism, fewer candidates, streaming</div>
+            </div>
+            <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.05] p-5 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-orange-400">Cost</div>
+              <div className="mt-2 text-lg font-bold text-white">Fewer tokens</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">Compression, routing, caching, fewer chunks</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel B · Before and After</span><span className="text-xs text-slate-400">Illustrative numbers from the code in section 7</span></div>
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="mb-1 text-xs text-slate-300">Latency before: 50 candidates, no cache</div>
+              <div className="mx-auto h-4 w-full max-w-md overflow-hidden rounded-full bg-white/10">
+                <div className="h-4 rounded-full bg-rose-400" style={{ width: "100%" }} />
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">1050 ms</div>
+            </div>
+            <div className="text-center">
+              <div className="mb-1 text-xs text-slate-300">Latency after: 20 candidates, embedding cached</div>
+              <div className="mx-auto h-4 w-full max-w-md overflow-hidden rounded-full bg-white/10">
+                <div className="h-4 rounded-full bg-emerald-400" style={{ width: "74%" }} />
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">780 ms</div>
+            </div>
+            <div className="text-center">
+              <div className="mb-1 text-xs text-slate-300">Cost plan A: 8 chunks of 300 tokens</div>
+              <div className="mx-auto h-4 w-full max-w-md overflow-hidden rounded-full bg-white/10">
+                <div className="h-4 rounded-full bg-rose-400" style={{ width: "100%" }} />
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">1.3 units per query</div>
+            </div>
+            <div className="text-center">
+              <div className="mb-1 text-xs text-slate-300">Cost plan B: 4 chunks of 150 tokens</div>
+              <div className="mx-auto h-4 w-full max-w-md overflow-hidden rounded-full bg-white/10">
+                <div className="h-4 rounded-full bg-emerald-400" style={{ width: "31%" }} />
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">0.4 units per query</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Lever Explorer</span><span className="text-xs text-slate-400">Click a lever to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c24-lever-0" name="c24-lever" type="radio" className="peer sr-only" />
+              <label htmlFor="c24-lever-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">Embedding cache</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-emerald-300">Saves:</strong> The embedding call for repeated queries</div>
+                <div><strong className="text-emerald-300">Watch:</strong> Normalize queries to raise the hit rate</div>
+              </div>
+            </div>
+            <div>
+              <input id="c24-lever-1" name="c24-lever" type="radio" className="peer sr-only" />
+              <label htmlFor="c24-lever-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">Fewer rerank candidates</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-blue-300">Saves:</strong> Time that grows with the candidate count</div>
+                <div><strong className="text-blue-300">Watch:</strong> Recall of the first stage</div>
+              </div>
+            </div>
+            <div>
+              <input id="c24-lever-2" name="c24-lever" type="radio" className="peer sr-only" />
+              <label htmlFor="c24-lever-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">Semantic cache</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Saves:</strong> Entire retrieval and generation calls</div>
+                <div><strong className="text-orange-300">Watch:</strong> Wrong matches and stale answers</div>
+              </div>
+            </div>
+            <div>
+              <input id="c24-lever-3" name="c24-lever" type="radio" className="peer sr-only" />
+              <label htmlFor="c24-lever-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Compression</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Saves:</strong> Prompt tokens</div>
+                <div><strong className="text-violet-300">Watch:</strong> Dropped qualifiers</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why averages are not enough for latency</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">Users remember the slow requests. Percentiles such as p95 show how the slowest few percent behave, which the average hides completely.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A names the goals, Panel B shows real before and after numbers, and Panel C lists what each lever saves and what to watch.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Cache Hit Rate, a Latency Model and a Cost Model</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program builds three small models. First, an embedding cache keyed by a normalized query shows how spelling and punctuation differences are absorbed. Second, a latency model adds the time of each stage, with reranking proportional to the candidate count, and compares two configurations. Third, a cost model converts chunk count and chunk size into prompt tokens and into a monthly total. The timings and prices are illustrative, not measurements of any real system.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">rag_optimization.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-cyan-300">def normalize(query):</span>
+            <span className="block">    return &quot; &quot;.join(&quot;&quot;.join(ch for ch in query.lower() if ch.isalnum() or ch == &quot; &quot;).split())</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">cache = dict()</span>
+            <span className="block">stats = [0, 0]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def embed_cached(query):</span>
+            <span className="block">    key = normalize(query)</span>
+            <span className="block">    if key in cache:</span>
+            <span className="block">        stats[0] += 1</span>
+            <span className="block">        return &quot;hit&quot;</span>
+            <span className="block">    cache[key] = True</span>
+            <span className="block">    stats[1] += 1</span>
+            <span className="block">    return &quot;miss&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">queries = [&quot;How do refunds work?&quot;, &quot;how do refunds work&quot;, &quot;What is the shipping time?&quot;, &quot;How do REFUNDS work?&quot;, &quot;what is the shipping time&quot;]</span>
+            <span className="block">for q in queries:</span>
+            <span className="block">    embed_cached(q)</span>
+            <span className="block">print(&quot;Embedding cache: hits&quot;, stats[0], &quot;| misses&quot;, stats[1], &quot;| hit rate&quot;, round(stats[0] / len(queries), 2))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># A simple latency model, in milliseconds</span>
+            <span className="block text-cyan-300">def latency(candidates, embed_cached_flag):</span>
+            <span className="block">    embed = 0 if embed_cached_flag else 30</span>
+            <span className="block">    search = 20</span>
+            <span className="block">    rerank = 8 * candidates</span>
+            <span className="block">    generate = 600</span>
+            <span className="block">    return embed + search + rerank + generate</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">before = latency(50, False)</span>
+            <span className="block">after = latency(20, True)</span>
+            <span className="block">print(&quot;Latency before:&quot;, before, &quot;ms | after:&quot;, after, &quot;ms | saved:&quot;, before - after, &quot;ms&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># A simple cost model with illustrative prices (units per 1000 tokens)</span>
+            <span className="block text-cyan-300">def cost_per_query(chunks, tokens_per_chunk, price_per_1k=0.5):</span>
+            <span className="block">    prompt_tokens = 200 + chunks * tokens_per_chunk</span>
+            <span className="block">    return prompt_tokens, prompt_tokens / 1000 * price_per_1k</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">tokens_a, cost_a = cost_per_query(8, 300)</span>
+            <span className="block">tokens_b, cost_b = cost_per_query(4, 150)</span>
+            <span className="block">print(&quot;Plan A: 8 chunks x 300 tokens =&quot;, tokens_a, &quot;tokens, cost&quot;, round(cost_a, 2), &quot;units&quot;)</span>
+            <span className="block">print(&quot;Plan B: 4 chunks x 150 tokens =&quot;, tokens_b, &quot;tokens, cost&quot;, round(cost_b, 2), &quot;units&quot;)</span>
+            <span className="block">monthly = 100000</span>
+            <span className="block">print(&quot;Per month at&quot;, monthly, &quot;queries:&quot;, round(cost_a * monthly), &quot;vs&quot;, round(cost_b * monthly), &quot;units&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Embedding cache: hits 3 | misses 2 | hit rate 0.6</span>
+            <span className="block">Latency before: 1050 ms | after: 780 ms | saved: 270 ms</span>
+            <span className="block">Plan A: 8 chunks x 300 tokens = 2600 tokens, cost 1.3 units</span>
+            <span className="block">Plan B: 4 chunks x 150 tokens = 800 tokens, cost 0.4 units</span>
+            <span className="block">Per month at 100000 queries: 130000 vs 40000 units</span>
+          </code>
+        </pre>
+      </div>
+      <div>Five queries contained only two distinct questions, so normalization turned three of them into cache hits. Cutting rerank candidates from 50 to 20 and skipping the cached embedding saves 270 milliseconds in the model. Halving the number of chunks and the length of each, for example with reranking and compression, cuts the prompt from 2,600 to 800 tokens, so the monthly bill falls from 130,000 to 40,000 units in this example. In a real project you would verify on the golden set that quality did not drop.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. Why track p95 latency instead of only the average?</div>
+        <div>
+          <input id="rag24-q1-a" name="rag24-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag24-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The average hides the slow requests that a noticeable share of users experience</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Percentiles describe tail behavior.</div>
+        </div>
+        <div>
+          <input id="rag24-q1-b" name="rag24-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag24-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Averages cannot be computed</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They can; they are just misleading alone.</div>
+        </div>
+        <div>
+          <input id="rag24-q1-c" name="rag24-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag24-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) p95 is always lower than the average</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> p95 is usually higher than the average.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. What must a cache key include when documents have permissions?</div>
+        <div>
+          <input id="rag24-q2-a" name="rag24-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag24-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) The current time only</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Time does not protect permissions.</div>
+        </div>
+        <div>
+          <input id="rag24-q2-b" name="rag24-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag24-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) The user permissions, or answers may leak between users</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A shared cache can expose restricted content.</div>
+        </div>
+        <div>
+          <input id="rag24-q2-c" name="rag24-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag24-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Nothing, caches are always safe</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Caches need careful keys and invalidation.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. A change reduces cost by 70 percent. What should you check next?</div>
+        <div>
+          <input id="rag24-q3-a" name="rag24-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag24-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Nothing, cheaper is always better</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A quality loss may cost more than it saves.</div>
+        </div>
+        <div>
+          <input id="rag24-q3-b" name="rag24-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag24-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) That the prompt got longer</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The goal was a shorter prompt.</div>
+        </div>
+        <div>
+          <input id="rag24-q3-c" name="rag24-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag24-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) That quality on the golden set did not drop</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Cost and quality must be tracked together.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Measure each stage first; generation and reranking usually dominate time and cost.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Tune chunking, embeddings, retrieval, reranking and context one change at a time on the golden dataset.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Embedding, retrieval and semantic caches save work; invalidate them when documents change and include permissions in the key.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Latency is time per request, throughput is requests per second, and concurrency is their product.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Report latency by percentile, not by average.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Prompt tokens dominate cost: use reranking, compression, routing and caching to send less and better text.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Track cost and quality together so savings never hide a loss in correctness.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Optimization is a loop of measuring, changing one thing and measuring again. With an evaluation set to protect quality and a profile to show where time and money go, you can make a RAG system faster and cheaper with confidence.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Profile → Pick the biggest stage → Change one thing → Re-measure quality and cost → Keep or revert</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Production RAG Architecture. You will design the backend: APIs, scaling the vector database, batch and real-time ingestion, updates and deletions, freshness, versioned knowledge bases and fallback strategies.</div>
+    </div>
+  </section>
+</div>

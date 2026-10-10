@@ -1,0 +1,476 @@
+---
+title: "Agent Workflows and State Machines"
+slug: "12-agent-workflows-and-state-machines"
+order: 12
+category: "AI Agents"
+subcategory: "Reasoning"
+difficulty: "Intermediate"
+readTime: "30 min"
+description: "Learn how to structure agents as workflows: sequential and conditional flows, branching, parallel execution, explicit state transitions, and checkpoints that let a run resume after a failure."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A <strong className="text-white">workflow</strong> is a graph of steps. Each step does some work, updates the <strong className="text-white">state</strong> and names the <strong className="text-white">next step</strong>. Explicit <strong className="text-white">branches</strong>, <strong className="text-white">parallel steps</strong> and <strong className="text-white">checkpoints</strong> make agents predictable and recoverable.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Sequential Workflows
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">sequential workflow</strong> runs steps in a fixed order: classify the question, then research, then draft, then review. The language model can be used <em>inside</em> some steps, but your code decides the order.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3"></th>
+              <th className="px-5 py-3">Free agent loop</th>
+              <th className="px-5 py-3">Workflow</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Who picks the next step</td><td className="px-5 py-3">The model, every time</td><td className="px-5 py-3">Your code, from a graph</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Predictability</td><td className="px-5 py-3">Lower</td><td className="px-5 py-3">Higher</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Flexibility</td><td className="px-5 py-3">Higher</td><td className="px-5 py-3">Lower</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Best for</td><td className="px-5 py-3">Open-ended tasks</td><td className="px-5 py-3">Known processes with some model steps</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Practical advice:</strong> Many successful products use workflows with small agent-like steps inside, because they are easier to test and cheaper to run.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Conditional Workflows and Branching
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">conditional</strong> step looks at the state and chooses where to go next. This is <strong className="text-white">branching</strong>:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Condition</th>
+              <th className="px-5 py-3">Branch</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Question mentions an invoice</td><td className="px-5 py-3">Billing path</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Question is technical</td><td className="px-5 py-3">Technical path</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Draft failed the review</td><td className="px-5 py-3">Go back to drafting</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Confidence is low</td><td className="px-5 py-3">Ask a human</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">In the code:</strong> The classify step sets the kind of question, and the review step either approves the draft or sends the run back to draft. That second case is a <strong className="text-white">loop</strong> inside the workflow.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Parallel Execution
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When subtasks do not depend on each other, run them <strong className="text-white">at the same time</strong>. In the code, three sources are searched in parallel, so the total time is about that of the slowest one instead of the sum of all three.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Pattern</th>
+              <th className="px-5 py-3">Description</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Fan-out</td><td className="px-5 py-3">Start several steps at once</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Fan-in</td><td className="px-5 py-3">Wait for all and combine the results</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Race</td><td className="px-5 py-3">Use the first good result and cancel the rest</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Careful:</strong> Parallel steps must not write to the same state at the same time. Give each its own output and merge afterwards.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: State Transitions
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Think of the workflow as a <strong className="text-white">state machine</strong>: it is always in one state (a step), and each step ends by returning the <strong className="text-white">next state</strong>. All the data lives in a shared state object.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Part</th>
+              <th className="px-5 py-3">Role</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Nodes</td><td className="px-5 py-3">Steps that do work</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Edges</td><td className="px-5 py-3">Allowed moves from one node to another</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">State object</td><td className="px-5 py-3">Data passed along and updated</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Terminal state</td><td className="px-5 py-3">done or failed</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Why explicit states help</div>
+        <div className="text-sm leading-relaxed text-slate-300">You can draw the machine, test each node alone, see exactly where a run is, and forbid illegal moves, which prevents many agent bugs.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Checkpoints
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">checkpoint</strong> saves the state after each step. If the process crashes, is restarted or must wait for a human, the run <strong className="text-white">resumes from the last checkpoint</strong> instead of starting over.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">After every node:</strong> Write the state and the name of the next node to storage.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">On start:</strong> Look for a checkpoint. If one exists, load it.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Continue:</strong> Run from the saved next node.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Clean up:</strong> Remove or archive checkpoints when the run finishes.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> The run crashes after the research step. After a restart it loads the checkpoint and continues at the draft step. The classify and research work is <strong className="text-white">not repeated</strong>.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Tip:</strong> Make steps <strong className="text-white">idempotent</strong> (safe to run twice) so a resume after a partial step does not duplicate effects like sending an email.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: A Workflow With Branches, Parallel Steps and a Checkpoint
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows the four nodes of the workflow in the code, then what happens when the run crashes and resumes.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-cyan-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 1 · The Workflow in the Code</span>
+        <span className="text-xs text-slate-400">Branch, parallel, loop</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-4">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">classify</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Branch</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Billing or technical?</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Chooses the path</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">research</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Parallel</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">3 sources searched at once</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Facts combined</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">draft</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Work</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Writes an answer</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Goes to review</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">review</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Loop</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">First draft rejected, second approved</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">done</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · A Crash and a Resume</span>
+        <span className="text-xs text-slate-400">Checkpoints save the day</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Ran</div>
+          <div className="mt-2 text-lg font-bold text-white">Before crash</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">classify, research.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Crash</div>
+          <div className="mt-2 text-lg font-bold text-white">Process dies</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Memory lost.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Load</div>
+          <div className="mt-2 text-lg font-bold text-white">Checkpoint</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">State and next node restored.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Resume</div>
+          <div className="mt-2 text-lg font-bold text-white">draft</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">No repeated work.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-cyan-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why steps should be idempotent</span>
+          <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">After a crash a step might run twice. If the step sends an email, the customer receives two. Idempotent steps, or an idempotency key, make a repeat harmless.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 labels each node with the pattern it demonstrates. Part 2 shows the crash and the resume. Open the bar to see why idempotent steps matter.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A State Machine With Parallel Steps and Checkpoints
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script implements a four-node workflow. It branches on the question type, searches three sources in parallel, loops between draft and review, saves a checkpoint after every node, simulates a crash, and resumes from the checkpoint.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">workflow_state_machine.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import json, os, tempfile</span>
+            <span className="block">from concurrent.futures import ThreadPoolExecutor</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">CHECKPOINT = os.path.join(tempfile.mkdtemp(), &quot;run.json&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def save(state, next&#95;node):</span>
+            <span className="block">    with open(CHECKPOINT, &quot;w&quot;) as f:</span>
+            <span className="block">        json.dump(&#123;&quot;state&quot;: state, &quot;next&quot;: next&#95;node&#125;, f)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def load():</span>
+            <span className="block">    with open(CHECKPOINT) as f:</span>
+            <span className="block">        data = json.load(f)</span>
+            <span className="block">    return data&#91;&quot;state&quot;&#93;, data&#91;&quot;next&quot;&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Each node does some work and names the next node (that is the state transition)</span>
+            <span className="block text-cyan-300">def classify(s):</span>
+            <span className="block">    s&#91;&quot;kind&quot;&#93; = &quot;billing&quot; if &quot;invoice&quot; in s&#91;&quot;question&quot;&#93; else &quot;technical&quot;      # conditional branch</span>
+            <span className="block">    return &quot;research&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def research(s):</span>
+            <span className="block">    sources = &#91;&quot;knowledge&#95;base&quot;, &quot;faq&quot;, &quot;tickets&quot;&#93;</span>
+            <span className="block">    with ThreadPoolExecutor(max&#95;workers=3) as pool:                          # parallel execution</span>
+            <span className="block">        s&#91;&quot;facts&quot;&#93; = list(pool.map(lambda name: &quot;fact from &quot; + name, sources))</span>
+            <span className="block">    return &quot;draft&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def draft(s):</span>
+            <span className="block">    s&#91;&quot;attempts&quot;&#93; = s.get(&quot;attempts&quot;, 0) + 1</span>
+            <span className="block">    s&#91;&quot;draft&quot;&#93; = &quot;Answer built from &quot; + str(len(s&#91;&quot;facts&quot;&#93;)) + &quot; facts&quot;</span>
+            <span className="block">    return &quot;review&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def review(s):</span>
+            <span className="block">    return &quot;done&quot; if s&#91;&quot;attempts&quot;&#93; &gt;= 2 else &quot;draft&quot;                         # first review rejects: loop back</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">NODES = &#123;&quot;classify&quot;: classify, &quot;research&quot;: research, &quot;draft&quot;: draft, &quot;review&quot;: review&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def run(state, node, crash&#95;after=None):</span>
+            <span className="block">    while node != &quot;done&quot;:</span>
+            <span className="block">        finished = node</span>
+            <span className="block">        node = NODES&#91;node&#93;(state)</span>
+            <span className="block">        save(state, node)                                                    # checkpoint after every node</span>
+            <span className="block">        print(&quot;ran&quot;, finished.ljust(9), &quot;-&gt; next:&quot;, node)</span>
+            <span className="block">        if finished == crash&#95;after:</span>
+            <span className="block">            print(&quot;&#42;&#42;&#42; process crashed &#42;&#42;&#42;&quot;)</span>
+            <span className="block">            return None</span>
+            <span className="block">    return state</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">state = &#123;&quot;question&quot;: &quot;Why was my invoice charged twice?&quot;&#125;</span>
+            <span className="block">run(state, &quot;classify&quot;, crash&#95;after=&quot;research&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;--- restart: load the checkpoint and continue ---&quot;)</span>
+            <span className="block">state, node = load()</span>
+            <span className="block">final = run(state, node)</span>
+            <span className="block">print(&quot;Result:&quot;, final&#91;&quot;kind&quot;&#93;, &quot;|&quot;, final&#91;&quot;draft&quot;&#93;, &quot;| attempts:&quot;, final&#91;&quot;attempts&quot;&#93;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>ran classify  -&gt; next: research</div>
+          <div>ran research  -&gt; next: draft</div>
+          <div>&#42;&#42;&#42; process crashed &#42;&#42;&#42;</div>
+          <div>--- restart: load the checkpoint and continue ---</div>
+          <div>ran draft     -&gt; next: review</div>
+          <div>ran review    -&gt; next: draft</div>
+          <div>ran draft     -&gt; next: review</div>
+          <div>ran review    -&gt; next: done</div>
+          <div>Result: billing | Answer built from 3 facts | attempts: 2</div>
+        </div>
+      </div>
+      <div>
+        After the crash the run reloads its state and continues at the draft node. The review step rejects the first draft and approves the second, so draft runs twice, and the final state contains the type of question, the draft and the number of attempts.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What is a checkpoint?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag12-q1-a" name="ag12-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag12-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) A saved copy of the state after a step so the run can resume</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It lets a crashed or paused run continue without starting over.</div>
+          </div>
+          <div>
+            <input id="ag12-q1-b" name="ag12-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag12-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) A tool schema</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A schema describes a tool.</div>
+          </div>
+          <div>
+            <input id="ag12-q1-c" name="ag12-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag12-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) A kind of prompt</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Checkpoints store state, not prompts.</div>
+          </div>
+          <div>
+            <input id="ag12-q1-d" name="ag12-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag12-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) The final answer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The answer is a result.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Why run independent steps in parallel?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag12-q2-a" name="ag12-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag12-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The total time is about that of the slowest step, not the sum</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Independent work can overlap.</div>
+          </div>
+          <div>
+            <input id="ag12-q2-b" name="ag12-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag12-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It makes each step smarter</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Parallelism does not change quality.</div>
+          </div>
+          <div>
+            <input id="ag12-q2-c" name="ag12-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag12-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It removes the need for state</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> State is still needed.</div>
+          </div>
+          <div>
+            <input id="ag12-q2-d" name="ag12-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag12-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It avoids using tools</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Tools are still used.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A workflow is a graph of steps where your code controls the order.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Sequential flows run in a fixed order, conditional flows branch on the state.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Parallel execution runs independent steps at once (fan-out, then fan-in).</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A state machine has nodes, edges, a shared state object and terminal states.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Checkpoints save the state after each step so runs can resume after a failure.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Make steps idempotent so that a repeat after a crash is harmless.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Workflows in One Line</div>
+        <div className="text-center font-bold text-white">
+          Nodes do work → return the next node → state is saved after each one → crashes become resumes
+        </div>
+      </div>
+      <div>
+        Workflows make agents predictable. Next you will make them reliable when things go wrong.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> No agent runs perfectly forever. In <strong className="text-white">Error Handling and Recovery</strong> you will learn retries, fallbacks, timeouts and how to stop endless loops.
+      </div>
+    </div>
+  </section>
+
+</div>

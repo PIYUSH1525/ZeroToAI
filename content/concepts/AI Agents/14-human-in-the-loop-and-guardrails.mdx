@@ -1,0 +1,474 @@
+---
+title: "Human-in-the-Loop and Guardrails"
+slug: "14-human-in-the-loop-and-guardrails"
+order: 14
+category: "AI Agents"
+subcategory: "Reliability"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Learn how to keep agents safe: human approval for risky actions, permission systems, safety checks, output validation, action validation, and how to grant autonomy gradually."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> <strong className="text-white">Controlled autonomy</strong> means the agent works alone on safe tasks and <strong className="text-white">asks a human</strong> for risky ones. Rules in <strong className="text-white">code</strong>, such as permissions, limits and validation, enforce this, because instructions in a prompt can be ignored.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Human Approval
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Human-in-the-loop</strong> (HITL) means a person reviews or approves certain steps. It is the simplest and strongest safety tool, especially for actions that cannot be undone.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Action type</th>
+              <th className="px-5 py-3">Example</th>
+              <th className="px-5 py-3">Approval needed?</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Read only</td><td className="px-5 py-3">Look up an order</td><td className="px-5 py-3">Usually no</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Reversible change</td><td className="px-5 py-3">Add a note to a ticket</td><td className="px-5 py-3">Sometimes</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Hard to undo</td><td className="px-5 py-3">Send an email to a customer</td><td className="px-5 py-3">Yes</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Costly or sensitive</td><td className="px-5 py-3">Issue a refund, delete data</td><td className="px-5 py-3">Yes, plus limits</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">How it works:</strong> The agent <strong className="text-white">proposes</strong> the action with the reason. A human sees the exact details, and approves, edits or denies. Only then does the system run it.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Permission Systems
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">permission system</strong> decides what each tool and each user is allowed to do. It lives <strong className="text-white">in code</strong>, not in the prompt.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Level</th>
+              <th className="px-5 py-3">Meaning</th>
+              <th className="px-5 py-3">Example from the code</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">auto</td><td className="px-5 py-3">Runs without asking</td><td className="px-5 py-3">read_orders</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">approval</td><td className="px-5 py-3">A human must approve</td><td className="px-5 py-3">send_email, issue_refund</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">forbidden</td><td className="px-5 py-3">Never allowed</td><td className="px-5 py-3">delete_account</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">unknown tool</td><td className="px-5 py-3">Treated as forbidden</td><td className="px-5 py-3">format_disk</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Default to no:</strong> Anything that is not explicitly allowed should be blocked. A list of what is permitted is safer than a list of what is forbidden.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Safety Checks and Action Validation
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Before running any action, <strong className="text-white">validate it in code</strong>:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Check</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Is the tool allowed?</td><td className="px-5 py-3">delete_account is forbidden</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Are the arguments valid?</td><td className="px-5 py-3">The amount is a positive number</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Are the values within limits?</td><td className="px-5 py-3">Refunds up to 100</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Does it match the user&apos;s rights?</td><td className="px-5 py-3">The user owns the order</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Is it consistent with the goal?</td><td className="px-5 py-3">A refund tool is not needed to look up shipping</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> A 500 refund is blocked by the limit even if a human would approve it. Limits are a second safety net behind approvals, because people also click approve by mistake.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Output Validation
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Output validation</strong> checks what the agent is about to say or send. It can catch mistakes and leaks:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Check</th>
+              <th className="px-5 py-3">Catches</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Pattern scan</td><td className="px-5 py-3">API keys, card numbers, emails, passwords</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Format check</td><td className="px-5 py-3">Missing fields or broken JSON</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Policy check</td><td className="px-5 py-3">Forbidden topics or promises</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Fact check</td><td className="px-5 py-3">Claims not supported by tool results</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">In the code:</strong> The reply contained a card number, an email address and an API key. All three were found and redacted before the text left the system.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Another model as a checker</div>
+        <div className="text-sm leading-relaxed text-slate-300">A second model call can review output against a policy. It is useful but fallible, so pair it with simple rules for the things that must never leak.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Controlled Autonomy
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Trust is earned. A good rollout increases autonomy step by step:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Shadow mode:</strong> The agent proposes, a human does the action. Measure how often they agree.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Approve everything:</strong> The agent acts only after approval.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Approve the risky:</strong> Safe actions run alone. Risky ones need approval.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Monitor:</strong> Review logs and a sample of automatic actions.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Stay ready to pull back:</strong> A kill switch and the ability to lower autonomy quickly.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Avoid approval fatigue:</strong> If people approve hundreds of trivial actions, they stop reading. Ask only when it matters, and show clear summaries.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Permission Outcomes and Layers of Safety
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows how six requests are handled by the permission system in the code, then the layers of safety around every action.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-amber-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-300">Part 1 · Permission Decisions in the Code</span>
+        <span className="text-xs text-slate-400">Six requests, six outcomes</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Allowed</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Runs</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">read_orders (auto)</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">issue_refund of 40, approved</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">ALLOWED</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-300">Needs a human</span>
+            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] text-amber-200">Waits</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">issue_refund of 40, human says no</div>
+          <div className="text-center text-amber-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">DENIED by the reviewer</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Blocked</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Never runs</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">refund of 500 over the limit</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">delete_account (forbidden)</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">format_disk (unknown)</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">BLOCKED</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Three Layers of Safety</span>
+        <span className="text-xs text-slate-400">Defense in depth</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Permissions</div>
+          <div className="mt-2 text-lg font-bold text-white">Before</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Is this tool allowed at all?</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Limits</div>
+          <div className="mt-2 text-lg font-bold text-white">During</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Are values within bounds?</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Approval</div>
+          <div className="mt-2 text-lg font-bold text-white">Gate</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Does a human agree?</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Output check</div>
+          <div className="mt-2 text-lg font-bold text-white">After</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Does the text leak anything?</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-amber-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why prompts are not enough</span>
+          <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">A prompt that says never delete accounts is only a request, and a model can ignore it or be tricked. A permission check in code cannot be talked around, so important rules must live in code.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 groups the outcomes into allowed, needs a human, and blocked. Part 2 shows the four layers. Open the bar to learn why prompts alone are not enough.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Permissions, Limits, Approval and Output Redaction
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script defines a permission table (auto, approval, forbidden), a refund limit and a human approver function, then runs six requests through it. It also redacts API keys, card numbers and emails from a reply before it is sent.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">guardrails.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import re</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">PERMISSIONS = &#123;&quot;read&#95;orders&quot;: &quot;auto&quot;, &quot;send&#95;email&quot;: &quot;approval&quot;, &quot;issue&#95;refund&quot;: &quot;approval&quot;, &quot;delete&#95;account&quot;: &quot;forbidden&quot;&#125;</span>
+            <span className="block">REFUND&#95;LIMIT = 100</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def check&#95;action(name, args, approver):</span>
+            <span className="block">    level = PERMISSIONS.get(name, &quot;forbidden&quot;)             # unknown tools are forbidden by default</span>
+            <span className="block">    if level == &quot;forbidden&quot;:</span>
+            <span className="block">        return &quot;BLOCKED: this action is never allowed&quot;</span>
+            <span className="block">    if name == &quot;issue&#95;refund&quot; and args&#91;&quot;amount&quot;&#93; &gt; REFUND&#95;LIMIT:</span>
+            <span className="block">        return &quot;BLOCKED: refund above the limit of &quot; + str(REFUND&#95;LIMIT)</span>
+            <span className="block">    if level == &quot;approval&quot; and not approver(name, args):</span>
+            <span className="block">        return &quot;DENIED by the human reviewer&quot;</span>
+            <span className="block">    return &quot;ALLOWED&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">approve&#95;all = lambda name, args: True</span>
+            <span className="block">deny&#95;all = lambda name, args: False</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">tests = &#91;</span>
+            <span className="block">    (&quot;read&#95;orders&quot;, &#123;&#125;, deny&#95;all),</span>
+            <span className="block">    (&quot;issue&#95;refund&quot;, &#123;&quot;amount&quot;: 40&#125;, approve&#95;all),</span>
+            <span className="block">    (&quot;issue&#95;refund&quot;, &#123;&quot;amount&quot;: 40&#125;, deny&#95;all),</span>
+            <span className="block">    (&quot;issue&#95;refund&quot;, &#123;&quot;amount&quot;: 500&#125;, approve&#95;all),</span>
+            <span className="block">    (&quot;delete&#95;account&quot;, &#123;&#125;, approve&#95;all),</span>
+            <span className="block">    (&quot;format&#95;disk&quot;, &#123;&#125;, approve&#95;all),</span>
+            <span className="block">&#93;</span>
+            <span className="block">for name, args, approver in tests:</span>
+            <span className="block">    print(name.ljust(15), str(args).ljust(18), &quot;-&gt;&quot;, check&#95;action(name, args, approver))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Output validation: remove secrets and personal data before text leaves the system</span>
+            <span className="block">PATTERNS = &#123;</span>
+            <span className="block">    &quot;api key&quot;: r&quot;sk-&#91;A-Za-z0-9&#93;&#123;8,&#125;&quot;,</span>
+            <span className="block">    &quot;card number&quot;: r&quot;&#92;b(?:&#92;d&#91; -&#93;?)&#123;13,16&#125;&#92;b&quot;,</span>
+            <span className="block">    &quot;email&quot;: r&quot;&#91;&#92;w.+-&#93;+@&#91;&#92;w-&#93;+&#92;.&#91;&#92;w.&#93;+&quot;,</span>
+            <span className="block">&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def validate&#95;output(text):</span>
+            <span className="block">    found = &#91;&#93;</span>
+            <span className="block">    for label, pattern in PATTERNS.items():</span>
+            <span className="block">        if re.search(pattern, text):</span>
+            <span className="block">            found.append(label)</span>
+            <span className="block">            text = re.sub(pattern, &quot;&#91;REDACTED &quot; + label + &quot;&#93;&quot;, text)</span>
+            <span className="block">    return text, found</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">reply = &quot;Refund sent. Card 4111 1111 1111 1111, contact ana@example.com, key sk-abcdef123456.&quot;</span>
+            <span className="block">clean, found = validate&#95;output(reply)</span>
+            <span className="block">print(&quot;Redacted:&quot;, found)</span>
+            <span className="block">print(clean)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>read&#95;orders     &#123;&#125;                 -&gt; ALLOWED</div>
+          <div>issue&#95;refund    &#123;&apos;amount&apos;: 40&#125;     -&gt; ALLOWED</div>
+          <div>issue&#95;refund    &#123;&apos;amount&apos;: 40&#125;     -&gt; DENIED by the human reviewer</div>
+          <div>issue&#95;refund    &#123;&apos;amount&apos;: 500&#125;    -&gt; BLOCKED: refund above the limit of 100</div>
+          <div>delete&#95;account  &#123;&#125;                 -&gt; BLOCKED: this action is never allowed</div>
+          <div>format&#95;disk     &#123;&#125;                 -&gt; BLOCKED: this action is never allowed</div>
+          <div>Redacted: &#91;&apos;api key&apos;, &apos;card number&apos;, &apos;email&apos;&#93;</div>
+          <div>Refund sent. Card &#91;REDACTED card number&#93;, contact &#91;REDACTED email&#93;, key &#91;REDACTED api key&#93;.</div>
+        </div>
+      </div>
+      <div>
+        Reading orders runs automatically, a refund needs and gets approval, a denied refund stops, a 500 refund hits the limit, and forbidden or unknown tools are blocked. The output validator catches all three kinds of sensitive data in the reply.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Why should safety rules live in code and not only in the prompt?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag14-q1-a" name="ag14-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag14-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) A model can ignore or be tricked out of prompt instructions, but code checks always run</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Enforcement belongs where it cannot be argued with.</div>
+          </div>
+          <div>
+            <input id="ag14-q1-b" name="ag14-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag14-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Prompts are too long</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Length is not the issue.</div>
+          </div>
+          <div>
+            <input id="ag14-q1-c" name="ag14-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag14-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Code is more fun</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The reason is enforcement.</div>
+          </div>
+          <div>
+            <input id="ag14-q1-d" name="ag14-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag14-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Models cannot read prompts</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They read prompts, but may not obey them.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What should the default be for a tool not on the permission list?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag14-q2-a" name="ag14-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag14-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Forbidden</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Allow only what is explicitly permitted.</div>
+          </div>
+          <div>
+            <input id="ag14-q2-b" name="ag14-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag14-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Allowed</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is unsafe.</div>
+          </div>
+          <div>
+            <input id="ag14-q2-c" name="ag14-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag14-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Allowed with a warning</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A warning does not prevent harm.</div>
+          </div>
+          <div>
+            <input id="ag14-q2-d" name="ag14-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag14-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Decided randomly</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Safety needs consistent rules.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Human approval is the strongest safeguard for irreversible or costly actions.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Permission systems live in code and default to forbidden.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Validate every action: tool allowed, arguments valid, values within limits, user has the right.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Validate outputs: scan for secrets and personal data, check format and policy.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Limits are a second net behind approvals, because people make mistakes too.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Grow autonomy gradually from shadow mode, and avoid approval fatigue.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Guardrails in One Line</div>
+        <div className="text-center font-bold text-white">
+          Allow explicitly → validate in code → ask a human for risky actions → check the output
+        </div>
+      </div>
+      <div>
+        Safe agents are not the ones that never fail, but the ones whose failures are contained.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You can now make agents safer. But how do you know they work? In <strong className="text-white">Agent Evaluation and Observability</strong> you will measure success and trace what agents do.
+      </div>
+    </div>
+  </section>
+
+</div>

@@ -1,66 +1,504 @@
 ---
 title: "Gradient Descent"
 slug: "gradient-descent"
-category: "ML Fundamentals"
+order: 6
+category: "Machine Learning"
+subcategory: "Regression"
 difficulty: "Beginner"
-description: "The foundational optimization algorithm used to minimize the error of a machine learning model."
+readTime: "30 min"
+description: "Learn how gradient descent finds the lowest point of a loss function step by step—from the blindfolded-hiker intuition and the update rule to learning rates, batch vs. mini-batch training, and a from-scratch NumPy implementation."
 ---
 
-### 1. What is it?
-Gradient Descent is a first-order iterative optimization algorithm used to find the minimum value of a function. In machine learning, we use it to find the optimal parameters (like weights and biases) that minimize the model's cost or loss function.
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
 
-### 2. Why do we need it?
-While some simple models can be solved with direct mathematical formulas, most machine learning models (especially neural networks) are too complex for direct calculation. We need an automated, step-by-step way to find the lowest possible error.
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Training a model means finding the parameter values that make its error as small as possible. <strong className="text-white">Gradient descent</strong> does this without any magic formula: it checks which direction makes the error go down fastest, takes a small step that way, and repeats until it reaches the bottom.
+      </div>
+    </div>
+  </section>
 
-### 3. Intuition
-Imagine you are blindfolded at the top of a bumpy mountain and want to reach the lowest valley. You feel the slope of the ground beneath your feet. If the ground tilts down to the right, you take a step to the right. You keep feeling the slope and taking steps downhill until the ground is completely flat—you've reached the bottom.
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: The Blindfolded Hiker (The Core Intuition)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Imagine you are standing on a foggy mountain, blindfolded, and your goal is to reach the lowest valley. You cannot see the whole landscape. All you can do is feel the slope of the ground under your feet. If the ground tilts downward to your right, you take a small step to the right. Then you feel the slope again and repeat. Step by step, you walk downhill until the ground feels flat. That is gradient descent.
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">The Mountain</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Loss Function</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Meaning:</strong> How wrong the model is for the current parameter values. High = wrong, low = good.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-violet-300">Your Position</span>
+            <span className="rounded bg-violet-950/80 px-2 py-0.5 font-mono text-xs text-violet-300">Parameters</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Meaning:</strong> The weights and biases the model can change. Moving means changing these numbers.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">The Slope</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Gradient</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Meaning:</strong> Tells you which direction is uphill and how steep it is, so you can walk the other way.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Why not just solve it with a formula?</div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          For very simple models there is a direct formula for the best parameters. But a modern neural network has millions or billions of parameters and a bumpy, complicated loss surface. No direct formula exists, so we use a patient step-by-step search instead. Gradient descent is that search, and it powers almost every model you will meet in this course.
+        </div>
+      </div>
+    </div>
+  </section>
 
-### 4. Visual Explanation
-<Mermaid chart="
-graph TD
-    A[Start: Random Weights] --> B[Calculate Loss]
-    B --> C[Calculate Gradient / Slope]
-    C --> D{Is Slope zero?}
-    D -- No --> E[Take step downhill using Learning Rate]
-    E --> B
-    D -- Yes --> F[Stop: Minimum Error Found!]
-" />
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: The Loss Landscape and What a Gradient Really Is
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">loss function</strong> $J(w)$ turns the model&apos;s parameters into a single number that measures its error. For example, in linear regression we often use the average squared error between predictions and true values. Plotting $J(w)$ against $w$ gives a curve (for one parameter) or a surface (for many parameters). We want the lowest point.
+      </div>
+      <div>
+        The <strong className="text-white">gradient</strong> is the derivative of the loss with respect to the parameters. With one parameter it is just the slope of the curve at the current point:
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="font-bold text-rose-300">Slope is positive</div>
+          <div className="mt-2 text-sm text-slate-300">The loss rises as $w$ increases, so the way down is to <strong className="text-white">decrease</strong> $w$.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="font-bold text-emerald-300">Slope is negative</div>
+          <div className="mt-2 text-sm text-slate-300">The loss falls as $w$ increases, so the way down is to <strong className="text-white">increase</strong> $w$.</div>
+        </div>
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="font-bold text-cyan-300">Slope is zero</div>
+          <div className="mt-2 text-sm text-slate-300">The ground is flat. We have reached a minimum (or occasionally a flat spot).</div>
+        </div>
+      </div>
+      <div>
+        With many parameters, the gradient $\nabla J$ is a list of slopes, one per parameter. Together they point in the direction of the <em>steepest uphill</em>. So gradient <em>descent</em> always walks in the opposite direction.
+      </div>
+    </div>
+  </section>
 
-### 5. Mathematical Explanation
-To update a parameter $w$, we calculate the gradient (derivative) of the loss function $J(w)$ with respect to $w$. This gradient points in the direction of the steepest ascent. To go down, we subtract it, controlled by a learning rate $\alpha$:
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: The Update Rule and a Worked Example
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Every step of gradient descent uses one simple rule. Subtract the gradient, scaled by a small number called the <strong className="text-white">learning rate</strong> $\alpha$:
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$w_{new} = w_{old} - \alpha \cdot \frac{\partial J}{\partial w}$$
+      </div>
+      <div>
+        Let us run it by hand on a tiny loss function, $J(w) = (w - 4)^2$. Its lowest point is clearly at $w = 4$, and its gradient is $\frac{\partial J}{\partial w} = 2(w - 4)$. Start at $w = 0$ with $\alpha = 0.1$:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Step</th>
+              <th className="px-5 py-3">Current $w$</th>
+              <th className="px-5 py-3">Gradient $2(w-4)$</th>
+              <th className="px-5 py-3">Loss $J(w)$</th>
+              <th className="px-5 py-3">New $w$</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3">0</td><td className="px-5 py-3">0.0000</td><td className="px-5 py-3">-8.000</td><td className="px-5 py-3">16.000</td><td className="px-5 py-3 text-emerald-300">0.8000</td></tr>
+            <tr><td className="px-5 py-3">1</td><td className="px-5 py-3">0.8000</td><td className="px-5 py-3">-6.400</td><td className="px-5 py-3">10.240</td><td className="px-5 py-3 text-emerald-300">1.4400</td></tr>
+            <tr><td className="px-5 py-3">2</td><td className="px-5 py-3">1.4400</td><td className="px-5 py-3">-5.120</td><td className="px-5 py-3">6.554</td><td className="px-5 py-3 text-emerald-300">1.9520</td></tr>
+            <tr><td className="px-5 py-3">3</td><td className="px-5 py-3">1.9520</td><td className="px-5 py-3">-4.096</td><td className="px-5 py-3">4.194</td><td className="px-5 py-3 text-emerald-300">2.3616</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Notice two things.</strong> The loss shrinks every step, and the steps get smaller as we approach the minimum, because the slope flattens out. For this function the remaining distance to $w = 4$ is multiplied by $(1 - 2\alpha) = 0.8$ at every step, so we get closer and closer without overshooting.
+      </div>
+    </div>
+  </section>
 
-$$w_{new} = w_{old} - \alpha \frac{\partial J(w_{old})}{\partial w}$$
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: The Learning Rate Decides Everything
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The learning rate $\alpha$ is the size of each step, and it is the single most important setting in gradient descent. On the same function $J(w) = (w-4)^2$ the error is multiplied by $(1 - 2\alpha)$ per step, which makes the three classic cases easy to see:
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Too Small</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">$\alpha = 0.01$</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Factor per step:</strong> $0.98$</div>
+            <div><strong className="text-white">Behavior:</strong> Safe but painfully slow. Thousands of steps may be needed.</div>
+            <div><strong className="text-white">Risk:</strong> Wastes compute and can stall on flat regions.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Just Right</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">$\alpha = 0.1$</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Factor per step:</strong> $0.80$</div>
+            <div><strong className="text-white">Behavior:</strong> Smooth, steady approach to the minimum.</div>
+            <div><strong className="text-white">Risk:</strong> Low. This is the goal.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-rose-300">Too Large</span>
+            <span className="rounded bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">$\alpha = 1.1$</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Factor per step:</strong> $-1.2$ (size grows)</div>
+            <div><strong className="text-white">Behavior:</strong> Each step overshoots the valley and lands higher up the other side.</div>
+            <div><strong className="text-white">Risk:</strong> The loss explodes. This is called divergence.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Practical tip:</strong> If your loss goes up, becomes <code>nan</code>, or jumps around wildly, lower the learning rate first. If the loss falls but extremely slowly, try raising it a little. Later you will learn learning-rate schedules that change $\alpha$ during training.
+      </div>
+    </div>
+  </section>
 
-Where:
-* $w$ represents the weight or parameter.
-* $\alpha$ is the learning rate (step size).
-* $\frac{\partial J}{\partial w}$ is the gradient of the loss function.
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Batch, Stochastic and Mini-Batch Gradient Descent
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Real datasets can have millions of rows. The loss gradient is an average over the training examples, so there is a choice: how many examples should we use to estimate the gradient before taking each step?
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Variant</th>
+              <th className="px-5 py-3">Examples per step</th>
+              <th className="px-5 py-3">Strength</th>
+              <th className="px-5 py-3">Weakness</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Batch</td><td className="px-5 py-3">All of them</td><td className="px-5 py-3">Accurate, smooth path</td><td className="px-5 py-3">Slow and memory-heavy on big data</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Stochastic (SGD)</td><td className="px-5 py-3">Exactly 1</td><td className="px-5 py-3">Very fast updates</td><td className="px-5 py-3">Noisy, zig-zag path</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Mini-batch</td><td className="px-5 py-3">A small group, such as 32 or 256</td><td className="px-5 py-3">Good balance, fits GPUs well</td><td className="px-5 py-3">Needs a batch size choice</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        Almost all deep learning uses <strong className="text-white">mini-batch</strong> gradient descent. The small amount of noise it adds is usually helpful, because it can shake the parameters out of shallow traps. Modern optimizers such as momentum, RMSProp and Adam are improved versions of this same idea: they still follow the gradient, but they adapt the step size and direction using the history of past gradients.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Local minima, saddle points and plateaus</div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          The bowl-shaped loss in our example has one minimum, so gradient descent always finds it. Neural network losses are bumpier. Gradient descent can slow down on flat plateaus and saddle points (flat in one direction, curved in another). In practice, for large networks, the noise of mini-batches and smarter optimizers make this much less of a problem than it first sounds.
+        </div>
+      </div>
+    </div>
+  </section>
 
-### 6. Concrete Example
-Suppose your current weight is $w = 3$, the learning rate is $\alpha = 0.1$, and the gradient at this point is $4$. 
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Descent Loop and the Learning Rate Explorer
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure below has two parts. Part 1 shows the whole algorithm as a loop with a stopping check. Part 2 lets you pick a learning rate and see the first three steps on $J(w) = (w-4)^2$ starting from $w = 0$.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-cyan-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 1 · The Descent Loop</span>
+            <span className="text-xs text-slate-400">Walk the loop until the slope is flat</span>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Phase A · One Step</span>
+                <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Repeats</span>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Start with random parameters</div>
+              <div className="text-center text-cyan-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Compute the loss</div>
+              <div className="text-center text-cyan-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-cyan-200">Compute the gradient</div>
+              <div className="text-center text-cyan-400">↓</div>
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Update: w = w − α × gradient</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.05] p-5">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Phase B · Stop Check</span>
+                <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Every step</span>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Is the gradient close to zero?</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">No → go back to Phase A</div>
+              <div className="text-center text-violet-400">↓</div>
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Yes → minimum found, stop</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-indigo-300">Part 2 · Learning Rate Explorer</span>
+            <span className="text-xs text-slate-400">Click a button · the minimum is at w = 4</span>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <input id="gd-lr-small" name="gd-lr" type="radio" className="peer sr-only" />
+              <label htmlFor="gd-lr-small" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">α = 0.01 (too small)</label>
+              <div className="mt-3 hidden rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+                w after step 1: 0.0800<br />
+                w after step 2: 0.1584<br />
+                w after step 3: 0.2352<br />
+                <span className="text-blue-300">Still far from 4 after 3 steps. Very slow.</span>
+              </div>
+            </div>
+            <div>
+              <input id="gd-lr-good" name="gd-lr" type="radio" className="peer sr-only" />
+              <label htmlFor="gd-lr-good" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">α = 0.1 (good)</label>
+              <div className="mt-3 hidden rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+                w after step 1: 0.8000<br />
+                w after step 2: 1.4400<br />
+                w after step 3: 1.9520<br />
+                <span className="text-emerald-300">Steady progress toward 4. Loss falls every step.</span>
+              </div>
+            </div>
+            <div>
+              <input id="gd-lr-big" name="gd-lr" type="radio" className="peer sr-only" />
+              <label htmlFor="gd-lr-big" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">α = 1.1 (too large)</label>
+              <div className="mt-3 hidden rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+                w after step 1: 8.8000<br />
+                w after step 2: -1.7600<br />
+                w after step 3: 10.9120<br />
+                <span className="text-rose-300">Jumps back and forth, further each time. Diverging!</span>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Result: the error is multiplied by (1 − 2α) every step</div>
+          <details className="group rounded-2xl border border-cyan-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+              <span>Click to see why the steps shrink near the minimum</span>
+              <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">Explain <span className="inline-block transition group-open:rotate-180">▼</span></span>
+            </summary>
+            <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Each step is the learning rate times the gradient. Near the bottom of the bowl the slope is almost flat, so the gradient is tiny and so is the step. With α = 0.1 the leftover distance to 4 shrinks by a factor of 0.8 each time: 4.0, 3.2, 2.56, 2.05, and so on.</div>
+          </details>
+        </div>
+      </div>
+      <div>
+        How to read it: follow Phase A top to bottom, then ask the Phase B question. If the answer is no, the loop starts again. In Part 2, compare the three buttons to see how the same loop behaves with different step sizes.
+      </div>
+    </div>
+  </section>
 
-The new weight becomes:
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Linear Regression Trained With Gradient Descent From Scratch
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Here is the algorithm from scratch with NumPy. It fits a line $\hat{y} = wx + b$ to noisy data by repeating the four steps of the loop: predict, measure the loss, compute the gradients, and update. At the end we compare the result with the exact least-squares solution from <code>np.polyfit</code>.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">gradient_descent_from_scratch.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># Linear regression trained with gradient descent, from scratch</span>
+            <span className="block">import numpy as np</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Make data that follows y = 3x + 4 plus some noise</span>
+            <span className="block">rng = np.random.default_rng(42)</span>
+            <span className="block">x = rng.uniform(0, 10, size=100)</span>
+            <span className="block">y = 3.0 * x + 4.0 + rng.normal(0, 1.0, size=100)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def gradient_descent(x, y, lr=0.01, steps=2000):</span>
+            <span className="block">    n = len(y)</span>
+            <span className="block">    w, b = 0.0, 0.0                      # start from zero</span>
+            <span className="block">    history = []</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">    for step in range(steps):</span>
+            <span className="block text-slate-500">        # 2. Predict and measure the error</span>
+            <span className="block">        error = (w * x + b) - y</span>
+            <span className="block">        loss = np.mean(error ** 2)</span>
+            <span className="block">        history.append(loss)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500">        # 3. Gradients of the mean squared error</span>
+            <span className="block text-violet-300">        dw = (2 / n) * np.sum(error * x)</span>
+            <span className="block text-violet-300">        db = (2 / n) * np.sum(error)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500">        # 4. Step downhill</span>
+            <span className="block text-emerald-300">        w = w - lr * dw</span>
+            <span className="block text-emerald-300">        b = b - lr * db</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">        if step % 400 == 0:</span>
+            <span className="block">            print(&quot;step&quot;, step, &quot;| loss&quot;, round(loss, 3), &quot;| w&quot;, round(w, 3), &quot;| b&quot;, round(b, 3))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">    return w, b, history</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">w, b, history = gradient_descent(x, y, lr=0.01, steps=2000)</span>
+            <span className="block">print(&quot;Gradient descent -&gt; w =&quot;, round(w, 3), &quot;, b =&quot;, round(b, 3))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 5. Check against the exact least-squares answer</span>
+            <span className="block">best_w, best_b = np.polyfit(x, y, 1)</span>
+            <span className="block">print(&quot;Exact solution   -&gt; w =&quot;, round(best_w, 3), &quot;, b =&quot;, round(best_b, 3))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>step 0 | loss 413.504 | w 2.255 | b 0.372</div>
+          <div>step 400 | loss 1.025 | w 3.09 | b 3.426</div>
+          <div>step 800 | loss 0.96 | w 3.02 | b 3.868</div>
+          <div>step 1200 | loss 0.959 | w 3.01 | b 3.936</div>
+          <div>step 1600 | loss 0.959 | w 3.008 | b 3.947</div>
+          <div>Gradient descent -&gt; w = 3.008 , b = 3.948</div>
+          <div>Exact solution   -&gt; w = 3.008 , b = 3.949</div>
+        </div>
+      </div>
+      <div className="text-sm leading-relaxed">
+        Gradient descent recovers almost exactly the same line as the exact formula. Try changing <code>lr</code> to <code>0.05</code> (the loss will blow up because the step is too big for this data) and to <code>0.001</code> (it will learn, but far too slowly in 2000 steps).
+      </div>
+    </div>
+  </section>
 
-$$w_{new} = 3 - (0.1 \times 4) = 3 - 0.4 = 2.6$$
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Your training loss keeps increasing and finally becomes nan. What should you try first?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="gd-q1-a" name="gd-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="gd-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Lower the learning rate</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A step that is too large overshoots the minimum and makes the loss explode.</div>
+          </div>
+          <div>
+            <input id="gd-q1-b" name="gd-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="gd-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Raise the learning rate</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That would make the overshooting worse.</div>
+          </div>
+          <div>
+            <input id="gd-q1-c" name="gd-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="gd-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Add more training epochs</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> More steps will not fix a diverging update.</div>
+          </div>
+          <div>
+            <input id="gd-q1-d" name="gd-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="gd-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Delete the gradient</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Without a gradient there is nothing to learn from.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Which variant is used in almost all deep learning training?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="gd-q2-a" name="gd-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="gd-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Mini-batch gradient descent</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It balances speed, stability and GPU efficiency.</div>
+          </div>
+          <div>
+            <input id="gd-q2-b" name="gd-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="gd-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Batch gradient descent on the full dataset</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Too slow and memory-heavy for large data.</div>
+          </div>
+          <div>
+            <input id="gd-q2-c" name="gd-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="gd-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Random guessing</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Gradient descent follows the gradient. It does not guess.</div>
+          </div>
+          <div>
+            <input id="gd-q2-d" name="gd-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="gd-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Closed-form formula only</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Neural networks have no closed-form solution.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-By taking this step, the weight moves closer to the optimal value that minimizes the error.
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Gradient descent minimizes a loss function by repeatedly stepping in the <strong>opposite direction of the gradient</strong>.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The update rule is <strong>new = old - learning rate x gradient</strong>, applied to every parameter at each step.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The <strong>learning rate</strong> controls step size: too small is slow, too large overshoots and diverges.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The gradient shrinks near a minimum, so steps naturally get smaller as training converges.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong>Mini-batch</strong> gradient descent (32 to 256 examples per step) is the standard choice for deep learning.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Optimizers like momentum and Adam are refinements of the same idea, not replacements for it.</span>
+        </div>
+      </div>
+    </div>
+  </section>
 
-### 7. Python Implementation
-```python
-import numpy as np
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Gradient Descent in One Line</div>
+        <div className="text-center font-bold text-white">
+          Measure the error → Find the downhill direction → Take a small step → Repeat until the loss stops falling
+        </div>
+      </div>
+      <div>
+        Every time a model &quot;learns&quot;, some version of this loop is running. The only things that change are the model, the loss function, and how cleverly the step is chosen.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You now know how a single step is taken. In <strong className="text-cyan-300">Backpropagation</strong> you will see how the gradients of a deep neural network, with many layers, are computed efficiently so this same loop can train it.
+      </div>
+    </div>
+  </section>
 
-def gradient_descent(X, y, w_init, lr=0.01, iterations=1000):
-    w = w_init
-    n = len(y)
-    
-    for i in range(iterations):
-        # 1. Predict with current weights
-        y_pred = np.dot(X, w)
-        
-        # 2. Calculate the gradient
-        gradient = (2/n) * np.dot(X.T, (y_pred - y))
-        
-        # 3. Update weights downhill
-        w = w - (lr * gradient)
-        
-    return w
+</div>

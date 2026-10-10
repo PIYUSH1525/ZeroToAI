@@ -1,0 +1,438 @@
+---
+title: "Attention in LLMs: Causal Masking and KV Caching"
+slug: "attention-causal-masking-kv-cache"
+order: 6
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Intermediate"
+readTime: "30 min"
+description: "Understand how causal masking keeps a language model from seeing the future, and how the KV cache lets it generate text without redoing old work."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+<section>
+  <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300">
+    <strong className="text-cyan-400">The Core Idea:</strong> When a language model writes a sentence, every new word is chosen by looking back at the words that came before it. <strong className="text-white">Causal masking</strong> is the rule that stops the model from looking at future words. The <strong className="text-white">KV cache</strong> is the memory trick that stops it from redoing old work at every step. Together they make training fair and generation fast.
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: Attention as a Smart Lookup</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>A <strong className="text-white">token</strong> is a small piece of text, often a word or part of a word. <strong className="text-white">Attention</strong> is the step where each token looks at other tokens and decides which ones matter for understanding itself. Think of a student writing an answer with a stack of notes on the desk. For every new sentence, the student scans the notes, picks the useful ones, and blends them into the answer.</div>
+    <div>Attention formalizes that with three roles. Every token produces all three of them from its own vector:</div>
+    <div className="grid gap-5 md:grid-cols-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-blue-400">Query</div>
+        <div className="mt-2 text-sm leading-7">The question on a sticky note: what am I looking for right now?</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-violet-400">Key</div>
+        <div className="mt-2 text-sm leading-7">The label on a note: what do I contain, so others can match me?</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">Value</div>
+        <div className="mt-2 text-sm leading-7">The actual content of the note: what do I hand over if I am chosen?</div>
+      </div>
+    </div>
+    <div>The recipe is simple. Compare the Query of the current token with the Key of every available token to get <strong className="text-white">scores</strong>. Turn the scores into percentages with <strong className="text-white">softmax</strong> (a function that makes numbers positive and makes them add up to 1). Then take a weighted mix of the Values using those percentages. A token whose Key matches well contributes a lot; a token that matches poorly contributes almost nothing.</div>
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5">
+      <strong className="text-cyan-400">Key question for this lesson:</strong> which tokens are the Keys and Values allowed to come from? The answer is the whole point of causal masking.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: The No-Peeking Rule</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Imagine an exam where the question is: <em>The cat sat on the ___</em>. If the answer sheet is printed right next to the question, you can simply copy it. A language model is trained to predict the next token, so during training it must never be allowed to see the answer sheet, which here means the tokens that come later in the sentence.</div>
+    <div>A model that generates one token after another is called <strong className="text-white">autoregressive</strong>: each new token is predicted from all earlier tokens, then added to the text, and the loop repeats. GPT-style chat models work this way.</div>
+    <div className="grid gap-5 md:grid-cols-2">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-white">During training</div>
+        <div className="text-sm leading-7">The whole sentence is fed in at once so the GPU can work on every position in parallel. Without protection, position 3 could read position 4 and cheat. A <strong className="text-white">causal mask</strong> blocks every connection that points to the future.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-white">During generation</div>
+        <div className="text-sm leading-7">Future tokens do not exist yet, so nothing can be peeked at. The model must behave exactly as it did in training, which is why training uses the mask: the two situations must match.</div>
+      </div>
+    </div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Analogy:</strong> reading a book with a sliding card that covers everything to the right of your current word. You may re-read anything on the left as often as you like, but the right side stays hidden.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: The Math of Causal Masking</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Let $X$ hold one vector per token, one row each. Three learned weight matrices turn it into queries, keys and values: $Q = XW_Q$, $K = XW_K$, $V = XW_V$. Causal attention then computes:</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$\mathrm{Attention}(Q,K,V) = \mathrm{softmax}\left(\dfrac{QK^{T}}{\sqrt{d_k}} + M\right)V$$</div>
+    <div>Here $d_k$ is the size of each key vector. Dividing by $\sqrt{d_k}$ keeps the scores from growing too large when vectors are long, which would make softmax too extreme. The matrix $M$ is the <strong className="text-white">mask</strong>: $M_{ij} = 0$ when $j \leq i$, and $M_{ij} = -\infty$ when $j \gt i$. Because $e^{-\infty} = 0$, softmax gives every future position a weight of exactly zero.</div>
+    <div className="space-y-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-400">Step 1.</strong> Project every token into a query, key and value vector.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-400">Step 2.</strong> Score every pair: $S = QK^{T} / \sqrt{d_k}$. Entry $S_{ij}$ says how much token $i$ matches token $j$.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-400">Step 3.</strong> Add the mask so every score above the diagonal becomes $-\infty$.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-400">Step 4.</strong> Apply softmax to each row so the weights of a row add up to 1.</div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-400">Step 5.</strong> Multiply by $V$ to get one blended output vector per token.</div>
+    </div>
+    <div>For four tokens, the mask pattern looks like this. A check mark means the row token may read the column token:</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Row reads →</th>
+            <th className="px-4 py-3">Token 1</th>
+            <th className="px-4 py-3">Token 2</th>
+            <th className="px-4 py-3">Token 3</th>
+            <th className="px-4 py-3">Token 4</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3 font-semibold text-white">Token 1</td><td className="px-4 py-3 text-emerald-400">✓</td><td className="px-4 py-3 text-rose-400">−∞</td><td className="px-4 py-3 text-rose-400">−∞</td><td className="px-4 py-3 text-rose-400">−∞</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Token 2</td><td className="px-4 py-3 text-emerald-400">✓</td><td className="px-4 py-3 text-emerald-400">✓</td><td className="px-4 py-3 text-rose-400">−∞</td><td className="px-4 py-3 text-rose-400">−∞</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Token 3</td><td className="px-4 py-3 text-emerald-400">✓</td><td className="px-4 py-3 text-emerald-400">✓</td><td className="px-4 py-3 text-emerald-400">✓</td><td className="px-4 py-3 text-rose-400">−∞</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Token 4</td><td className="px-4 py-3 text-emerald-400">✓</td><td className="px-4 py-3 text-emerald-400">✓</td><td className="px-4 py-3 text-emerald-400">✓</td><td className="px-4 py-3 text-emerald-400">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <strong className="text-emerald-400">Worked example.</strong> Suppose token 3 has raw scores 2.0, 1.0, 0.5 against tokens 1, 2, 3, and −∞ against token 4 after masking. Softmax uses $e^{2.0} \approx 7.39$, $e^{1.0} \approx 2.72$, $e^{0.5} \approx 1.65$ and $e^{-\infty} = 0$. The sum is about 11.76, so the weights are roughly 0.629, 0.231, 0.140 and 0. They add up to 1, and the future token gets no say.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Why Generation Gets Slow</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Now look at generation. Suppose the prompt is <em>The cat sat</em> and the model must produce the next token. To choose it, the model only needs the output at the <strong className="text-white">last</strong> position, but that position needs the Keys and Values of every earlier token. A naive loop would rebuild everything from scratch after each new token: embed all tokens, project all of them into K and V in every layer, run attention, and keep only the last row of the result.</div>
+    <div>That is wasteful. If the model generates $n$ tokens, step $t$ reprocesses $t$ positions, so the total number of token positions processed is $1 + 2 + \dots + n = n(n+1)/2$ instead of just $n$.</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Tokens generated</th>
+            <th className="px-4 py-3">Positions processed without cache</th>
+            <th className="px-4 py-3">Positions processed with cache</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3">10</td><td className="px-4 py-3 text-rose-400">55</td><td className="px-4 py-3 text-emerald-400">10</td></tr>
+          <tr><td className="px-4 py-3">100</td><td className="px-4 py-3 text-rose-400">5,050</td><td className="px-4 py-3 text-emerald-400">100</td></tr>
+          <tr><td className="px-4 py-3">1,000</td><td className="px-4 py-3 text-rose-400">500,500</td><td className="px-4 py-3 text-emerald-400">1,000</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5">
+      <strong className="text-orange-300">The key observation.</strong> Because of the causal mask, the output of token $j$ depends only on tokens $1$ to $j$. When a new token arrives at the end, the Keys and Values of all older tokens do not change at all, since the model weights are frozen during generation. Old work can be saved and reused. This only works because of causal masking: in a model where old tokens could read new ones, every old vector would change at each step and nothing could be reused.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: The KV Cache</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>The <strong className="text-white">KV cache</strong> stores the Key and Value vectors of every token already processed, in every layer, in GPU memory. Inference then has two phases:</div>
+    <div className="grid gap-5 md:grid-cols-2">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5">
+        <div className="mb-2 font-semibold text-cyan-300">Prefill</div>
+        <div className="text-sm leading-7">The whole prompt is processed in one parallel pass, using the causal mask. All its Keys and Values are written into the cache. This phase is heavy on computation.</div>
+      </div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+        <div className="mb-2 font-semibold text-violet-300">Decode</div>
+        <div className="text-sm leading-7">One token at a time. The new token computes its own query, key and value. Its key and value are appended to the cache, and its query reads all cached Keys and Values. No mask is needed, because the cache holds only the past.</div>
+      </div>
+    </div>
+    <div><strong className="text-white">Why cache K and V but not Q?</strong> A query is used once, by its own token, to read the past. After that token has produced its output, its query is never needed again. Keys and Values, however, are read by every future token, so they are worth keeping.</div>
+    <div><strong className="text-white">The price is memory.</strong> The cache grows by one entry per token, per layer. Its size in bytes is:</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$\text{bytes per token} = 2 \times L \times H_{kv} \times d_{head} \times b$$</div>
+    <div>The factor 2 counts both K and V, $L$ is the number of layers, $H_{kv}$ the number of key/value heads, $d_{head}$ the size of each head, and $b$ the bytes per stored number (2 for 16-bit values). For a classic 7B-class setup with 32 layers, 32 heads, head size 128 and 16-bit values, that is $2 \times 32 \times 32 \times 128 \times 2 = 524{,}288$ bytes, or 512 KiB per token.</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Context length</th>
+            <th className="px-4 py-3">Cache size for ONE sequence</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3">1,024 tokens</td><td className="px-4 py-3 text-cyan-300">0.5 GiB</td></tr>
+          <tr><td className="px-4 py-3">4,096 tokens</td><td className="px-4 py-3 text-cyan-300">2 GiB</td></tr>
+          <tr><td className="px-4 py-3">32,768 tokens</td><td className="px-4 py-3 text-cyan-300">16 GiB</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>Servers handle many users at once, and each user has a separate cache, so memory quickly becomes the limit. Every decode step also has to read the whole cache from memory, which is why long-context generation is often limited by memory bandwidth rather than raw compute. Common ways to reduce the cost:</div>
+    <div className="grid gap-5 md:grid-cols-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-white">Fewer K/V heads</div>
+        <div className="text-sm leading-7">Multi-Query Attention and Grouped-Query Attention let many query heads share a small number of key/value heads, shrinking $H_{kv}$.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-white">Smarter memory layout</div>
+        <div className="text-sm leading-7">Paged cache management (as in the vLLM server) stores the cache in small blocks so memory is not wasted on empty space.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-white">Smaller numbers</div>
+        <div className="text-sm leading-7">Cache quantization stores K and V with fewer bits, trading a little precision for a smaller footprint.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Masking and Caching Side by Side</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>The figure below has two parts. Part 1 shows who is allowed to read whom, and how the same rule applies in training and in generation. Part 2 shows the three moves of the KV cache.</div>
+    <div className="space-y-8 rounded-3xl border border-cyan-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 1 · Causal Masking</span>
+          <span className="text-xs text-slate-400">Row = token asking, column = token being read</span>
+        </div>
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Mask · 4 Tokens</span>
+              <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Lower triangle</span>
+            </div>
+            <div className="grid grid-cols-4 gap-1 text-center text-sm">
+              <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2 text-emerald-300">✓</span><span className="rounded-md border border-white/10 bg-black/30 py-2 text-slate-600">✗</span><span className="rounded-md border border-white/10 bg-black/30 py-2 text-slate-600">✗</span><span className="rounded-md border border-white/10 bg-black/30 py-2 text-slate-600">✗</span>
+              <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2 text-emerald-300">✓</span><span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2 text-emerald-300">✓</span><span className="rounded-md border border-white/10 bg-black/30 py-2 text-slate-600">✗</span><span className="rounded-md border border-white/10 bg-black/30 py-2 text-slate-600">✗</span>
+              <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2 text-emerald-300">✓</span><span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2 text-emerald-300">✓</span><span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2 text-emerald-300">✓</span><span className="rounded-md border border-white/10 bg-black/30 py-2 text-slate-600">✗</span>
+              <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2 text-emerald-300">✓</span><span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2 text-emerald-300">✓</span><span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2 text-emerald-300">✓</span><span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 py-2 text-emerald-300">✓</span>
+            </div>
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Row i sees only columns 1 to i</div>
+          </div>
+          <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.05] p-5">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Same Rule Everywhere</span>
+              <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">No peeking</span>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Training: all rows at once, mask applied</div>
+            <div className="text-center text-violet-400">↓</div>
+            <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-violet-200">Generation: one new row per step</div>
+            <div className="text-center text-violet-400">↓</div>
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">The model never sees the future</div>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The KV Cache Loop</span>
+          <span className="text-xs text-slate-400">Old K and V are stored, only the new token is computed</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Step 1 · Prefill</div>
+            <div className="mt-2 text-lg font-bold text-white">Whole Prompt</div>
+            <div className="mt-2 text-xs leading-relaxed text-slate-400">Process every prompt token in parallel and store all K and V in GPU memory.</div>
+          </div>
+          <div className="rounded-2xl border border-violet-500/30 bg-violet-500/[0.07] p-5 text-center">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Step 2 · Decode</div>
+            <div className="mt-2 text-lg font-bold text-white">One New Token</div>
+            <div className="mt-2 text-xs leading-relaxed text-slate-400">Compute q, k and v for the new token only, then read the cached K and V.</div>
+          </div>
+          <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Step 3 · Append</div>
+            <div className="mt-2 text-lg font-bold text-white">Cache Grows</div>
+            <div className="mt-2 text-xs leading-relaxed text-slate-400">Add the new k and v to the cache, output the token, and repeat from Step 2.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Result: n positions processed instead of n(n+1)/2</div>
+        <details className="group rounded-2xl border border-cyan-500/20 bg-white/[0.03]">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+            <span>Click to see why only K and V are cached</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">Explain <span className="inline-block transition group-open:rotate-180">▼</span></span>
+          </summary>
+          <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">A query is used once, by the token that created it, to read the past. Keys and Values are read again by every later token, so they are the only parts worth storing. The price is memory that grows with every token.</div>
+        </details>
+      </div>
+    </div>
+    <div>How to read it: start with the mask grid, then follow the three cache steps from left to right. The loop of Step 2 and Step 3 repeats for every generated token.</div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Causal Attention with a KV Cache</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>The program below builds a tiny single-head attention layer with NumPy. It computes causal attention for a whole sequence at once (training style), then recomputes the same outputs one token at a time using a KV cache (generation style), and checks that both give identical results. It ends by computing the cache size for a real-sized model.</div>
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+        <span className="font-mono text-xs font-semibold text-teal-400">causal_attention_kv_cache.py</span>
+        <span className="font-mono text-[11px] text-slate-400">Python 3.11+ · NumPy only</span>
+      </div>
+      <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block text-cyan-300">import numpy as np</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">np.random.seed(0)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Tiny sizes so the output stays readable</span>
+          <span className="block">d_model = 8</span>
+          <span className="block">d_k = 4</span>
+          <span className="block">seq_len = 5</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Random projection weights (frozen, like a trained model)</span>
+          <span className="block">W_q = np.random.randn(d_model, d_k)</span>
+          <span className="block">W_k = np.random.randn(d_model, d_k)</span>
+          <span className="block">W_v = np.random.randn(d_model, d_k)</span>
+          <span className="block">X = np.random.randn(seq_len, d_model)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def softmax(scores):</span>
+          <span className="block">    scores = scores - scores.max(axis=-1, keepdims=True)</span>
+          <span className="block">    e = np.exp(scores)</span>
+          <span className="block">    return e / e.sum(axis=-1, keepdims=True)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Training style: all tokens at once, with a causal mask</span>
+          <span className="block text-cyan-300">def full_causal_attention(X):</span>
+          <span className="block">    n = X.shape[0]</span>
+          <span className="block">    Q = X @ W_q</span>
+          <span className="block">    K = X @ W_k</span>
+          <span className="block">    V = X @ W_v</span>
+          <span className="block">    scores = Q @ K.T / np.sqrt(d_k)</span>
+          <span className="block text-violet-300">    mask = np.triu(np.ones((n, n)), k=1) == 1</span>
+          <span className="block text-violet-300">    scores = np.where(mask, -np.inf, scores)</span>
+          <span className="block">    weights = softmax(scores)</span>
+          <span className="block">    return weights @ V, weights</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Generation style: a cache holding all past keys and values</span>
+          <span className="block text-cyan-300">def new_cache():</span>
+          <span className="block">    return &#123;&quot;K&quot;: np.zeros((0, d_k)), &quot;V&quot;: np.zeros((0, d_k))&#125;</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def decode_step(x_new, cache):</span>
+          <span className="block">    q = x_new @ W_q</span>
+          <span className="block">    k = x_new @ W_k</span>
+          <span className="block">    v = x_new @ W_v</span>
+          <span className="block text-emerald-300">    cache[&quot;K&quot;] = np.vstack([cache[&quot;K&quot;], k])</span>
+          <span className="block text-emerald-300">    cache[&quot;V&quot;] = np.vstack([cache[&quot;V&quot;], v])</span>
+          <span className="block">    scores = cache[&quot;K&quot;] @ q / np.sqrt(d_k)</span>
+          <span className="block">    weights = softmax(scores)</span>
+          <span className="block">    return weights @ cache[&quot;V&quot;]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">full_out, full_w = full_causal_attention(X)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">cache = new_cache()</span>
+          <span className="block">cached_out = np.array([decode_step(X[t], cache) for t in range(seq_len)])</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">print(&quot;Outputs match:&quot;, np.allclose(full_out, cached_out))</span>
+          <span className="block">print(&quot;Future weights are zero:&quot;, np.allclose(np.triu(full_w, k=1), 0))</span>
+          <span className="block">print(&quot;Rows sum to 1:&quot;, np.allclose(full_w.sum(axis=1), 1))</span>
+          <span className="block">print(&quot;First token attends only to itself:&quot;, np.round(full_w[0], 3))</span>
+          <span className="block">print(&quot;Cache shape after 5 tokens:&quot;, cache[&quot;K&quot;].shape)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># Memory cost of a real-sized cache (7B-class settings, 16-bit values)</span>
+          <span className="block">layers = 32</span>
+          <span className="block">kv_heads = 32</span>
+          <span className="block">head_dim = 128</span>
+          <span className="block">bytes_per_value = 2</span>
+          <span className="block">per_token = 2 * layers * kv_heads * head_dim * bytes_per_value</span>
+          <span className="block">print(&quot;KV cache per token (KiB):&quot;, per_token / 1024)</span>
+          <span className="block">print(&quot;KV cache for 4096 tokens (GiB):&quot;, per_token * 4096 / (1024 * 1024 * 1024))</span>
+        </code>
+      </pre>
+    </div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+      <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block">Outputs match: True</span>
+          <span className="block">Future weights are zero: True</span>
+          <span className="block">Rows sum to 1: True</span>
+          <span className="block">First token attends only to itself: [1. 0. 0. 0. 0.]</span>
+          <span className="block">Cache shape after 5 tokens: (5, 4)</span>
+          <span className="block">KV cache per token (KiB): 512.0</span>
+          <span className="block">KV cache for 4096 tokens (GiB): 2.0</span>
+        </code>
+      </pre>
+    </div>
+    <div>Notice that <strong className="text-white">decode_step</strong> never builds a mask. The cache contains only past tokens plus the current one, so the mask is built into the data itself. This is why the two approaches agree.</div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+  <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q1. What does the causal mask do to the attention score of a future token?</div>
+      <div>
+        <input id="kvc6-q1-a" name="kvc6-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="kvc6-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Sets it to −∞ so its softmax weight becomes 0</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Since e raised to −∞ is 0, the future token receives no weight at all.</div>
+      </div>
+      <div>
+        <input id="kvc6-q1-b" name="kvc6-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="kvc6-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Doubles it so the model pays extra attention</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The mask removes future tokens from consideration; it never boosts them.</div>
+      </div>
+      <div>
+        <input id="kvc6-q1-c" name="kvc6-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="kvc6-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Deletes the token from the vocabulary</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The vocabulary is untouched. Only the connection from an earlier position to a later one is blocked.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q2. Which vectors does the KV cache store?</div>
+      <div>
+        <input id="kvc6-q2-a" name="kvc6-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="kvc6-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Queries and Keys</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Old queries are never reused, so there is no reason to store them.</div>
+      </div>
+      <div>
+        <input id="kvc6-q2-b" name="kvc6-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="kvc6-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Keys and Values of past tokens</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Every future token reads these, and they never change while the weights are frozen.</div>
+      </div>
+      <div>
+        <input id="kvc6-q2-c" name="kvc6-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="kvc6-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The model weights</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The weights are the model itself and are loaded once. The cache holds per-conversation data.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q3. Why does the KV cache become a problem for very long conversations?</div>
+      <div>
+        <input id="kvc6-q3-a" name="kvc6-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="kvc6-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) It makes the model forget earlier tokens</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The cache is exact. It preserves earlier tokens perfectly, which is why it uses so much memory.</div>
+      </div>
+      <div>
+        <input id="kvc6-q3-b" name="kvc6-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="kvc6-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) It grows with every token and consumes GPU memory</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It adds entries for every token in every layer, and each user needs a separate cache.</div>
+      </div>
+      <div>
+        <input id="kvc6-q3-c" name="kvc6-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="kvc6-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It forces the model to retrain after each reply</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Inference never changes the weights, so no retraining happens.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+  <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Attention compares a Query with Keys to get scores, turns them into weights with softmax, and blends the Values.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Causal masking adds −∞ to every score above the diagonal, so each token reads only itself and earlier tokens.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>The mask lets training run on a full sequence in parallel without letting the model cheat.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Without a cache, generating n tokens processes about n(n+1)/2 positions; with a cache it processes n.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>The cache works because of causality: the Keys and Values of old tokens never change once computed.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Inference has two phases: prefill (whole prompt in parallel) and decode (one token at a time using the cache).</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>The cache trades memory for speed. Its size is 2 × layers × KV heads × head size × bytes, per token, per sequence.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Causal masking and the KV cache are two sides of the same property. The mask guarantees that each token depends only on the past, and that guarantee is exactly what makes it safe to store the past and reuse it. Training uses the mask to learn fairly in parallel; generation uses the cache to stay fast one token at a time.</div>
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Mask the future → Attend to the past → Cache K and V → Generate fast</div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Up Next:</strong> Decoding Strategies: Temperature, Top-k and Top-p Sampling. Once the model has computed its output for the next position, how do we actually pick the token? That choice shapes how creative or predictable the text feels.
+    </div>
+  </div>
+</section>
+
+</div>

@@ -1,0 +1,434 @@
+---
+title: "Positional Encoding and RoPE: How LLMs Know Word Order"
+slug: "07-positional-encoding-and-rope"
+order: 7
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Understand why attention cannot see word order, how older methods added position, and how Rotary Position Embedding (RoPE) lets modern LLMs focus on the distance between tokens, plus how context windows get stretched."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Attention treats text like a bag of words, so a model needs a way to know <strong className="text-white">where</strong> each token sits. Modern LLMs use <strong className="text-white">RoPE</strong>: they <strong className="text-white">rotate</strong> each query and key by an amount that depends on position, so the attention score only depends on the <strong className="text-white">distance</strong> between two tokens.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Attention Cannot Tell Word Order
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Self-attention compares every token with every other token, but it does it like a <strong className="text-white">bag of words</strong>. If you shuffle the words, the raw attention math gives the same pairs of scores. To a plain attention layer, <em>dog bites man</em> and <em>man bites dog</em> look almost identical, yet they mean very different things.
+      </div>
+      <div>
+        So we must <strong className="text-white">inject position information</strong> into the model. This is called <strong className="text-white">positional encoding</strong>. The question is <em>how</em>, and the answer changed a lot between the original Transformer (2017) and today&apos;s LLMs.
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Simple analogy:</strong> Imagine a class photo where nobody is standing in order. You know who is in the photo, but not who stands next to whom. Positional encoding is like putting a numbered sticker on every person.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Three Ways to Add Position
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Researchers have tried several families of ideas. Here is the whole story in one table:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Method</th>
+              <th className="px-5 py-3">How it works</th>
+              <th className="px-5 py-3">Used by</th>
+              <th className="px-5 py-3">Main weakness</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Sinusoidal (absolute)</td><td className="px-5 py-3">Adds a fixed wave pattern for each position to the token embedding</td><td className="px-5 py-3">Original Transformer (2017)</td><td className="px-5 py-3">Struggles on text longer than seen in training</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Learned (absolute)</td><td className="px-5 py-3">Learns one vector per position, like a lookup table</td><td className="px-5 py-3">GPT-2, BERT</td><td className="px-5 py-3">Hard limit: no vector exists for unseen positions</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Relative (RoPE, ALiBi)</td><td className="px-5 py-3">Encodes the <strong className="text-white">distance</strong> between two tokens inside the attention score</td><td className="px-5 py-3">Most modern LLMs (RoPE is the most popular)</td><td className="px-5 py-3">Needs tricks to stretch to much longer text</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">The key insight:</strong> What usually matters in language is <strong className="text-white">how far apart</strong> two words are, not their exact seat numbers. Relative methods build that directly into attention, and that is why they won.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: RoPE (Rotary Position Embedding) in Plain English
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">RoPE</strong> gives each token&apos;s query and key vector a <strong className="text-white">rotation</strong> that depends on its position. Token at position 0 is not rotated, position 1 is rotated a little, position 2 a bit more, and so on, like turning a dial one notch per word.
+      </div>
+      <div>
+        The magic happens in the dot product. When query and key are both rotated, the angle between them depends only on the <strong className="text-white">difference</strong> of their positions. The score between word 5 and word 2 is therefore the same as between word 105 and word 102, because both pairs are exactly 3 apart.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Split the vector into pairs:</strong> A 128-number vector becomes 64 little 2D arrows.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Pick a speed for each pair:</strong> The first pairs spin fast, the last pairs spin slowly. This lets the model feel both nearby and faraway distances.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Rotate by position × speed:</strong> The arrow of a token at position $m$ is turned by the angle $m \cdot \theta_i$.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Take the dot product as usual:</strong> The result now depends on the relative distance $m - n$.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\theta_i = 10000^{-2i/d} \qquad \text{angle for pair } i = m \cdot \theta_i$$
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Why it is elegant:</strong> RoPE adds <strong className="text-white">no extra parameters</strong> and does not touch the values. It only rotates queries and keys, and rotation never changes a vector&apos;s length, so the signal stays stable.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: A Tiny Worked Example With One Rotating Arrow
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        To see the idea with numbers, use a single pair of dimensions, a 2D arrow starting at $(1, 0)$, and a rotation of 30° per position. Each position turns the arrow a further 30°:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Position</th>
+              <th className="px-5 py-3">Total rotation</th>
+              <th className="px-5 py-3">Arrow after rotation</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">0</td><td className="px-5 py-3">0°</td><td className="px-5 py-3">(1.000, 0.000)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">1</td><td className="px-5 py-3">30°</td><td className="px-5 py-3">(0.866, 0.500)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">2</td><td className="px-5 py-3">60°</td><td className="px-5 py-3">(0.500, 0.866)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">3</td><td className="px-5 py-3">90°</td><td className="px-5 py-3">(0.000, 1.000)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        Now take the dot product of an arrow at position $m$ with an identical arrow at position $n$. The result is $\cos((m - n) \cdot 30°)$. Only the <strong className="text-white">gap</strong> matters:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Pair of positions</th>
+              <th className="px-5 py-3">Gap</th>
+              <th className="px-5 py-3">Dot product</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">(3, 3)</td><td className="px-5 py-3">0</td><td className="px-5 py-3">1.000</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">(3, 2)</td><td className="px-5 py-3">1</td><td className="px-5 py-3">0.866</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">(3, 1)</td><td className="px-5 py-3">2</td><td className="px-5 py-3">0.500</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">(3, 0)</td><td className="px-5 py-3">3</td><td className="px-5 py-3">0.000</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">(13, 10)</td><td className="px-5 py-3">3</td><td className="px-5 py-3">0.000</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">See it?</strong> The pairs (3, 0) and (13, 10) are far apart in absolute position, yet they get the <strong className="text-white">same</strong> score because both gaps are 3. That is the relative-position property, and nobody had to teach it to the model.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Stretching the Context Window
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A model trained with positions up to 4,096 has never seen a rotation angle for position 20,000. If you simply feed it longer text, the angles go outside the range it learned, and quality drops sharply. Several techniques stretch the usable context:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Technique</th>
+              <th className="px-5 py-3">Idea</th>
+              <th className="px-5 py-3">Trade-off</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Position interpolation</td><td className="px-5 py-3">Squeeze new positions into the old range, so position 8,000 is treated as 4,000</td><td className="px-5 py-3">Needs a short fine-tune; nearby words become slightly harder to tell apart</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">NTK-aware scaling</td><td className="px-5 py-3">Change the rotation speeds (the base number) instead of all positions equally, keeping fast pairs sharp</td><td className="px-5 py-3">Works with little or no fine-tuning</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">YaRN</td><td className="px-5 py-3">Mixes the two ideas and adjusts attention strength</td><td className="px-5 py-3">Strong results with a small amount of extra training</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">ALiBi</td><td className="px-5 py-3">Skips rotations and subtracts a penalty that grows with distance</td><td className="px-5 py-3">Simple, but a different family from RoPE</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">A practical note</div>
+        <div className="text-sm leading-relaxed text-slate-300">When a model advertises a context window much longer than its original training length, a method like these is usually involved. Longer context also means a bigger KV cache, as you saw in the previous lesson, so cost grows too.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Rotating Arrows and the Gap Rule
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Each token gets turned a little more than the one before it. Pick a position to see where its arrow points (using 30° per position) and how similar it is to the arrow at position 0.
+      </div>
+      <Mermaid chart="graph LR; A[Token embedding] --> B[Make query Q and key K]; B --> C[Rotate Q and K by position times speed]; C --> D[Dot product Q and K]; D --> E[Score depends only on the gap between positions]; E --> F[Softmax and mix values V]" />
+      <div className="space-y-6 rounded-2xl border border-white/10 bg-[#060913] p-6 shadow-[0_0_40px_rgba(0,240,255,0.04)] sm:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="rounded-full bg-indigo-500/20 px-3 py-0.5 font-mono text-[11px] font-bold text-indigo-300">🧭 ROTATION EXPLORER · CLICK A POSITION</span>
+          <span className="font-mono text-xs text-slate-400">30° per position, one pair</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          <div>
+            <input id="rope-pos-1" name="rope-pos" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-pos-1" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">Position 0</label>
+            <div className="mt-3 hidden rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Rotation: 0°<br />
+              Arrow: (1.000, 0.000)<br />
+              Dot with position-0 arrow: 1.000<br />
+              <span className="text-blue-300">No rotation yet. This is the reference.</span>
+            </div>
+          </div>
+          <div>
+            <input id="rope-pos-2" name="rope-pos" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-pos-2" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">Position 1</label>
+            <div className="mt-3 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Rotation: 30°<br />
+              Arrow: (0.866, 0.500)<br />
+              Dot with position-0 arrow: 0.866<br />
+              <span className="text-emerald-300">Gap of 1 from position 0, so the score is cos(30°).</span>
+            </div>
+          </div>
+          <div>
+            <input id="rope-pos-3" name="rope-pos" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-pos-3" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Position 2</label>
+            <div className="mt-3 hidden rounded-lg border border-violet-500/30 bg-violet-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Rotation: 60°<br />
+              Arrow: (0.500, 0.866)<br />
+              Dot with position-0 arrow: 0.500<br />
+              <span className="text-violet-300">Gap of 2 from position 0, so the score is cos(60°).</span>
+            </div>
+          </div>
+          <div>
+            <input id="rope-pos-4" name="rope-pos" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-pos-4" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">Position 3</label>
+            <div className="mt-3 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Rotation: 90°<br />
+              Arrow: (0.000, 1.000)<br />
+              Dot with position-0 arrow: 0.000<br />
+              <span className="text-rose-300">Gap of 3 from position 0, so the score is cos(90°).</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: RoPE From Scratch and the Relative-Position Test
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This function rotates every pair of dimensions by the angle <code>position × speed</code>. Then we test the key promise of RoPE: <strong className="text-white">the score depends only on the distance between tokens, not on where they sit in the text</strong>.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">rope_from_scratch.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def rope(x, position, base=10000.0):</span>
+            <span className="block text-slate-500">    # Rotate each pair of dimensions (x[2i], x[2i+1]) by an angle that grows with position</span>
+            <span className="block">    d = len(x)</span>
+            <span className="block">    i = np.arange(d // 2)</span>
+            <span className="block">    theta = base ** (-2 * i / d)          # one frequency per pair: fast to slow</span>
+            <span className="block">    angle = position * theta</span>
+            <span className="block">    cos, sin = np.cos(angle), np.sin(angle)</span>
+            <span className="block">    out = np.empty_like(x)</span>
+            <span className="block">    out[0::2] = x[0::2] * cos - x[1::2] * sin</span>
+            <span className="block">    out[1::2] = x[0::2] * sin + x[1::2] * cos</span>
+            <span className="block">    return out</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">rng = np.random.default_rng(0)</span>
+            <span className="block">q = rng.normal(size=8)</span>
+            <span className="block">k = rng.normal(size=8)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Same distance (3 apart) at very different absolute positions</span>
+            <span className="block">a = np.dot(rope(q, 5), rope(k, 2))</span>
+            <span className="block">b = np.dot(rope(q, 105), rope(k, 102))</span>
+            <span className="block">print(&quot;score at positions (5, 2):     &quot;, round(float(a), 4))</span>
+            <span className="block">print(&quot;score at positions (105, 102): &quot;, round(float(b), 4))</span>
+            <span className="block">print(&quot;Same score for the same distance:&quot;, np.isclose(a, b))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. A different distance gives a different score</span>
+            <span className="block">c = np.dot(rope(q, 5), rope(k, 4))</span>
+            <span className="block">print(&quot;score at distance 1:&quot;, round(float(c), 4), &quot;| at distance 3:&quot;, round(float(a), 4))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Rotation never changes the length of a vector</span>
+            <span className="block">print(&quot;Length before and after rotation:&quot;, round(float(np.linalg.norm(q)), 4), round(float(np.linalg.norm(rope(q, 50))), 4))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 4. Position interpolation: squeeze 8192 positions into the 4096 range seen in training</span>
+            <span className="block">scale = 4096 / 8192</span>
+            <span className="block">print(&quot;Position 8000 is treated as position&quot;, 8000 * scale)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>score at positions (5, 2):      -1.5865</div>
+          <div>score at positions (105, 102):  -1.5865</div>
+          <div>Same score for the same distance: True</div>
+          <div>score at distance 1: -1.6954 | at distance 3: -1.5865</div>
+          <div>Length before and after rotation: 1.8627 1.8627</div>
+          <div>Position 8000 is treated as position 4000.0</div>
+        </div>
+      </div>
+      <div>
+        Look at the first three lines of output: positions (5, 2) and (105, 102) are 100 steps apart in absolute terms but both have a gap of 3, and the scores are identical. Distance 1 gives a different score, so the model can tell near from far.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What is the main advantage of RoPE?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="rope-q1-a" name="rope-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The attention score depends on the distance between tokens, not their absolute positions</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Rotating Q and K makes their dot product a function of the position difference.</div>
+          </div>
+          <div>
+            <input id="rope-q1-b" name="rope-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It removes the need for attention</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Attention is still used. RoPE only adds position information.</div>
+          </div>
+          <div>
+            <input id="rope-q1-c" name="rope-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It adds billions of new parameters</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> RoPE adds no parameters at all.</div>
+          </div>
+          <div>
+            <input id="rope-q1-d" name="rope-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It makes the vocabulary larger</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It has no effect on the vocabulary.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: A model was trained on 4,096 positions. What does position interpolation do to reach 8,192?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="rope-q2-a" name="rope-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) It squeezes the new positions into the 0 to 4,096 range the model already knows</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Position 8,000 is treated like 4,000, which keeps angles inside the learned range.</div>
+          </div>
+          <div>
+            <input id="rope-q2-b" name="rope-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It deletes half of the text</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> No text is removed. Only the position numbers are rescaled.</div>
+          </div>
+          <div>
+            <input id="rope-q2-c" name="rope-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It trains a new model from scratch</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It needs at most a short fine-tune.</div>
+          </div>
+          <div>
+            <input id="rope-q2-d" name="rope-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="rope-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It switches to a different tokenizer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Tokenization is unrelated.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Plain attention is blind to word order, so position information must be added.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Older methods add a fixed or learned vector per position (absolute). Modern methods encode the <strong className="text-white">distance</strong> (relative).</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">RoPE</strong> rotates pairs of dimensions of Q and K by an angle equal to position × speed.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Because of the rotation, the dot product depends only on the <strong className="text-white">gap</strong> between positions, and vector length is never changed.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>RoPE adds no parameters, which is one reason it became the standard in open LLMs.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Context can be stretched past the training length with position interpolation, NTK-aware scaling or YaRN, usually with a little extra training.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Positional Encoding in One Line</div>
+        <div className="text-center font-bold text-white">
+          Token meaning + rotation by position → attention sees distance, not seat numbers
+        </div>
+      </div>
+      <div>
+        Order is what turns a pile of words into a sentence. RoPE gives the model that sense of order in a way that is cheap, stable and works at many text lengths.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You now know the two most important parts inside an LLM block: attention and positions. In <strong className="text-white">Modern LLM Architectures</strong> you will see how they are combined with RMSNorm, SwiGLU, GQA and Mixture of Experts into today&apos;s models.
+      </div>
+    </div>
+  </section>
+
+</div>

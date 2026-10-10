@@ -1,0 +1,366 @@
+---
+title: "Metadata Filtering and Advanced Retrieval"
+slug: "metadata-filtering-advanced-retrieval"
+order: 13
+category: "RAG"
+subcategory: "Retrieval"
+difficulty: "Intermediate"
+readTime: "20 min"
+description: "Learn how metadata filters restrict retrieval by date, category, status and user, the difference between pre-filtering and post-filtering, and how to design safe retrieval constraints."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> Similarity search knows what a chunk is about, but it does not know whether the chunk is current, which department wrote it, or whether the person asking is allowed to read it. <strong className="text-white">Metadata filtering</strong> adds those rules. It is how a RAG system returns only the 2025 policy instead of the 2023 one, only HR documents for an HR question, and only what a user has permission to see.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: Why Similarity Alone Is Not Enough</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Imagine asking a librarian for the vacation policy. Without any rules they might hand you the 2023 policy, a finance document that merely mentions vacation, and a confidential file that belongs to someone else, all because the words match. The content is similar, yet the results are wrong for you.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Time</div>
+          <div className="text-sm leading-7">Old versions of a document score as high as the new one. Users need the current answer.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Scope</div>
+          <div className="text-sm leading-7">A chunk can be about the right topic but belong to the wrong team, product or region.</div>
+        </div>
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-rose-300">Permission</div>
+          <div className="text-sm leading-7">Some chunks must never be shown to some users, however relevant they are.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: Kinds of Metadata Filters</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A filter is a condition on a metadata field that a chunk must satisfy to be returned. The fields come from the metadata you stored during ingestion, which is why that lesson matters.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Filter type</th><th className="px-4 py-3">Example</th><th className="px-4 py-3">Typical use</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Equality</td><td className="px-4 py-3">department equals hr</td><td className="px-4 py-3">Scope by team or product</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Range</td><td className="px-4 py-3">year at least 2025</td><td className="px-4 py-3">Dates and freshness</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Set membership</td><td className="px-4 py-3">region in the list EU, UK</td><td className="px-4 py-3">Regions and languages</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Status</td><td className="px-4 py-3">status equals active</td><td className="px-4 py-3">Hide superseded versions</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">User or tenant</td><td className="px-4 py-3">tenant equals the caller</td><td className="px-4 py-3">Multi-customer isolation</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Combinations</td><td className="px-4 py-3">AND, OR and NOT of the above</td><td className="px-4 py-3">Real queries, which need several rules at once</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Pre-Filtering vs Post-Filtering</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The order of filtering and searching matters a great deal.</div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-rose-300">Post-filtering</div>
+          <div className="text-sm leading-7">Search first, take the top k, then remove results that fail the filter. Easy to build, but the top k may be full of disallowed chunks, leaving few or no results.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Pre-filtering</div>
+          <div className="text-sm leading-7">Restrict the search to allowed chunks, then rank them and take the top k. You get k valid results, but the index must support it efficiently.</div>
+        </div>
+      </div>
+      <div>Many vector databases support <strong className="text-white">filtered search</strong> natively, applying the conditions while they walk the index. This gives the benefit of pre-filtering without scanning everything. Whenever you evaluate a database, test what happens when a filter is very strict, because performance and recall can both change.</div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Rule of thumb:</strong> use pre-filtering, or native filtered search, for any rule that must hold. Use post-filtering only for soft preferences where getting fewer results is acceptable.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Multiple Filters and Retrieval Constraints</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Real questions combine rules. Treat each rule as either a <strong className="text-white">hard constraint</strong> that must hold, or a <strong className="text-white">soft preference</strong> that only adjusts the score.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Kind</th><th className="px-4 py-3">Behavior</th><th className="px-4 py-3">Example</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Hard constraint</td><td className="px-4 py-3">Chunks that fail are removed</td><td className="px-4 py-3">Status active, user has access</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Soft preference</td><td className="px-4 py-3">Chunks that match get a score boost</td><td className="px-4 py-3">More recent documents rank slightly higher</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>Filters can also come from the question itself. A request such as last year HR policy contains a department and a date. A language model or simple rules can extract these into filter fields, a technique often called self-querying. It is powerful but risky: a wrong guess silently hides the correct answer. Log extracted filters, and fall back to an unfiltered search when the filtered one returns nothing.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Access Control Done Safely</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Permission filters protect confidential data, so they need stricter handling than other filters.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Enforce on the server.</strong> Apply the permission filter in your retrieval code, using the verified identity of the caller. Never rely on asking the model to ignore chunks it should not mention.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Filter before the prompt.</strong> A forbidden chunk that reaches the prompt can leak, because the model may quote it.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Isolate tenants.</strong> Use a mandatory tenant field on every record, and make the filter impossible to skip.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Test adversarially.</strong> Write tests where a user asks directly for content they must not see, and check that nothing comes back.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Keep metadata correct.</strong> A wrong or missing label is a silent leak or a silent miss, so validate metadata at ingestion.</div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5"><strong className="text-cyan-300">Remember:</strong> when the filtered result is empty, say so honestly. Do not widen the filter on your own to find something, because that may violate the rule the filter was enforcing.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Filter Before You Rank</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A compares pre-filtering with post-filtering. Panel B shows the results of the code below. Panel C lists filter design questions.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel A · Two Orders</span><span className="text-xs text-slate-400">Same data, different results</span></div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-rose-300">Post-filter</div>
+              <div><span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Search, then filter</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Rank all chunks</div>
+              <div className="text-center text-rose-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Keep the top k</div>
+              <div className="text-center text-rose-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Drop chunks that fail the filter</div>
+              <div className="text-center text-rose-400">↓</div>
+              <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">May return fewer than k</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-300">Pre-filter</div>
+              <div><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Filter, then search</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Keep only allowed chunks</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Rank those</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Take the top k</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Returns k valid chunks</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel B · Results from the Code</span><span className="text-xs text-slate-400">Query: vacation policy, HR, 2025 or later</span></div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-white/[0.04] text-slate-300">
+                <tr><th className="px-4 py-3 text-center">Method</th><th className="px-4 py-3 text-center">Returned chunks</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300">
+                <tr><td className="px-4 py-3 text-center">No filter</td><td className="px-4 py-3 text-center text-rose-300">c1, c2, c3 (old and wrong versions)</td></tr>
+                <tr><td className="px-4 py-3 text-center">Post-filter, top 3</td><td className="px-4 py-3 text-center text-amber-300">c3 only</td></tr>
+                <tr><td className="px-4 py-3 text-center">Pre-filter, top 3</td><td className="px-4 py-3 text-center text-emerald-300">c3, c7</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="text-center text-xs text-slate-300">Post-filtering lost two result slots to chunks that were later removed</div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel C · Design Questions</span><span className="text-xs text-slate-400">Click a question to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c13-q-0" name="c13-q" type="radio" className="peer sr-only" />
+              <label htmlFor="c13-q-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Is this rule a must or a preference?</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Must:</strong> Hard filter, applied before ranking</div>
+                <div><strong className="text-violet-300">Preference:</strong> Score boost instead</div>
+              </div>
+            </div>
+            <div>
+              <input id="c13-q-1" name="c13-q" type="radio" className="peer sr-only" />
+              <label htmlFor="c13-q-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">Who is allowed to see this?</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-rose-300">Do:</strong> Filter on the server using verified identity</div>
+                <div><strong className="text-rose-300">Avoid:</strong> Prompt instructions as protection</div>
+              </div>
+            </div>
+            <div>
+              <input id="c13-q-2" name="c13-q" type="radio" className="peer sr-only" />
+              <label htmlFor="c13-q-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-amber-400/50 peer-checked:bg-amber-500/10 peer-checked:text-amber-300">What if the filter returns nothing?</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-amber-300">Do:</strong> Say that nothing was found</div>
+                <div><strong className="text-amber-300">Avoid:</strong> Quietly dropping the rule</div>
+              </div>
+            </div>
+            <div>
+              <input id="c13-q-3" name="c13-q" type="radio" className="peer sr-only" />
+              <label htmlFor="c13-q-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-cyan-400/50 peer-checked:bg-cyan-500/10 peer-checked:text-cyan-300">Where do filter values come from?</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-cyan-300">Do:</strong> Validated metadata from ingestion</div>
+                <div><strong className="text-cyan-300">Avoid:</strong> Unchecked guesses from the question text</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why strict filters can hurt recall</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">A very restrictive filter leaves a small pool, and some approximate indexes struggle to find neighbors inside it. Always test your database with the strictest realistic filters.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the key idea, Panel B proves it with numbers, and Panel C helps you make safe filter decisions.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Pre-Filter vs Post-Filter</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program holds seven chunks, each with a department and a year. A simple word-overlap score ranks them. It then runs the same query three ways: with no filter, with the rule applied after taking the top 3 results, and with the rule applied before ranking.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">metadata_filtering.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">chunks = [</span>
+            <span className="block">    (&quot;c1&quot;, &quot;hr&quot;, 2023, &quot;vacation policy: 15 days per year&quot;),</span>
+            <span className="block">    (&quot;c2&quot;, &quot;hr&quot;, 2024, &quot;vacation policy: 18 days per year&quot;),</span>
+            <span className="block">    (&quot;c3&quot;, &quot;hr&quot;, 2025, &quot;vacation policy: 20 days per year&quot;),</span>
+            <span className="block">    (&quot;c4&quot;, &quot;finance&quot;, 2025, &quot;travel policy: book flights two weeks ahead&quot;),</span>
+            <span className="block">    (&quot;c5&quot;, &quot;finance&quot;, 2023, &quot;vacation travel refunds are not covered&quot;),</span>
+            <span className="block">    (&quot;c6&quot;, &quot;it&quot;, 2025, &quot;laptop policy: replace every 3 years&quot;),</span>
+            <span className="block">    (&quot;c7&quot;, &quot;hr&quot;, 2025, &quot;holiday calendar for the year&quot;),</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def words(text):</span>
+            <span className="block">    return set(&quot;&quot;.join(ch if ch.isalnum() else &quot; &quot; for ch in text.lower()).split())</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def score(query, text):</span>
+            <span className="block">    return len(words(query) &amp; words(text))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def search(query, k, allowed=None, filter_first=True):</span>
+            <span className="block">    pool = chunks if not filter_first or allowed is None else [c for c in chunks if allowed(c)]</span>
+            <span className="block">    ranked = sorted(pool, key=lambda c: (-score(query, c[3]), c[0]))[:k]</span>
+            <span className="block">    if not filter_first and allowed is not None:</span>
+            <span className="block">        ranked = [c for c in ranked if allowed(c)]</span>
+            <span className="block">    return [c[0] for c in ranked]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def rule(chunk):</span>
+            <span className="block">    return chunk[1] == &quot;hr&quot; and chunk[2] &gt;= 2025</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">query = &quot;vacation policy&quot;</span>
+            <span className="block">print(&quot;Filter: department hr and year 2025 or later&quot;)</span>
+            <span className="block">print(&quot;Search with no filter    :&quot;, search(query, 3))</span>
+            <span className="block">print(&quot;Post-filter (top 3 first):&quot;, search(query, 3, rule, filter_first=False))</span>
+            <span className="block">print(&quot;Pre-filter (filter first):&quot;, search(query, 3, rule, filter_first=True))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Filter: department hr and year 2025 or later</span>
+            <span className="block">Search with no filter    : [&apos;c1&apos;, &apos;c2&apos;, &apos;c3&apos;]</span>
+            <span className="block">Post-filter (top 3 first): [&apos;c3&apos;]</span>
+            <span className="block">Pre-filter (filter first): [&apos;c3&apos;, &apos;c7&apos;]</span>
+          </code>
+        </pre>
+      </div>
+      <div>Without a filter, the top three results are the vacation policies from 2023, 2024 and 2025, so the user gets two outdated answers. Post-filtering removes the old ones but leaves only a single result, because the top three slots were already used up. Pre-filtering searches only chunks that pass the rule, so it returns every valid chunk up to the limit. Note that the second pre-filter result scores 0 for this query, so in practice you would pair filtering with a minimum score.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. Why can post-filtering return fewer results than requested?</div>
+        <div>
+          <input id="rag13-q1-a" name="rag13-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag13-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Filters delete chunks from the index</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Filters only hide chunks for one query.</div>
+        </div>
+        <div>
+          <input id="rag13-q1-b" name="rag13-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag13-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Post-filtering always sorts results wrongly</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The ranking is fine; the pool is just too small.</div>
+        </div>
+        <div>
+          <input id="rag13-q1-c" name="rag13-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag13-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) The top k slots may be filled by chunks that are later removed by the filter</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The filter is applied only after the top k is chosen.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. Where should user permission filters be enforced?</div>
+        <div>
+          <input id="rag13-q2-a" name="rag13-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag13-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) On the server, before chunks reach the prompt</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A chunk in the prompt can be quoted by the model.</div>
+        </div>
+        <div>
+          <input id="rag13-q2-b" name="rag13-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag13-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) In the system prompt, by telling the model what not to say</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Instructions in a prompt are not a reliable security control.</div>
+        </div>
+        <div>
+          <input id="rag13-q2-c" name="rag13-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag13-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) In the browser, after the answer is shown</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Content that reached the model may already have leaked.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. What is the difference between a hard constraint and a soft preference?</div>
+        <div>
+          <input id="rag13-q3-a" name="rag13-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag13-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) They are two names for the same thing</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They behave differently.</div>
+        </div>
+        <div>
+          <input id="rag13-q3-b" name="rag13-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag13-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) A hard constraint removes failing chunks; a soft preference only changes their score</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Hard rules are non-negotiable, soft ones are tie-breakers.</div>
+        </div>
+        <div>
+          <input id="rag13-q3-c" name="rag13-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag13-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Soft preferences are applied by the user interface only</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Both are applied in retrieval.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Similarity search cannot know about time, scope or permission, so metadata filters add those rules.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Common filters are equality, range, set membership, status, user or tenant, and combinations.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Pre-filtering, or native filtered search, returns k valid results; post-filtering can return too few.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Treat rules as hard constraints or soft preferences, and boost recent documents as a soft rule.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Filters extracted from the question can be wrong, so log them and fall back carefully.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Enforce permissions on the server before chunks reach the prompt, and test with adversarial questions.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Return an honest empty result instead of loosening a filter that protects data.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Metadata turns a similarity engine into a controlled search system. Relevance decides which chunks are about the question; metadata decides which chunks are allowed, current and in scope. Both are needed for answers people can trust.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Query → Apply hard filters → Rank by similarity → Boost soft preferences → Candidates</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Reranking and Retrieval Optimization. You will learn why a second, more accurate ranking stage helps, how cross-encoders differ from bi-encoders, and how contextual compression trims retrieved passages.</div>
+    </div>
+  </section>
+</div>

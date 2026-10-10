@@ -1,0 +1,421 @@
+---
+title: "Introduction to Multi-Agent Systems"
+slug: "16-introduction-to-multi-agent-systems"
+order: 16
+category: "AI Agents"
+subcategory: "Multi-Agent"
+difficulty: "Intermediate"
+readTime: "25 min"
+description: "Learn why and when to use several agents instead of one: the benefits and costs of multi-agent systems, single-agent versus multi-agent designs, and how agent specialization reduces prompt size and speeds up work."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A <strong className="text-white">multi-agent system</strong> splits a big job among several agents, each with its <strong className="text-white">own role, tools and instructions</strong>. Specialization keeps each agent&apos;s prompt small and lets work run <strong className="text-white">in parallel</strong>, but it adds <strong className="text-white">coordination cost</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why Multiple Agents?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A single agent with fifty tools and a long list of duties becomes confused, slow and expensive. Human teams solve the same problem by <strong className="text-white">specializing</strong>: a researcher, an analyst and an assistant each do what they are best at.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Reason</th>
+              <th className="px-5 py-3">What it means</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Specialization</td><td className="px-5 py-3">Each agent has a focused role and a few tools, so it picks the right tool more often</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Smaller prompts</td><td className="px-5 py-3">Fewer tool descriptions and instructions per call</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Parallel work</td><td className="px-5 py-3">Independent tasks run at the same time</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Separation of concerns</td><td className="px-5 py-3">A writer and a reviewer can check each other</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Easier to improve</td><td className="px-5 py-3">You can test and upgrade one agent without touching the rest</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Analogy:</strong> One employee doing sales, support, accounting and engineering will be mediocre at all of them. A team with clear roles works better, as long as it communicates well.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Single-Agent vs. Multi-Agent
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3"></th>
+              <th className="px-5 py-3">Single agent</th>
+              <th className="px-5 py-3">Multi-agent system</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Design</td><td className="px-5 py-3">One loop, all tools</td><td className="px-5 py-3">Several loops with different roles</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Cost</td><td className="px-5 py-3">Lower</td><td className="px-5 py-3">Higher, from extra model calls and messages</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Speed</td><td className="px-5 py-3">Sequential</td><td className="px-5 py-3">Can be parallel</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Debugging</td><td className="px-5 py-3">Easier, one trace</td><td className="px-5 py-3">Harder, many traces and interactions</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Predictability</td><td className="px-5 py-3">Higher</td><td className="px-5 py-3">Lower</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Best for</td><td className="px-5 py-3">Focused tasks with a few tools</td><td className="px-5 py-3">Broad tasks with distinct skills</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Rule of thumb:</strong> <strong className="text-white">Start with one agent.</strong> Add more only when you can show that one agent is failing because of too many tools, too long a prompt, or tasks that could run in parallel.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Agent Specialization
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A specialist agent is defined by three things: a <strong className="text-white">role</strong> in its instructions, a <strong className="text-white">small set of tools</strong>, and often a <strong className="text-white">different model</strong>, such as a cheaper one for simple work.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Specialist</th>
+              <th className="px-5 py-3">Tools</th>
+              <th className="px-5 py-3">Typical job</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Researcher</td><td className="px-5 py-3">web_search, read_page</td><td className="px-5 py-3">Find and read sources</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Analyst</td><td className="px-5 py-3">sql_query, make_chart</td><td className="px-5 py-3">Analyze data</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Assistant</td><td className="px-5 py-3">send_email, write_file</td><td className="px-5 py-3">Take actions</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> The generalist needs a 1,160-token prompt on every call. The researcher needs only 570, the analyst 640, and the assistant 550. Less to read means lower cost, less confusion and faster calls.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: The Speed-Up From Parallel Specialists
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When tasks need different skills and do not depend on each other, specialists can work <strong className="text-white">at the same time</strong>.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> Six tasks take 18 seconds for one agent in sequence. With three specialists in parallel, the slowest specialist finishes after 8 seconds, because the researcher has 8 seconds of work and the others have less.
+      </div>
+      <div>
+        The total time is set by the <strong className="text-white">busiest</strong> specialist, so balancing the workload matters.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: The Hidden Costs
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Cost</th>
+              <th className="px-5 py-3">Why it appears</th>
+              <th className="px-5 py-3">Mitigation</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Coordination</td><td className="px-5 py-3">Agents need messages, handoffs and merging</td><td className="px-5 py-3">Clear interfaces and few agents</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Duplicated context</td><td className="px-5 py-3">Each agent may need the same background</td><td className="px-5 py-3">Share a common context store</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Error compounding</td><td className="px-5 py-3">A mistake by one agent feeds the next</td><td className="px-5 py-3">Validate at each handoff</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Conflicting actions</td><td className="px-5 py-3">Two agents change the same thing</td><td className="px-5 py-3">Shared state with version checks</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Harder debugging</td><td className="px-5 py-3">Many agents, many traces</td><td className="px-5 py-3">Trace every message with a run id</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">More tokens</td><td className="px-5 py-3">Every extra agent adds calls</td><td className="px-5 py-3">Use small prompts and cheaper models for easy roles</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Do not over-split.</strong> More agents is not better by itself. Many tiny agents with overlapping duties usually mean more bugs and a bigger bill.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Generalist vs. Specialists: Prompts and Time
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure compares the prompt size of one generalist with three specialists, then shows the time saved by working in parallel.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-orange-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-orange-300">Part 1 · One Generalist vs. Three Specialists</span>
+        <span className="text-xs text-slate-400">Prompt size per model call</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Generalist</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">1 agent, 6 tools</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Instructions 300 tokens</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">All six tool descriptions</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">1,160 tokens on every call</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Specialists</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">3 agents, 2 tools each</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Researcher 570</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Analyst 640</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Assistant 550</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">About half the prompt per agent</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Time for Six Tasks</span>
+        <span className="text-xs text-slate-400">Sequence vs. parallel</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">One agent</div>
+          <div className="mt-2 text-lg font-bold text-white">In sequence</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">18 seconds.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Three specialists</div>
+          <div className="mt-2 text-lg font-bold text-white">In parallel</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">8 seconds.</div>
+        </div>
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Workload</div>
+          <div className="mt-2 text-lg font-bold text-white">Researcher 8, analyst 7, assistant 3</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">The busiest sets the time.</div>
+        </div>
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Cost</div>
+          <div className="mt-2 text-lg font-bold text-white">Coordination</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Extra messages and merging.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-orange-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see when one agent is still better</span>
+          <span className="rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If the task is small, has only a few tools, or its steps must follow each other closely, the coordination cost of several agents outweighs the benefit. Start simple.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 uses the token counts from the code. Part 2 uses the time numbers. Open the bar to see when a single agent is still the better choice.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Comparing One Agent With a Team of Specialists
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script counts the prompt tokens needed by a generalist with six tools versus three specialists with two tools each, and compares the time to finish six tasks in sequence against a parallel team.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">single_vs_multi_agent.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># One generalist agent vs a team of specialists</span>
+            <span className="block">TOOL&#95;TOKENS = &#123;&quot;web&#95;search&quot;: 150, &quot;read&#95;page&quot;: 120, &quot;sql&#95;query&quot;: 180, &quot;make&#95;chart&quot;: 160, &quot;send&#95;email&quot;: 140, &quot;write&#95;file&quot;: 110&#125;</span>
+            <span className="block">BASE&#95;INSTRUCTIONS = 300                       # tokens of instructions every agent needs</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">specialists = &#123;</span>
+            <span className="block">    &quot;researcher&quot;: &#91;&quot;web&#95;search&quot;, &quot;read&#95;page&quot;&#93;,</span>
+            <span className="block">    &quot;analyst&quot;: &#91;&quot;sql&#95;query&quot;, &quot;make&#95;chart&quot;&#93;,</span>
+            <span className="block">    &quot;assistant&quot;: &#91;&quot;send&#95;email&quot;, &quot;write&#95;file&quot;&#93;,</span>
+            <span className="block">&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def prompt&#95;tokens(tools):</span>
+            <span className="block">    return BASE&#95;INSTRUCTIONS + sum(TOOL&#95;TOKENS&#91;t&#93; for t in tools)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">generalist = prompt&#95;tokens(list(TOOL&#95;TOKENS))</span>
+            <span className="block">print(&quot;Generalist prompt:&quot;, generalist, &quot;tokens on every model call&quot;)</span>
+            <span className="block">for name, tools in specialists.items():</span>
+            <span className="block">    print(name.ljust(11), &quot;prompt:&quot;, prompt&#95;tokens(tools), &quot;tokens |&quot;, len(tools), &quot;tools&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Time: tasks that need different skills can run at the same time</span>
+            <span className="block">tasks = &#91;(&quot;researcher&quot;, 5), (&quot;analyst&quot;, 4), (&quot;researcher&quot;, 3), (&quot;assistant&quot;, 2), (&quot;analyst&quot;, 3), (&quot;assistant&quot;, 1)&#93;</span>
+            <span className="block">single&#95;agent&#95;time = sum(seconds for &#95;, seconds in tasks)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">per&#95;specialist = &#123;&#125;</span>
+            <span className="block">for skill, seconds in tasks:</span>
+            <span className="block">    per&#95;specialist&#91;skill&#93; = per&#95;specialist.get(skill, 0) + seconds</span>
+            <span className="block">team&#95;time = max(per&#95;specialist.values())</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;One agent does all tasks in sequence:&quot;, single&#95;agent&#95;time, &quot;seconds&quot;)</span>
+            <span className="block">print(&quot;Three specialists work in parallel:  &quot;, team&#95;time, &quot;seconds&quot;, per&#95;specialist)</span>
+            <span className="block">print(&quot;Coordination is not free: the team also needs messages, shared context and a way to merge results.&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Generalist prompt: 1160 tokens on every model call</div>
+          <div>researcher  prompt: 570 tokens | 2 tools</div>
+          <div>analyst     prompt: 640 tokens | 2 tools</div>
+          <div>assistant   prompt: 550 tokens | 2 tools</div>
+          <div>One agent does all tasks in sequence: 18 seconds</div>
+          <div>Three specialists work in parallel:   8 seconds &#123;&apos;researcher&apos;: 8, &apos;analyst&apos;: 7, &apos;assistant&apos;: 3&#125;</div>
+          <div>Coordination is not free: the team also needs messages, shared context and a way to merge results.</div>
+        </div>
+      </div>
+      <div>
+        Each specialist carries about half the prompt of the generalist, and the team finishes in 8 seconds instead of 18. The last line is the catch: coordination is not free, which is why the later lessons cover communication, architectures and orchestration.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: When is a single agent usually the better choice?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag16-q1-a" name="ag16-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag16-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) For focused tasks with a few tools and tightly connected steps</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The coordination cost of many agents is not worth it for small tasks.</div>
+          </div>
+          <div>
+            <input id="ag16-q1-b" name="ag16-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag16-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) For every task, always</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Broad tasks with distinct skills may benefit from specialists.</div>
+          </div>
+          <div>
+            <input id="ag16-q1-c" name="ag16-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag16-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Only when the model is small</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Model size is not the criterion.</div>
+          </div>
+          <div>
+            <input id="ag16-q1-d" name="ag16-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag16-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Never</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A single agent is the right starting point.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Which is a real cost of multi-agent systems?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag16-q2-a" name="ag16-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag16-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Coordination: extra messages, handoffs and merging</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Agents must communicate, which costs tokens and adds failure points.</div>
+          </div>
+          <div>
+            <input id="ag16-q2-b" name="ag16-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag16-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) They can never run in parallel</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Parallel work is a main benefit.</div>
+          </div>
+          <div>
+            <input id="ag16-q2-c" name="ag16-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag16-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) They always use fewer tokens</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They often use more in total.</div>
+          </div>
+          <div>
+            <input id="ag16-q2-d" name="ag16-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag16-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) They remove the need for tools</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Specialists still use tools.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A multi-agent system splits work among agents with their own roles, tools and instructions.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Specialists have smaller prompts, pick tools better and can work in parallel.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A single agent is simpler, cheaper and easier to debug. Start there.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Add agents only when one agent fails from too many tools, too long a prompt or lack of parallelism.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Hidden costs: coordination, duplicated context, error compounding, conflicts and harder debugging.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Avoid over-splitting into many overlapping agents.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Multi-Agent in One Line</div>
+        <div className="text-center font-bold text-white">
+          Split by skill → keep each agent small → run independent work in parallel → pay the coordination cost
+        </div>
+      </div>
+      <div>
+        The art of multi-agent design is deciding how few agents you really need.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Agents on a team must talk to each other. In <strong className="text-white">Agent Communication and Collaboration</strong> you will learn message passing, shared context and collaborative problem solving.
+      </div>
+    </div>
+  </section>
+
+</div>

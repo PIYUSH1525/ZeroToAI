@@ -1,0 +1,400 @@
+---
+title: "RAG Evolution: Naive, Advanced and Modular"
+slug: "rag-evolution-naive-advanced-modular"
+order: 19
+category: "RAG"
+subcategory: "Advanced RAG"
+difficulty: "Intermediate"
+readTime: "25 min"
+description: "See how RAG grew from a simple retrieve-and-generate pipeline into advanced and modular designs, where each approach fails, and how to choose between them."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> RAG systems did not appear fully formed. They grew in three steps. <strong className="text-white">Naive RAG</strong> is the simple pipeline: index, retrieve, generate. <strong className="text-white">Advanced RAG</strong> adds improvements before, during and after retrieval. <strong className="text-white">Modular RAG</strong> turns the pipeline into interchangeable parts that can be rearranged, repeated or skipped. Knowing this path tells you what to build first and what to add only when a measured problem demands it.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: Naive RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Naive RAG is the pipeline from the first lessons, with no extras: split documents into chunks, embed and store them, embed the question, fetch the top-k chunks, put them in a prompt, and let the model answer.</div>
+      <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Index chunks</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Embed the question</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Fetch top-k</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Build prompt</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Generate</span></div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5"><strong className="text-blue-300">Strengths:</strong> simple to build, easy to understand, and surprisingly useful for clean documents and direct questions. It is the right starting point and the baseline that every improvement must beat.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: Where Naive RAG Fails</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Each weakness of naive RAG maps to a technique you have met in this course.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Symptom</th><th className="px-4 py-3">Likely cause</th><th className="px-4 py-3">Fix, and where you learned it</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Nothing found for a clear question</td><td className="px-4 py-3">Query wording differs from documents</td><td className="px-4 py-3">Query transformation</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Wrong or outdated answer</td><td className="px-4 py-3">Old versions and unrelated chunks are retrieved</td><td className="px-4 py-3">Metadata filtering and versioning</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Right chunk retrieved but ranked low</td><td className="px-4 py-3">Rough first-stage scoring</td><td className="px-4 py-3">Reranking</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Exact codes and names missed</td><td className="px-4 py-3">Embedding-only search</td><td className="px-4 py-3">Hybrid retrieval</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Question needs several facts</td><td className="px-4 py-3">Only one search is done</td><td className="px-4 py-3">Multi-step retrieval</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Confident answer with no support</td><td className="px-4 py-3">No check on retrieval or output</td><td className="px-4 py-3">Grounding and verification</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Advanced RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Advanced RAG</strong> keeps the same skeleton but upgrades each phase.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Before retrieval</div>
+          <div className="text-sm leading-7">Better chunking, rich metadata, query rewriting, expansion and decomposition.</div>
+        </div>
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">During retrieval</div>
+          <div className="text-sm leading-7">Hybrid dense and sparse search, metadata filters, tuned top-k.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">After retrieval</div>
+          <div className="text-sm leading-7">Reranking, deduplication, compression, careful ordering and grounded prompts.</div>
+        </div>
+      </div>
+      <div>The pipeline is still mostly a fixed straight line. It is stronger than naive RAG, but every question takes the same path, and every improvement is hard-wired into it.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Modular RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Modular RAG</strong> treats each capability as a <strong className="text-white">module</strong> with a clear input and output: query rewriter, retriever, reranker, memory, router, verifier, and so on. An orchestrator decides which modules run, in what order, and how many times.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Pattern</th><th className="px-4 py-3">What happens</th><th className="px-4 py-3">Example</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Linear</td><td className="px-4 py-3">Modules run in a fixed order</td><td className="px-4 py-3">Normalize, retrieve, rerank, generate</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Conditional</td><td className="px-4 py-3">A router picks the path</td><td className="px-4 py-3">Simple question skips retrieval; hard one uses multi-step</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Looping</td><td className="px-4 py-3">Steps repeat until a check passes</td><td className="px-4 py-3">Retry retrieval if the answer is unsupported</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Parallel</td><td className="px-4 py-3">Several branches run and are merged</td><td className="px-4 py-3">Search documents and a database together</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5"><strong className="text-orange-300">Why it matters:</strong> modules can be swapped, tested alone and removed. This turns system design into experiments: take one module out and measure what you lose.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Choosing an Architecture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>More machinery means more cost, delay and failure modes. A sound approach is to start simple and add parts only in response to measured failures.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">1.</strong> Build naive RAG and an evaluation set of real questions.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">2.</strong> Find the most common failure and add the one module that addresses it.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">3.</strong> Re-measure. Keep the module only if quality improves enough to justify its cost.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">4.</strong> Repeat, and move toward a modular design once different questions clearly need different paths.</div>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Situation</th><th className="px-4 py-3">Reasonable choice</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Small, clean knowledge base, direct questions</td><td className="px-4 py-3">Naive RAG, perhaps with hybrid search</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Mixed question types and measurable failures</td><td className="px-4 py-3">Advanced RAG with targeted upgrades</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Many sources, tools, or questions needing different paths</td><td className="px-4 py-3">Modular RAG with routing and checks</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>A warning: modularity is not a goal in itself. A system with ten modules and no evaluation is harder to trust than a simple one that you can measure.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Three Generations of RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A places the three generations side by side. Panel B shows measured results from the code below. Panel C is a symptom explorer.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel A · Naive, Advanced, Modular</span><span className="text-xs text-slate-400">Each generation adds control</span></div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-blue-500/25 bg-blue-500/[0.05] p-5 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Generation 1</div>
+              <div className="mt-2 text-lg font-bold text-white">Naive RAG</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">Index, retrieve, generate in one straight line.</div>
+            </div>
+            <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.05] p-5 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Generation 2</div>
+              <div className="mt-2 text-lg font-bold text-white">Advanced RAG</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">Upgrades before, during and after retrieval.</div>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5 text-center">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Generation 3</div>
+              <div className="mt-2 text-lg font-bold text-white">Modular RAG</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">Swappable modules with routing and loops.</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel B · Hit Rate on Four Questions</span><span className="text-xs text-slate-400">From the code in section 7</span></div>
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="mb-1 text-xs text-slate-300">Naive RAG</div>
+              <div className="mx-auto h-4 w-full max-w-md overflow-hidden rounded-full bg-white/10">
+                <div className="h-4 rounded-full bg-rose-400" style={{ width: "25%" }} />
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">1 of 4 questions answered by the right document</div>
+            </div>
+            <div className="text-center">
+              <div className="mb-1 text-xs text-slate-300">Without normalize</div>
+              <div className="mx-auto h-4 w-full max-w-md overflow-hidden rounded-full bg-white/10">
+                <div className="h-4 rounded-full bg-amber-400" style={{ width: "50%" }} />
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">2 of 4</div>
+            </div>
+            <div className="text-center">
+              <div className="mb-1 text-xs text-slate-300">Without active filter</div>
+              <div className="mx-auto h-4 w-full max-w-md overflow-hidden rounded-full bg-white/10">
+                <div className="h-4 rounded-full bg-orange-400" style={{ width: "75%" }} />
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">3 of 4</div>
+            </div>
+            <div className="text-center">
+              <div className="mb-1 text-xs text-slate-300">Advanced and modular, both modules</div>
+              <div className="mx-auto h-4 w-full max-w-md overflow-hidden rounded-full bg-white/10">
+                <div className="h-4 rounded-full bg-emerald-400" style={{ width: "100%" }} />
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">4 of 4</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Symptom Explorer</span><span className="text-xs text-slate-400">Click a symptom to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c19-sym-0" name="c19-sym" type="radio" className="peer sr-only" />
+              <label htmlFor="c19-sym-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">Users phrase things differently than the documents</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-blue-300">Add:</strong> Query rewriting or hybrid search</div>
+              </div>
+            </div>
+            <div>
+              <input id="c19-sym-1" name="c19-sym" type="radio" className="peer sr-only" />
+              <label htmlFor="c19-sym-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Old policies show up in answers</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Add:</strong> Status filter and versioning</div>
+              </div>
+            </div>
+            <div>
+              <input id="c19-sym-2" name="c19-sym" type="radio" className="peer sr-only" />
+              <label htmlFor="c19-sym-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">Different questions need different effort</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Add:</strong> A router, which means a modular design</div>
+              </div>
+            </div>
+            <div>
+              <input id="c19-sym-3" name="c19-sym" type="radio" className="peer sr-only" />
+              <label htmlFor="c19-sym-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">Answers are fluent but unsupported</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-rose-300">Add:</strong> A verification step with retries</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why you should not build everything at once</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">Each module adds latency, cost and new ways to fail. Without a baseline and a test set you cannot tell which additions help, so grow the system one measured step at a time.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the family tree, Panel B shows that each module earns its place on test questions, and Panel C maps problems to additions.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Naive vs Advanced vs Modular with Ablations</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program defines five tiny documents, one of which is an outdated vacation policy, and four test questions with known answers. Naive RAG searches once with the raw question. The advanced and modular pipelines are built from two modules: a normalizer that expands abbreviations such as PTO and WFH, and a filter that keeps only active documents. Because the modules are plain functions in a list, the program can remove one at a time and measure the result.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">rag_evolution.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">rewrites = dict([(&quot;pto&quot;, &quot;paid time off&quot;), (&quot;wfh&quot;, &quot;work from home&quot;), (&quot;2fa&quot;, &quot;two factor authentication&quot;)])</span>
+            <span className="block">stop_words = set([&quot;how&quot;, &quot;many&quot;, &quot;do&quot;, &quot;to&quot;, &quot;when&quot;, &quot;what&quot;, &quot;is&quot;, &quot;a&quot;, &quot;the&quot;])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">documents = [</span>
+            <span className="block">    (&quot;d1&quot;, &quot;active&quot;, &quot;vacation policy 2025 employees receive 20 days of paid time off&quot;),</span>
+            <span className="block">    (&quot;d2&quot;, &quot;superseded&quot;, &quot;vacation policy 2023 employees get 15 days of paid time off&quot;),</span>
+            <span className="block">    (&quot;d3&quot;, &quot;active&quot;, &quot;work from home policy remote work two days per week&quot;),</span>
+            <span className="block">    (&quot;d4&quot;, &quot;active&quot;, &quot;security policy enable two factor authentication&quot;),</span>
+            <span className="block">    (&quot;d5&quot;, &quot;active&quot;, &quot;expense policy submit receipts within 30 days&quot;),</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">tests = [</span>
+            <span className="block">    (&quot;how many PTO days do employees get&quot;, &quot;d1&quot;),</span>
+            <span className="block">    (&quot;WFH rules&quot;, &quot;d3&quot;),</span>
+            <span className="block">    (&quot;2FA requirements&quot;, &quot;d4&quot;),</span>
+            <span className="block">    (&quot;when to submit receipts&quot;, &quot;d5&quot;),</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def words(text):</span>
+            <span className="block">    return &quot;&quot;.join(ch if ch.isalnum() or ch == &quot; &quot; else &quot; &quot; for ch in text.lower()).split()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def top1(query, docs):</span>
+            <span className="block">    q = set(w for w in words(query) if w not in stop_words)</span>
+            <span className="block">    scored = [(len(q &amp; set(words(text))), doc_id) for doc_id, status, text in docs]</span>
+            <span className="block">    scored.sort(key=lambda s: (-s[0], s[1]))</span>
+            <span className="block">    return scored[0][1] if scored and scored[0][0] &gt; 0 else None</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Naive RAG: one search with the raw question</span>
+            <span className="block text-cyan-300">def naive(query, docs):</span>
+            <span className="block">    return top1(query, docs)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Modules: each takes (query, docs) and returns (query, docs)</span>
+            <span className="block text-cyan-300">def normalize(query, docs):</span>
+            <span className="block">    return &quot; &quot;.join(rewrites.get(w, w) for w in words(query)), docs</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def only_active(query, docs):</span>
+            <span className="block">    return query, [d for d in docs if d[1] == &quot;active&quot;]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def run(modules, query, docs):</span>
+            <span className="block">    for module in modules:</span>
+            <span className="block">        query, docs = module(query, docs)</span>
+            <span className="block">    return top1(query, docs)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def score(label, fn):</span>
+            <span className="block">    hits = sum(1 for question, gold in tests if fn(question) == gold)</span>
+            <span className="block">    print(label.ljust(34), &quot;hit rate:&quot;, hits, &quot;/&quot;, len(tests))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">score(&quot;Naive RAG&quot;, lambda q: naive(q, documents))</span>
+            <span className="block">score(&quot;Advanced: normalize + filter&quot;, lambda q: run([normalize, only_active], q, documents))</span>
+            <span className="block">print(&quot;Modular ablations (remove one module):&quot;)</span>
+            <span className="block">score(&quot;  without normalize&quot;, lambda q: run([only_active], q, documents))</span>
+            <span className="block">score(&quot;  without active filter&quot;, lambda q: run([normalize], q, documents))</span>
+            <span className="block">score(&quot;  both modules&quot;, lambda q: run([normalize, only_active], q, documents))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Naive RAG                          hit rate: 1 / 4</span>
+            <span className="block">Advanced: normalize + filter       hit rate: 4 / 4</span>
+            <span className="block">Modular ablations (remove one module):</span>
+            <span className="block">  without normalize                hit rate: 2 / 4</span>
+            <span className="block">  without active filter            hit rate: 3 / 4</span>
+            <span className="block">  both modules                     hit rate: 4 / 4</span>
+          </code>
+        </pre>
+      </div>
+      <div>Naive RAG answers one question out of four. Each module fixes a different failure: normalization rescues the questions that use abbreviations, and the active filter prevents the outdated vacation policy from winning. Removing either module lowers the score, which is exactly the experiment that modular design makes easy. Advanced and modular pipelines score the same here, because the benefit of modularity is flexibility and testing, not magic.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. What is the main difference between advanced and modular RAG?</div>
+        <div>
+          <input id="rag19-q1-a" name="rag19-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag19-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Modular RAG does not use retrieval</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It still retrieves; it organizes the steps differently.</div>
+        </div>
+        <div>
+          <input id="rag19-q1-b" name="rag19-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag19-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Modular RAG treats steps as swappable modules that can be routed, repeated or skipped</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Advanced RAG is mostly a fixed line of upgraded steps.</div>
+        </div>
+        <div>
+          <input id="rag19-q1-c" name="rag19-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag19-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Advanced RAG uses no models</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Both use models; the difference is structure.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. A team sees outdated policies in answers. Which addition addresses this most directly?</div>
+        <div>
+          <input id="rag19-q2-a" name="rag19-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag19-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) A larger embedding model</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Old documents would still be retrieved.</div>
+        </div>
+        <div>
+          <input id="rag19-q2-b" name="rag19-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag19-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Longer prompts</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> More text does not remove outdated chunks.</div>
+        </div>
+        <div>
+          <input id="rag19-q2-c" name="rag19-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag19-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) Metadata filtering with status and versioning</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It removes superseded documents before ranking.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. What is a sound way to evolve a RAG system?</div>
+        <div>
+          <input id="rag19-q3-a" name="rag19-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag19-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Start naive, measure failures, add one module at a time and keep it only if it helps</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Evidence should guide every addition.</div>
+        </div>
+        <div>
+          <input id="rag19-q3-b" name="rag19-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag19-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Add every known technique at the start</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That adds cost and hides which parts help.</div>
+        </div>
+        <div>
+          <input id="rag19-q3-c" name="rag19-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag19-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Never add anything beyond the first version</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Measured failures justify targeted upgrades.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Naive RAG indexes, retrieves and generates in a straight line and is the baseline for every improvement.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Naive RAG fails on poor queries, noisy or outdated chunks, weak ranking, exact terms, multi-fact questions and unsupported answers.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Advanced RAG upgrades the phases before, during and after retrieval.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Modular RAG builds the system from swappable modules arranged linearly, conditionally, in loops or in parallel.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Modules make ablation tests possible: remove one and measure the loss.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Add complexity only in response to measured failures, since each module costs latency and money.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Match the architecture to the situation: simple for clean small data, modular for varied questions and sources.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">The three generations are less a ladder to climb than a toolbox to grow into. The right design is the simplest one that meets your quality goals on real questions, and the habit of measuring each change is what lets you stop at the right place.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Naive baseline → Measure failures → Add targeted modules → Orchestrate → Re-measure</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Corrective, Self and Adaptive RAG. You will study RAG systems that check their own retrieval and answers: corrective RAG, self-reflective RAG, adaptive routing and retry loops.</div>
+    </div>
+  </section>
+</div>

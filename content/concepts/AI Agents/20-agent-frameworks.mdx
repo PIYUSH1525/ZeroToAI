@@ -1,0 +1,435 @@
+---
+title: "Agent Frameworks"
+slug: "20-agent-frameworks"
+order: 20
+category: "AI Agents"
+subcategory: "Frameworks"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Understand why agent frameworks exist, what they provide (graphs, state, tools, checkpoints, tracing), how LangChain and LangGraph and other popular frameworks fit in, and how to choose between a framework and a custom implementation."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> An <strong className="text-white">agent framework</strong> packages the parts you have been writing by hand: the loop, tools, state, workflows, memory, checkpoints and tracing. The core idea is always a <strong className="text-white">graph of steps with shared state</strong>. Whether to use a framework or build your own depends on your needs.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why Frameworks Exist
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Every agent project needs the same building blocks: calling a model, defining tools, running the loop, keeping state, handling errors and recording traces. Writing all of it again for each project is slow and error-prone. <strong className="text-white">Frameworks</strong> provide these parts ready-made.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Building block</th>
+              <th className="px-5 py-3">What you would write by hand</th>
+              <th className="px-5 py-3">What a framework offers</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Model access</td><td className="px-5 py-3">Code for each provider</td><td className="px-5 py-3">One interface for many providers</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Tools</td><td className="px-5 py-3">Schemas and a registry</td><td className="px-5 py-3">Decorators and ready-made integrations</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Loop and workflow</td><td className="px-5 py-3">Your own while loop</td><td className="px-5 py-3">Graphs, edges and prebuilt agent patterns</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">State and memory</td><td className="px-5 py-3">Dictionaries and files</td><td className="px-5 py-3">State objects, storage and checkpointing</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Observability</td><td className="px-5 py-3">Print statements</td><td className="px-5 py-3">Built-in tracing and debugging tools</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Human approval</td><td className="px-5 py-3">Custom pause logic</td><td className="px-5 py-3">Interrupt and resume features</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Remember:</strong> A framework does not make an agent smarter. It saves you <strong className="text-white">plumbing</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: LangChain Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">LangChain</strong> is a widely used toolkit of components for LLM applications: model wrappers, prompt templates, document loaders, vector store connections, tool definitions and ready-made agent constructors. Its strength is the huge number of <strong className="text-white">integrations</strong>.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Good to know:</strong> Agent frameworks change quickly. Function names and recommended patterns are updated often, so always check the current documentation and not old tutorials.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Typical use</div>
+        <div className="text-sm leading-relaxed text-slate-300">Quickly connect a model to many tools and data sources, and get a working agent in a few lines.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: LangGraph and Graph-Based Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">LangGraph</strong> models an agent as a <strong className="text-white">graph</strong>: nodes are steps (call the model, run a tool, check a result), edges say which step comes next, and a <strong className="text-white">shared state</strong> flows through the graph. Conditional edges choose the next node from the state, which allows loops and branches.
+      </div>
+      <div>
+        The code in this lesson builds a tiny graph engine in about twenty lines. Nodes return updates that are <strong className="text-white">merged into the state</strong>, a conditional edge decides whether to loop or end, and a step limit protects against endless runs.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Why graphs are popular:</strong> They make control flow <strong className="text-white">explicit</strong>: you can draw the agent, test each node, add checkpoints between nodes, pause for a human, and resume. This matches the workflow and state machine lesson.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Other Agent Frameworks
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Many frameworks exist, and each makes different trade-offs. Some well-known examples:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Style</th>
+              <th className="px-5 py-3">Examples</th>
+              <th className="px-5 py-3">Idea</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Graph and workflow based</td><td className="px-5 py-3">LangGraph and similar tools</td><td className="px-5 py-3">Explicit nodes, edges and state</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Role-based multi-agent teams</td><td className="px-5 py-3">CrewAI, AutoGen and similar</td><td className="px-5 py-3">Define agents with roles and let them collaborate</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Provider SDKs</td><td className="px-5 py-3">The agent SDKs from model providers</td><td className="px-5 py-3">A thin, official layer around that provider&apos;s tool-calling</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Data and retrieval centered</td><td className="px-5 py-3">LlamaIndex and similar</td><td className="px-5 py-3">Strong tools for documents and RAG</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Lightweight and code-first</td><td className="px-5 py-3">smolagents, Pydantic AI and similar</td><td className="px-5 py-3">Minimal abstractions, plain Python</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Note:</strong> This is a snapshot. The landscape changes fast, so treat the list as examples of styles, not as a ranking.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Framework vs. Custom Implementation
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Question</th>
+              <th className="px-5 py-3">Framework</th>
+              <th className="px-5 py-3">Custom code</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Speed to first prototype</td><td className="px-5 py-3">Fast</td><td className="px-5 py-3">Slower</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Control and transparency</td><td className="px-5 py-3">Less, because of abstractions</td><td className="px-5 py-3">Full</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Learning curve</td><td className="px-5 py-3">Learn the framework&apos;s concepts</td><td className="px-5 py-3">Learn the basics deeply</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Debugging</td><td className="px-5 py-3">Can be hard behind layers</td><td className="px-5 py-3">Direct</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Features like tracing and checkpoints</td><td className="px-5 py-3">Built in</td><td className="px-5 py-3">You build them</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Risk of change</td><td className="px-5 py-3">API changes and lock-in</td><td className="px-5 py-3">Your own maintenance</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Practical advice:</strong> Understand the <strong className="text-white">basic loop first</strong> (this series). Prototype with a framework if it speeds you up. If it gets in your way, a small custom loop is perfectly fine, because the core is only a few dozen lines.
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Avoid:</strong> Adopting a heavy framework before you know what you need. Start simple, and add structure when the problems appear.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: A Graph and a Plain Loop Give the Same Result
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure compares the graph-based version of the agent from the code with the hand-written loop, then lists what frameworks add on top.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-teal-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-teal-300">Part 1 · The Same Agent Two Ways</span>
+        <span className="text-xs text-slate-400">Identical result</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Graph framework</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Nodes and edges</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">plan node</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">act node, loops while steps are left</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Conditional edge ends the run</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Trace: plan, act, act, act</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Hand-written loop</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Plain Python</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Call plan once</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">while steps are left, call act</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Same final log: True</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · What a Framework Adds</span>
+        <span className="text-xs text-slate-400">Beyond the loop</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Checkpoints</div>
+          <div className="mt-2 text-lg font-bold text-white">Resume</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Save state between nodes.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Streaming</div>
+          <div className="mt-2 text-lg font-bold text-white">Live output</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Show steps as they happen.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Tracing</div>
+          <div className="mt-2 text-lg font-bold text-white">See inside</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Record every call.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Approval</div>
+          <div className="mt-2 text-lg font-bold text-white">Pause</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Wait for a human.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-teal-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see when custom code is the better choice</span>
+          <span className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs text-teal-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If your agent is a simple loop with a few tools, a framework may add more concepts than it removes. Custom code stays transparent, and you control exactly what happens.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows that the two versions produce the same result. Part 2 lists the extras a framework provides. Open the bar to see when custom code wins.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Tiny Graph Engine Built From Scratch
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script builds a small graph engine with nodes, edges, conditional edges, state merging and a step limit, runs a plan and act agent on it, and shows that a plain loop gives the identical result.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">mini_graph_framework.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># What a framework gives you: a small graph engine (nodes, edges, conditional edges, state merging)</span>
+            <span className="block text-cyan-300">class Graph:</span>
+            <span className="block text-cyan-300">    def &#95;&#95;init&#95;&#95;(self):</span>
+            <span className="block">        self.nodes, self.edges, self.routers = &#123;&#125;, &#123;&#125;, &#123;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">    def add&#95;node(self, name, fn):</span>
+            <span className="block">        self.nodes&#91;name&#93; = fn</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">    def add&#95;edge(self, source, target):</span>
+            <span className="block">        self.edges&#91;source&#93; = target</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">    def add&#95;conditional&#95;edges(self, source, router):</span>
+            <span className="block">        self.routers&#91;source&#93; = router</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">    def run(self, start, state, max&#95;steps=20):</span>
+            <span className="block">        node, trace = start, &#91;&#93;</span>
+            <span className="block">        for &#95; in range(max&#95;steps):                       # a built-in step limit</span>
+            <span className="block">            if node == &quot;END&quot;:</span>
+            <span className="block">                break</span>
+            <span className="block">            update = self.nodes&#91;node&#93;(state)</span>
+            <span className="block">            state = &#123;&#42;&#42;state, &#42;&#42;update&#125;                  # merge what the node returned into the state</span>
+            <span className="block">            trace.append(node)</span>
+            <span className="block">            node = self.routers&#91;node&#93;(state) if node in self.routers else self.edges&#91;node&#93;</span>
+            <span className="block">        return state, trace</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def plan(state):</span>
+            <span className="block">    return &#123;&quot;steps&#95;left&quot;: 3, &quot;log&quot;: state&#91;&quot;log&quot;&#93; + &#91;&quot;planned 3 steps&quot;&#93;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def act(state):</span>
+            <span className="block">    left = state&#91;&quot;steps&#95;left&quot;&#93; - 1</span>
+            <span className="block">    return &#123;&quot;steps&#95;left&quot;: left, &quot;log&quot;: state&#91;&quot;log&quot;&#93; + &#91;&quot;did a step, &quot; + str(left) + &quot; left&quot;&#93;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">graph = Graph()</span>
+            <span className="block">graph.add&#95;node(&quot;plan&quot;, plan)</span>
+            <span className="block">graph.add&#95;node(&quot;act&quot;, act)</span>
+            <span className="block">graph.add&#95;edge(&quot;plan&quot;, &quot;act&quot;)</span>
+            <span className="block">graph.add&#95;conditional&#95;edges(&quot;act&quot;, lambda s: &quot;END&quot; if s&#91;&quot;steps&#95;left&quot;&#93; == 0 else &quot;act&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">final&#95;state, trace = graph.run(&quot;plan&quot;, &#123;&quot;log&quot;: &#91;&#93;&#125;)</span>
+            <span className="block">print(&quot;Framework run trace:&quot;, trace)</span>
+            <span className="block">print(&quot;Final log:&quot;, final&#95;state&#91;&quot;log&quot;&#93;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># The same behavior written by hand as a plain loop</span>
+            <span className="block text-cyan-300">def custom&#95;loop():</span>
+            <span className="block">    state = &#123;&quot;log&quot;: &#91;&#93;&#125;</span>
+            <span className="block">    state = &#123;&#42;&#42;state, &#42;&#42;plan(state)&#125;</span>
+            <span className="block">    while state&#91;&quot;steps&#95;left&quot;&#93; &gt; 0:</span>
+            <span className="block">        state = &#123;&#42;&#42;state, &#42;&#42;act(state)&#125;</span>
+            <span className="block">    return state</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Same result with a hand-written loop:&quot;, custom&#95;loop()&#91;&quot;log&quot;&#93; == final&#95;state&#91;&quot;log&quot;&#93;)</span>
+            <span className="block">print(&quot;What the framework adds on top: checkpoints, streaming, tracing, ready-made tools, human approval pauses.&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Framework run trace: &#91;&apos;plan&apos;, &apos;act&apos;, &apos;act&apos;, &apos;act&apos;&#93;</div>
+          <div>Final log: &#91;&apos;planned 3 steps&apos;, &apos;did a step, 2 left&apos;, &apos;did a step, 1 left&apos;, &apos;did a step, 0 left&apos;&#93;</div>
+          <div>Same result with a hand-written loop: True</div>
+          <div>What the framework adds on top: checkpoints, streaming, tracing, ready-made tools, human approval pauses.</div>
+        </div>
+      </div>
+      <div>
+        The graph runs plan once and act three times, then ends through the conditional edge. The hand-written loop gives exactly the same log. The framework&apos;s value is the extras around this core, such as checkpoints, tracing and approval pauses, not the loop itself.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What do agent frameworks mainly provide?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag20-q1-a" name="ag20-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag20-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Ready-made building blocks such as the loop, tools, state, tracing and checkpoints</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> They save you plumbing, not intelligence.</div>
+          </div>
+          <div>
+            <input id="ag20-q1-b" name="ag20-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag20-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) A guarantee that the agent is correct</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Frameworks do not guarantee correctness.</div>
+          </div>
+          <div>
+            <input id="ag20-q1-c" name="ag20-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag20-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) A smarter model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The model is unchanged.</div>
+          </div>
+          <div>
+            <input id="ag20-q1-d" name="ag20-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag20-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Free GPUs</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Frameworks do not provide hardware.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: In a graph-based agent, what does a conditional edge do?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag20-q2-a" name="ag20-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag20-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Chooses the next node based on the current state</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It enables loops and branches.</div>
+          </div>
+          <div>
+            <input id="ag20-q2-b" name="ag20-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag20-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Deletes the state</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> State is kept.</div>
+          </div>
+          <div>
+            <input id="ag20-q2-c" name="ag20-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag20-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Trains the model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> No training happens.</div>
+          </div>
+          <div>
+            <input id="ag20-q2-d" name="ag20-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag20-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Removes tools</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Tools are unaffected.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Frameworks package the loop, tools, state, workflows, memory, checkpoints and tracing.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>LangChain offers many components and integrations. LangGraph models agents as graphs with shared state.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Other frameworks focus on roles, provider SDKs, data and retrieval, or minimal code.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Frameworks change fast, so check current documentation.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>The core of an agent is small. A framework adds plumbing and extras.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Learn the basic loop first, then choose a framework or custom code based on your needs.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Frameworks in One Line</div>
+        <div className="text-center font-bold text-white">
+          Same core idea (a graph of steps with state), different amounts of plumbing
+        </div>
+      </div>
+      <div>
+        Knowing how to build the core by hand makes you a better user of any framework.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Frameworks need a standard way to connect to tools and data. In <strong className="text-white">Model Context Protocol (MCP)</strong> you will learn the open protocol that standardizes those connections.
+      </div>
+    </div>
+  </section>
+
+</div>

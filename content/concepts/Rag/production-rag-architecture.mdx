@@ -1,0 +1,393 @@
+---
+title: "Production RAG Architecture"
+slug: "production-rag-architecture"
+order: 25
+category: "RAG"
+subcategory: "Production"
+difficulty: "Advanced"
+readTime: "25 min"
+description: "Design a production RAG backend: services and APIs, vector database scaling, batch, real-time and incremental ingestion, updates, deletions, freshness, versioned knowledge bases and fallback strategies."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> A notebook prototype and a production RAG service differ in everything except the idea. Production adds <strong className="text-white">services and APIs, scaling, continuous ingestion, versioning, and failure handling</strong>. The questions change from does it work to does it keep working: when a document changes, when the database is slow, when traffic doubles, or when a dependency is down.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Intermediate: The Backend at a Glance</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A production RAG system is a small set of cooperating services, split along the offline and online lines you learned in the architecture lesson.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Component</th><th className="px-4 py-3">Role</th><th className="px-4 py-3">Runs</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Ingestion pipeline</td><td className="px-4 py-3">Loads, cleans, chunks and embeds documents</td><td className="px-4 py-3">Offline, continuous or scheduled</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Queue and workers</td><td className="px-4 py-3">Spread embedding work and absorb spikes</td><td className="px-4 py-3">Offline</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Vector database and metadata store</td><td className="px-4 py-3">Hold vectors, chunk text and filters</td><td className="px-4 py-3">Both</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Query API and orchestrator</td><td className="px-4 py-3">Run the transformation, retrieval and generation steps</td><td className="px-4 py-3">Online</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Model gateway</td><td className="px-4 py-3">Calls the language model with limits and retries</td><td className="px-4 py-3">Online</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Cache and observability</td><td className="px-4 py-3">Speed up repeated work and show what happens</td><td className="px-4 py-3">Both</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>The query API is usually a simple contract: it receives the question, the user identity and optional filters, and returns the answer, the citations and a trace id for debugging. Keep services stateless where you can, so that more copies can run when load grows.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: Scaling the Vector Database</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Vector search is memory and compute hungry. Plan capacity before it surprises you. A first estimate of raw vector memory is the number of vectors times the dimension times the bytes per number, plus index overhead that depends on the index type.</div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Replicas</div>
+          <div className="text-sm leading-7">Copies of the index that answer queries in parallel. They raise read throughput and availability.</div>
+        </div>
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Sharding</div>
+          <div className="text-sm leading-7">Splitting the data across machines when it no longer fits on one. Queries are sent to all shards and the results are merged.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Managed or self-hosted</div>
+          <div className="text-sm leading-7">A managed service removes operations work. Self-hosting gives control over data and cost, but needs skills and on-call time.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Also plan for:</strong> backups, index rebuild time, and what happens to latency while a rebuild or a heavy ingestion is running. Separate heavy writes from live reads where possible.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Batch, Real-Time and Incremental Ingestion</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>How new knowledge reaches the index is a design choice with three common answers.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Mode</th><th className="px-4 py-3">How it works</th><th className="px-4 py-3">Good for</th><th className="px-4 py-3">Downside</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Batch</td><td className="px-4 py-3">Re-process everything or a large set on a schedule</td><td className="px-4 py-3">Static or slowly changing sources</td><td className="px-4 py-3">Stale between runs, wasteful</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Real-time (event driven)</td><td className="px-4 py-3">Process each document change as it happens</td><td className="px-4 py-3">Fast-changing data</td><td className="px-4 py-3">More moving parts</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Incremental</td><td className="px-4 py-3">Detect what changed with fingerprints and process only that</td><td className="px-4 py-3">Almost everything</td><td className="px-4 py-3">Needs reliable change detection</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Make it safe to repeat:</strong> ingestion jobs fail and restart. Make them <strong className="text-white">idempotent</strong>, so running the same job twice gives the same result, and send repeatedly failing documents to a separate queue for inspection instead of blocking everything.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Updates, Deletions, Freshness and Versioned Knowledge Bases</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div><strong className="text-white">Updates</strong> must replace the old chunks of a document, not add to them, or both versions will be retrieved. <strong className="text-white">Deletions</strong> must remove every chunk of the document, which matters for compliance when content has to disappear on request.</div>
+      <div><strong className="text-white">Freshness</strong> is the delay between a change in the source and the new content being searchable. Define a target, such as new documents searchable within 15 minutes, measure it, and alert when it is missed.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Snapshot.</strong> Treat each published state of the knowledge base as a named version.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Build beside.</strong> Create a new index version next to the live one instead of editing the live index.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Test.</strong> Run the golden set against the new version.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Switch.</strong> Point the service at the new version, for example by moving an alias.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Roll back.</strong> Keep the previous version available so you can switch back in seconds.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Reliability and Fallback Strategies</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Every dependency can fail: the vector database, the embedding service, the language model. A resilient system expects this and <strong className="text-white">degrades gracefully</strong> instead of showing an error.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Technique</th><th className="px-4 py-3">What it does</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Timeouts</td><td className="px-4 py-3">Never wait forever for a slow dependency</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Retries with backoff</td><td className="px-4 py-3">Try again after growing delays, for transient errors</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Circuit breaker</td><td className="px-4 py-3">Stop calling a failing service for a while so it can recover</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Rate limits and quotas</td><td className="px-4 py-3">Protect your service and your bill</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Fallback chain</td><td className="px-4 py-3">Primary retrieval, then keyword search, then a cached answer, then an honest message</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5"><strong className="text-cyan-300">Decide ahead of time:</strong> what is acceptable when something fails. A slightly less relevant answer from keyword search is usually better than an error page, but for high-stakes domains an honest we cannot answer right now may be better than a degraded guess.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: The Production Map</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A draws the offline and online paths. Panel B shows what the ingestion code below decided for each document. Panel C is a failure explorer.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · Two Paths, One Store</span><span className="text-xs text-slate-400">Heavy work stays offline</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Sources</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Queue</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Parse and chunk</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Embed workers</span><span className="text-blue-400">→</span><span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-amber-200">Vector database</span></div>
+          <div className="text-center text-xs text-slate-300">↑ the same store is read by the online path ↓</div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">User</span><span className="text-violet-400">→</span><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Query API</span><span className="text-violet-400">→</span><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Retrieve</span><span className="text-violet-400">→</span><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Model gateway</span><span className="text-violet-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Answer with citations</span></div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · Incremental Ingestion</span><span className="text-xs text-slate-400">From the code in section 7</span></div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-white/[0.04] text-slate-300">
+                <tr><th className="px-4 py-3 text-center">Document</th><th className="px-4 py-3 text-center">Day 40 source</th><th className="px-4 py-3 text-center">Action</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300">
+                <tr><td className="px-4 py-3 text-center">a</td><td className="px-4 py-3 text-center">unchanged</td><td className="px-4 py-3 text-center text-emerald-300">skip</td></tr>
+                <tr><td className="px-4 py-3 text-center">b</td><td className="px-4 py-3 text-center">text changed</td><td className="px-4 py-3 text-center text-amber-300">update to version 2</td></tr>
+                <tr><td className="px-4 py-3 text-center">c</td><td className="px-4 py-3 text-center">gone from the source</td><td className="px-4 py-3 text-center text-rose-300">delete</td></tr>
+                <tr><td className="px-4 py-3 text-center">d</td><td className="px-4 py-3 text-center">new</td><td className="px-4 py-3 text-center text-emerald-300">add</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="text-center text-xs text-slate-300">Document a is flagged stale only because it is 39 days old, which exceeds the 30-day freshness rule</div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Failure Explorer</span><span className="text-xs text-slate-400">Click a failure to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c25-fail-0" name="c25-fail" type="radio" className="peer sr-only" />
+              <label htmlFor="c25-fail-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">The vector database times out</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-rose-300">Respond with:</strong> Fallback to keyword search</div>
+                <div><strong className="text-rose-300">Log:</strong> The failure, and the fallback used</div>
+              </div>
+            </div>
+            <div>
+              <input id="c25-fail-1" name="c25-fail" type="radio" className="peer sr-only" />
+              <label htmlFor="c25-fail-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-amber-400/50 peer-checked:bg-amber-500/10 peer-checked:text-amber-300">A bad index version went live</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-amber-300">Respond with:</strong> Switch the alias back to the previous version</div>
+                <div><strong className="text-amber-300">Prevent:</strong> Test every new version on the golden set</div>
+              </div>
+            </div>
+            <div>
+              <input id="c25-fail-2" name="c25-fail" type="radio" className="peer sr-only" />
+              <label htmlFor="c25-fail-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">Ingestion crashed halfway</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Respond with:</strong> Rerun, since the job is idempotent</div>
+                <div><strong className="text-orange-300">Prevent:</strong> Dead-letter queue for repeat failures</div>
+              </div>
+            </div>
+            <div>
+              <input id="c25-fail-3" name="c25-fail" type="radio" className="peer sr-only" />
+              <label htmlFor="c25-fail-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">A document must be erased</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Respond with:</strong> Delete all its chunks and cached answers</div>
+                <div><strong className="text-violet-300">Verify:</strong> Search for it afterward</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why the new index is built beside the old one</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">Editing the live index risks serving half-updated results. Building a separate version lets you test it and switch in one step, and gives you an instant rollback if something is wrong.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the map, Panel B shows the ingestion logic at work, and Panel C turns common incidents into prepared responses.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Incremental Ingestion, Snapshots, Freshness and Fallback</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program keeps a small index of document ids with fingerprint, version and update day. An ingestion function compares each incoming document with the index and decides to add, update, skip or delete. After each run a snapshot of the index is saved. A freshness report flags documents older than 30 days, a rollback restores an earlier snapshot, and a fallback chain serves a query from keyword search when the primary retrieval raises a timeout.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">production_patterns.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import hashlib</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def fingerprint(text):</span>
+            <span className="block">    return hashlib.sha256(text.encode(&quot;utf-8&quot;)).hexdigest()[:6]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">index = dict()</span>
+            <span className="block">snapshots = dict()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def ingest(source_docs, today):</span>
+            <span className="block">    actions = []</span>
+            <span className="block">    for doc_id, text in source_docs:</span>
+            <span className="block">        fp = fingerprint(text)</span>
+            <span className="block">        if doc_id not in index:</span>
+            <span className="block">            index[doc_id] = (fp, 1, today)</span>
+            <span className="block">            actions.append(&quot;add &quot; + doc_id)</span>
+            <span className="block">        elif index[doc_id][0] != fp:</span>
+            <span className="block">            index[doc_id] = (fp, index[doc_id][1] + 1, today)</span>
+            <span className="block">            actions.append(&quot;update &quot; + doc_id)</span>
+            <span className="block">        else:</span>
+            <span className="block">            actions.append(&quot;skip &quot; + doc_id)</span>
+            <span className="block">    present = set(doc_id for doc_id, text in source_docs)</span>
+            <span className="block">    for doc_id in list(index):</span>
+            <span className="block">        if doc_id not in present:</span>
+            <span className="block">            del index[doc_id]</span>
+            <span className="block">            actions.append(&quot;delete &quot; + doc_id)</span>
+            <span className="block">    return actions</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def take_snapshot(name):</span>
+            <span className="block">    snapshots[name] = dict(index)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Day 1 :&quot;, ingest([(&quot;a&quot;, &quot;refund policy v1&quot;), (&quot;b&quot;, &quot;shipping times&quot;), (&quot;c&quot;, &quot;old faq&quot;)], 1))</span>
+            <span className="block">take_snapshot(&quot;kb-1&quot;)</span>
+            <span className="block">print(&quot;Day 40:&quot;, ingest([(&quot;a&quot;, &quot;refund policy v1&quot;), (&quot;b&quot;, &quot;shipping times updated&quot;), (&quot;d&quot;, &quot;new support guide&quot;)], 40))</span>
+            <span className="block">take_snapshot(&quot;kb-2&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">for doc_id in sorted(index):</span>
+            <span className="block">    fp, version, updated = index[doc_id]</span>
+            <span className="block">    age = 40 - updated</span>
+            <span className="block">    flag = &quot;STALE&quot; if age &gt; 30 else &quot;fresh&quot;</span>
+            <span className="block">    print(&quot;doc&quot;, doc_id, &quot;| version&quot;, version, &quot;| age&quot;, age, &quot;days |&quot;, flag)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">print(&quot;Snapshots:&quot;, sorted(snapshots), &quot;| kb-1 had&quot;, len(snapshots[&quot;kb-1&quot;]), &quot;docs, kb-2 has&quot;, len(snapshots[&quot;kb-2&quot;]))</span>
+            <span className="block">index.clear()</span>
+            <span className="block">index.update(snapshots[&quot;kb-1&quot;])</span>
+            <span className="block">print(&quot;Rolled back to kb-1, live index now has:&quot;, sorted(index))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block text-cyan-300">def primary_search(query):</span>
+            <span className="block">    raise TimeoutError(&quot;vector database timed out&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def keyword_search(query):</span>
+            <span className="block">    return [&quot;keyword result for: &quot; + query]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def answer(query):</span>
+            <span className="block">    for name, search in [(&quot;primary&quot;, primary_search), (&quot;keyword fallback&quot;, keyword_search)]:</span>
+            <span className="block">        try:</span>
+            <span className="block">            return name, search(query)</span>
+            <span className="block">        except Exception as error:</span>
+            <span className="block">            print(&quot;  &quot;, name, &quot;failed:&quot;, error)</span>
+            <span className="block">    return &quot;none&quot;, [&quot;Sorry, the knowledge base is unavailable.&quot;]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Served by:&quot;, answer(&quot;refund policy&quot;))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Day 1 : [&apos;add a&apos;, &apos;add b&apos;, &apos;add c&apos;]</span>
+            <span className="block">Day 40: [&apos;skip a&apos;, &apos;update b&apos;, &apos;add d&apos;, &apos;delete c&apos;]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">doc a | version 1 | age 39 days | STALE</span>
+            <span className="block">doc b | version 2 | age 0 days | fresh</span>
+            <span className="block">doc d | version 1 | age 0 days | fresh</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Snapshots: [&apos;kb-1&apos;, &apos;kb-2&apos;] | kb-1 had 3 docs, kb-2 has 3</span>
+            <span className="block">Rolled back to kb-1, live index now has: [&apos;a&apos;, &apos;b&apos;, &apos;c&apos;]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">   primary failed: vector database timed out</span>
+            <span className="block">Served by: (&apos;keyword fallback&apos;, [&apos;keyword result for: refund policy&apos;])</span>
+          </code>
+        </pre>
+      </div>
+      <div>On day 40 the unchanged document is skipped without any embedding work, the changed one becomes version 2, the missing one is deleted and the new one is added, which is exactly the incremental behavior described in the lesson. The freshness report flags the document that has not changed for 39 days; whether that matters depends on the document type. The rollback restores the earlier snapshot in one step. Finally, the primary search fails with a timeout and the user is still served by the fallback. Real systems add retries, metrics and persistent storage, but the decisions are the same.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. Why should ingestion jobs be idempotent?</div>
+        <div>
+          <input id="rag25-q1-a" name="rag25-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag25-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) To make jobs run faster</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Idempotency is about safety, not speed.</div>
+        </div>
+        <div>
+          <input id="rag25-q1-b" name="rag25-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag25-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Jobs fail and restart, and running the same job twice must not create duplicates or damage</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Idempotency makes retries safe.</div>
+        </div>
+        <div>
+          <input id="rag25-q1-c" name="rag25-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag25-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Because documents never change</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Documents change; that is why safe reruns matter.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. What is the safest way to deploy a rebuilt knowledge base?</div>
+        <div>
+          <input id="rag25-q2-a" name="rag25-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag25-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Edit the live index in place during peak hours</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That risks serving inconsistent results.</div>
+        </div>
+        <div>
+          <input id="rag25-q2-b" name="rag25-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag25-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Delete the old index first</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That removes your rollback option.</div>
+        </div>
+        <div>
+          <input id="rag25-q2-c" name="rag25-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag25-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) Build a new version beside the live one, test it, then switch, keeping the old one for rollback</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> This avoids half-updated results.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. The vector database times out. What should a resilient system do?</div>
+        <div>
+          <input id="rag25-q3-a" name="rag25-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag25-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Fall back to a simpler retrieval method or give an honest message instead of crashing</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Graceful degradation keeps the service useful.</div>
+        </div>
+        <div>
+          <input id="rag25-q3-b" name="rag25-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag25-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Return a blank page</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A failure should be handled, not exposed.</div>
+        </div>
+        <div>
+          <input id="rag25-q3-c" name="rag25-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag25-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Retry forever without a limit</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Unlimited retries hurt both users and the failing service.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>A production RAG backend separates offline ingestion from the online query path and uses stateless services where possible.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Scale the vector database with replicas for reads and shards for size, and plan for memory, backups and rebuilds.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Incremental ingestion with fingerprints processes only what changed; make jobs idempotent and use a dead-letter queue.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Updates must replace old chunks and deletions must remove every chunk of a document.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Set and monitor a freshness target for how quickly changes become searchable.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Version the knowledge base: build beside, test, switch with an alias, and keep a rollback.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Plan fallbacks: timeouts, retries with backoff, circuit breakers and a degrade-gracefully chain.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Production RAG is mostly the discipline of keeping a good prototype good over time. The same retrieval and generation ideas apply, wrapped in services that can scale, update safely, be rolled back and survive failures of their own parts.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Ingest incrementally → Version the knowledge base → Serve reliably → Fall back gracefully</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> RAG Observability, Security and Governance. You will learn how to log, trace and monitor a RAG system, defend against prompt injection and data leakage, and keep a trustworthy record of what the system knows and who can see it.</div>
+    </div>
+  </section>
+</div>

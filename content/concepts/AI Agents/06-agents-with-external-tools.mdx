@@ -1,0 +1,451 @@
+---
+title: "Agents with External Tools"
+slug: "06-agents-with-external-tools"
+order: 6
+category: "AI Agents"
+subcategory: "Single Agents"
+difficulty: "Intermediate"
+readTime: "30 min"
+description: "Connect agents to the outside world: APIs, databases, web search, code execution, file operations and external services, with safe designs that limit what each tool can do."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> External tools are how an agent <strong className="text-white">touches the real world</strong>: data, files, code and services. Each one needs the same design rule: give it <strong className="text-white">only the power the task needs</strong>, and put <strong className="text-white">checks</strong> in code, not in the prompt.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why Agents Need External Tools
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A model alone knows only its training data and can only write text. External tools give it <strong className="text-white">fresh data</strong>, <strong className="text-white">exact computation</strong> and the ability to <strong className="text-white">act</strong>. The six most common kinds are:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Tool kind</th>
+              <th className="px-5 py-3">What it gives the agent</th>
+              <th className="px-5 py-3">Main risk</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">APIs</td><td className="px-5 py-3">Live data and services such as weather or payments</td><td className="px-5 py-3">Leaked keys, runaway calls</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Databases</td><td className="px-5 py-3">Business data</td><td className="px-5 py-3">Data leaks, destructive queries</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Web search</td><td className="px-5 py-3">Fresh public information</td><td className="px-5 py-3">Wrong or hostile content</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Code execution</td><td className="px-5 py-3">Exact math, data work, plots</td><td className="px-5 py-3">Running harmful code</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">File operations</td><td className="px-5 py-3">Reading and writing documents</td><td className="px-5 py-3">Reading or overwriting the wrong files</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">External services</td><td className="px-5 py-3">Email, calendar, tickets, chat</td><td className="px-5 py-3">Real-world side effects</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Design rule:</strong> The more a tool can <strong className="text-white">change</strong> in the world, the more checks it needs.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: APIs and Databases
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">APIs</strong> are the most general tool: a wrapper function sends an HTTP request and returns only the useful fields. Keep the API key on the server, hide it from the model and shape the output small.
+      </div>
+      <div>
+        A <strong className="text-white">database tool</strong> lets the agent answer questions about business data. The safest design is <strong className="text-white">read-only</strong>: accept only a single SELECT statement, run it with a database user that has no write rights, and limit the number of rows returned.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">In the code:</strong> The query tool accepts a SELECT and rejects DROP TABLE. The best protection is also a <strong className="text-white">read-only database account</strong>, because code checks can have gaps.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Web Search and Code Execution
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Web search</strong> lets the agent find fresh information. Treat results as <strong className="text-white">untrusted</strong>: pages can be wrong, outdated, or contain hidden instructions. Return short snippets with their sources so the agent can cite them.
+      </div>
+      <div>
+        <strong className="text-white">Code execution</strong> is powerful because the model can write exact calculations instead of guessing them. It is also dangerous, so it must run in a <strong className="text-white">sandbox</strong>: a separate process or container with a time limit, no secrets, limited memory and often no network.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Sandbox control</th>
+              <th className="px-5 py-3">Why</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Separate process or container</td><td className="px-5 py-3">A crash or attack cannot reach the main app</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Time and memory limit</td><td className="px-5 py-3">Stops infinite loops</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">No access to secrets</td><td className="px-5 py-3">Nothing valuable to steal</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Network off by default</td><td className="px-5 py-3">Prevents data leaving</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Capture output only</td><td className="px-5 py-3">The agent gets results, not control</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: File Operations and External Services
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">File tools</strong> let the agent read and write documents. Confine them to <strong className="text-white">one working folder</strong>, resolve paths before checking them (so ../ tricks fail), and prefer <strong className="text-white">new files</strong> over overwriting existing ones.
+      </div>
+      <div>
+        <strong className="text-white">External services</strong> such as email, calendars and ticket systems cause <strong className="text-white">real side effects</strong> that cannot be undone. Use an <strong className="text-white">approval gate</strong>: the agent can <em>prepare</em> an email, but a human must approve sending it.
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Golden rule:</strong> Reading is cheap and reversible. Writing, sending and paying are not. Put the strongest guards on the actions that cannot be undone.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Designing Safe Tool Sets
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Principle</th>
+              <th className="px-5 py-3">How to apply it</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Least privilege</td><td className="px-5 py-3">Give each tool the smallest permission that works, such as read-only access</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Validate in code</td><td className="px-5 py-3">Check names, arguments and values before running anything</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Sandbox risky tools</td><td className="px-5 py-3">Run code and untrusted work in isolation</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Approve irreversible actions</td><td className="px-5 py-3">Human approval for sending, paying and deleting</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Limit volume</td><td className="px-5 py-3">Row limits, file size limits and call-rate limits</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Log everything</td><td className="px-5 py-3">Record every tool call for debugging and audits</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Credentials</div>
+        <div className="text-sm leading-relaxed text-slate-300">Never put API keys or passwords in prompts or tool descriptions. Keep them in environment variables on the server, and give the agent a separate low-privilege key.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Six Tools and the Guard Each One Needs
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure groups the tool kinds by risk, then shows the four checks implemented in the code below.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-orange-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-orange-300">Part 1 · Six Tool Kinds and Their Guard</span>
+        <span className="text-xs text-slate-400">Match the guard to the risk</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Read tools</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">APIs, database, search</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Return only needed fields</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Read-only access, row limits</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Low risk with limits</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Compute tools</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Code execution</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Separate process, time limit</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">No secrets, network off</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Sandboxed</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Action tools</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Files, email, services</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Confined to one folder</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Human approval for sending</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Highest guard</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · Four Checks in the Code</span>
+        <span className="text-xs text-slate-400">Seen in the script</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Only SELECT</div>
+          <div className="mt-2 text-lg font-bold text-white">Database</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">DROP TABLE is rejected.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Folder fence</div>
+          <div className="mt-2 text-lg font-bold text-white">Files</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">A path outside the folder is rejected.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Time limit</div>
+          <div className="mt-2 text-lg font-bold text-white">Code</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Runs in a separate process.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Approval</div>
+          <div className="mt-2 text-lg font-bold text-white">Email</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Blocked until a human approves.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-orange-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why code checks are not enough alone</span>
+          <span className="rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">A check can have gaps, so defense comes in layers: a read-only database account, a sandbox for code, a folder with limited rights, and human approval for irreversible actions.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows that the guard grows with the risk. Part 2 maps four checks to the code. Open the bar to see why layered defenses matter.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Safe Database, File, Code, Search and Email Tools
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script builds five tools with safety checks: a read-only database query, a folder-confined file tool, a code runner in a separate process with a time limit, a web search stand-in, and an email tool that needs approval.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">external_tools.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import os, sqlite3, subprocess, sys, tempfile</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Database tool: read-only by design (a single SELECT only)</span>
+            <span className="block">db = sqlite3.connect(&quot;:memory:&quot;)</span>
+            <span className="block">db.execute(&quot;CREATE TABLE orders (id INTEGER, customer TEXT, total REAL)&quot;)</span>
+            <span className="block">db.executemany(&quot;INSERT INTO orders VALUES (?, ?, ?)&quot;, &#91;(1, &quot;Ana&quot;, 120.5), (2, &quot;Ben&quot;, 80.0), (3, &quot;Ana&quot;, 45.25)&#93;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def query&#95;database(sql):</span>
+            <span className="block">    cleaned = sql.strip().rstrip(&quot;;&quot;)</span>
+            <span className="block">    if not cleaned.lower().startswith(&quot;select&quot;) or &quot;;&quot; in cleaned:</span>
+            <span className="block">        return &#123;&quot;error&quot;: &quot;only a single SELECT is allowed&quot;&#125;</span>
+            <span className="block">    return &#123;&quot;rows&quot;: db.execute(cleaned).fetchall()&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(query&#95;database(&quot;SELECT customer, SUM(total) FROM orders GROUP BY customer&quot;))</span>
+            <span className="block">print(query&#95;database(&quot;DROP TABLE orders&quot;))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. File tool: confined to one folder</span>
+            <span className="block">WORKDIR = os.path.realpath(tempfile.mkdtemp())</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def file&#95;tool(action, name, text=&quot;&quot;):</span>
+            <span className="block">    path = os.path.realpath(os.path.join(WORKDIR, name))</span>
+            <span className="block">    if not path.startswith(WORKDIR + os.sep):</span>
+            <span className="block">        return &#123;&quot;error&quot;: &quot;path is outside the allowed folder&quot;&#125;</span>
+            <span className="block">    if action == &quot;write&quot;:</span>
+            <span className="block">        with open(path, &quot;w&quot;) as f:</span>
+            <span className="block">            f.write(text)</span>
+            <span className="block">        return &#123;&quot;ok&quot;: True&#125;</span>
+            <span className="block">    if action == &quot;read&quot;:</span>
+            <span className="block">        with open(path) as f:</span>
+            <span className="block">            return &#123;&quot;text&quot;: f.read()&#125;</span>
+            <span className="block">    return &#123;&quot;error&quot;: &quot;unknown action&quot;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(file&#95;tool(&quot;write&quot;, &quot;notes.txt&quot;, &quot;meeting at 5&quot;))</span>
+            <span className="block">print(file&#95;tool(&quot;read&quot;, &quot;notes.txt&quot;))</span>
+            <span className="block">print(file&#95;tool(&quot;read&quot;, &quot;../../etc/passwd&quot;))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Code execution tool: separate process with a time limit</span>
+            <span className="block text-cyan-300">def run&#95;code(code):</span>
+            <span className="block">    proc = subprocess.run(&#91;sys.executable, &quot;-I&quot;, &quot;-c&quot;, code&#93;, capture&#95;output=True, text=True, timeout=3)</span>
+            <span className="block">    last&#95;error = proc.stderr.strip().splitlines()&#91;-1&#93; if proc.stderr.strip() else &quot;&quot;</span>
+            <span className="block">    return &#123;&quot;stdout&quot;: proc.stdout.strip(), &quot;error&quot;: last&#95;error&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(run&#95;code(&quot;print(sum(range(1, 11)))&quot;))</span>
+            <span className="block">print(run&#95;code(&quot;print(1 / 0)&quot;))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 4. Web search and an external service that needs approval</span>
+            <span className="block text-cyan-300">def web&#95;search(query):</span>
+            <span className="block">    pages = &#123;&quot;python&quot;: &quot;Python is a popular programming language.&quot;, &quot;rag&quot;: &quot;RAG combines retrieval with generation.&quot;&#125;</span>
+            <span className="block">    return &#123;&quot;results&quot;: &#91;text for key, text in pages.items() if key in query.lower()&#93; or &#91;&quot;no results&quot;&#93;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def send&#95;email(to, body, approved=False):</span>
+            <span className="block">    if not approved:</span>
+            <span className="block">        return &#123;&quot;status&quot;: &quot;blocked&quot;, &quot;reason&quot;: &quot;a human must approve outgoing email&quot;&#125;</span>
+            <span className="block">    return &#123;&quot;status&quot;: &quot;sent&quot;, &quot;to&quot;: to&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(web&#95;search(&quot;what is RAG&quot;))</span>
+            <span className="block">print(send&#95;email(&quot;ana@example.com&quot;, &quot;Report ready&quot;))</span>
+            <span className="block">print(send&#95;email(&quot;ana@example.com&quot;, &quot;Report ready&quot;, approved=True))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>&#123;&apos;rows&apos;: &#91;(&apos;Ana&apos;, 165.75), (&apos;Ben&apos;, 80.0)&#93;&#125;</div>
+          <div>&#123;&apos;error&apos;: &apos;only a single SELECT is allowed&apos;&#125;</div>
+          <div>&#123;&apos;ok&apos;: True&#125;</div>
+          <div>&#123;&apos;text&apos;: &apos;meeting at 5&apos;&#125;</div>
+          <div>&#123;&apos;error&apos;: &apos;path is outside the allowed folder&apos;&#125;</div>
+          <div>&#123;&apos;stdout&apos;: &apos;55&apos;, &apos;error&apos;: &apos;&apos;&#125;</div>
+          <div>&#123;&apos;stdout&apos;: &apos;&apos;, &apos;error&apos;: &apos;ZeroDivisionError: division by zero&apos;&#125;</div>
+          <div>&#123;&apos;results&apos;: &#91;&apos;RAG combines retrieval with generation.&apos;&#93;&#125;</div>
+          <div>&#123;&apos;status&apos;: &apos;blocked&apos;, &apos;reason&apos;: &apos;a human must approve outgoing email&apos;&#125;</div>
+          <div>&#123;&apos;status&apos;: &apos;sent&apos;, &apos;to&apos;: &apos;ana@example.com&apos;&#125;</div>
+        </div>
+      </div>
+      <div>
+        Every dangerous request gets a clear error instead of an action: the DROP TABLE, the path escape and the unapproved email. The normal requests work as expected. These errors are returned to the model so it can react.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Why should file tools be confined to one folder?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag06-q1-a" name="ag06-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag06-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) So the agent cannot read or overwrite files elsewhere</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Confinement limits the damage of a wrong or malicious request.</div>
+          </div>
+          <div>
+            <input id="ag06-q1-b" name="ag06-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag06-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) To make files smaller</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Size is not the point.</div>
+          </div>
+          <div>
+            <input id="ag06-q1-c" name="ag06-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag06-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) To speed up the model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Speed is unrelated.</div>
+          </div>
+          <div>
+            <input id="ag06-q1-d" name="ag06-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag06-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Because folders are required by Python</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It is a safety design choice.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What is the safest way to handle an agent sending email?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag06-q2-a" name="ag06-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag06-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Let it prepare the email and require human approval before sending</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Sending cannot be undone, so it needs an approval gate.</div>
+          </div>
+          <div>
+            <input id="ag06-q2-b" name="ag06-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag06-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Let it send anything it wants</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> This risks real harm.</div>
+          </div>
+          <div>
+            <input id="ag06-q2-c" name="ag06-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag06-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Hide the send function from the model and never use email</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Approval makes email usable safely.</div>
+          </div>
+          <div>
+            <input id="ag06-q2-d" name="ag06-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag06-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Store the password in the prompt</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Secrets never belong in prompts.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>External tools give agents fresh data, exact computation and the power to act.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Database tools should be read-only, limited and run by a low-privilege account.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Treat web search results as untrusted and return short snippets with sources.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Run code execution in a sandbox with a time limit, no secrets and often no network.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Confine file tools to one folder and require approval for irreversible actions.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Apply least privilege, validate in code, limit volume and log every call.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">External Tools in One Line</div>
+        <div className="text-center font-bold text-white">
+          More power in the tool → stronger guards around it
+        </div>
+      </div>
+      <div>
+        With safe tools your agent can do real work. Next, it needs to remember things.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Agents forget everything between runs unless you give them memory. In <strong className="text-white">Agent Memory</strong> you will learn short-term, long-term, semantic and persistent memory.
+      </div>
+    </div>
+  </section>
+
+</div>

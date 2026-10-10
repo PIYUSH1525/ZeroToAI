@@ -1,0 +1,453 @@
+---
+title: "Emerging LLM Techniques: Test-Time Compute, Distillation and Beyond"
+slug: "22-emerging-llm-techniques"
+order: 22
+category: "Generative AI"
+subcategory: "LLMs"
+difficulty: "Advanced"
+readTime: "28 min"
+description: "A map of current ideas in LLMs: test-time compute, self-consistency and best-of-N, reasoning models with verifiable rewards, distillation, multimodality, agents, synthetic data and new architectures."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Many recent gains come from using models <strong className="text-white">smarter</strong>, not just making them bigger: <strong className="text-white">thinking longer at answer time</strong>, <strong className="text-white">voting or verifying</strong> several attempts, <strong className="text-white">distilling</strong> big models into small ones, and giving models <strong className="text-white">tools and senses</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: What Is Changing in LLMs Right Now?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        LLMs are one of the fastest-moving areas of technology. This lesson covers <strong className="text-white">ideas</strong> that are shaping current models rather than specific products, because product names change quickly while the underlying ideas last. Details here are simplified, and the field moves fast, so treat this as a map and not the final word.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Trend</th>
+              <th className="px-5 py-3">One-line idea</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Reasoning and test-time compute</td><td className="px-5 py-3">Let the model think longer or try several times on hard problems</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Distillation and small models</td><td className="px-5 py-3">Teach a small model to imitate a big one</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Multimodal models</td><td className="px-5 py-3">Understand text, images, audio and video together</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Agents</td><td className="px-5 py-3">Models that plan, use tools and act over many steps</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Synthetic data</td><td className="px-5 py-3">Use models to create training data for other models</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">New architectures</td><td className="px-5 py-3">Alternatives and additions to plain attention</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Why it matters:</strong> Many of the biggest recent gains came not from making models larger but from <strong className="text-white">using them smarter</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Thinking Longer Instead of Growing Bigger
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        For a long time, the main way to improve a model was to <strong className="text-white">train a bigger one</strong>. A newer idea is to spend extra effort <strong className="text-white">at answer time</strong>, called <strong className="text-white">test-time compute</strong>. For hard questions such as math, logic and coding, the model can produce a long chain of reasoning, check its work, or try several solutions before answering.
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Train-time compute</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Pay once</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Idea:</strong> Make the model itself stronger.</div>
+            <div><strong className="text-white">Cost:</strong> Huge, paid before release.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Test-time compute</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Pay per question</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Idea:</strong> Let the model think more on hard problems.</div>
+            <div><strong className="text-white">Cost:</strong> Paid at every answer, only when needed.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Trade-off:</strong> More thinking means slower and more expensive answers, so it is best used for questions that really need it.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Self-Consistency and Best-of-N
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Two simple ways to use extra compute need no new training:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Self-consistency:</strong> Ask the same question several times with randomness, then take the <strong className="text-white">most common</strong> final answer (a majority vote).</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Best-of-N:</strong> Generate N answers and let a <strong className="text-white">verifier</strong> (a checker or a scoring model) pick the best one.</div>
+        </div>
+      </div>
+      <div>
+        Both work because errors are usually <strong className="text-white">scattered</strong> while the right answer tends to <strong className="text-white">repeat</strong>. If a single answer is right with probability $p > 0.5$ and the tries are independent, a majority vote gets more reliable as you add tries.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Real example from the code:</strong> If one answer is right 70% of the time, a majority vote of 21 tries is right about 97% of the time.
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Limits:</strong> Votes help only when the model is <em>usually</em> right. If it is usually wrong in the same way, more tries just repeat the same mistake.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Reasoning Models and Verifiable Rewards
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Some recent models are trained to produce <strong className="text-white">long reasoning traces</strong> before the final answer. A key idea behind them is <strong className="text-white">reinforcement learning with verifiable rewards</strong>: for problems where the answer can be <em>checked automatically</em> (a math result, passing unit tests), the model gets a reward for correct final answers, and learns which kinds of reasoning lead to success, without needing human-labeled preferences for every step.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Ingredient</th>
+              <th className="px-5 py-3">Role</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Problems with checkable answers</td><td className="px-5 py-3">Give a trustworthy reward signal</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Many sampled attempts</td><td className="px-5 py-3">The model learns from its own successes and failures</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Long reasoning before answering</td><td className="px-5 py-3">Space to plan, check and correct itself</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">A cost limit</td><td className="px-5 py-3">Controls how long the model may think</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Caution:</strong> Reasoning traces can be long, slow and costly, and a confident-sounding chain of thought is not proof that the answer is right. Verify important results.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Distillation, Multimodality and Beyond
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Distillation</strong> trains a small <strong className="text-white">student</strong> model to imitate a large <strong className="text-white">teacher</strong>. Instead of learning only from hard labels, the student matches the teacher&apos;s full probability distribution, which carries rich hints about how similar the options are. A temperature $T > 1$ softens the teacher&apos;s probabilities to make these hints easier to see.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Direction</th>
+              <th className="px-5 py-3">What it is</th>
+              <th className="px-5 py-3">Why it matters</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Distillation</td><td className="px-5 py-3">A student copies a teacher&apos;s outputs</td><td className="px-5 py-3">Small, cheap models that keep much of the quality</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Multimodal</td><td className="px-5 py-3">One model reads text, images and audio</td><td className="px-5 py-3">Assistants that can see and listen</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Agents</td><td className="px-5 py-3">Plan, call tools, observe, repeat</td><td className="px-5 py-3">Models that finish tasks, not just answer</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Synthetic data</td><td className="px-5 py-3">Models generate training examples</td><td className="px-5 py-3">More data where real data is scarce (needs careful filtering)</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">State-space and hybrid models</td><td className="px-5 py-3">Fixed-size memory mixed with attention</td><td className="px-5 py-3">Efficient long sequences</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">On-device models</td><td className="px-5 py-3">Small quantized models on phones and laptops</td><td className="px-5 py-3">Privacy and no network needed</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">How to keep up</div>
+        <div className="text-sm leading-relaxed text-slate-300">Follow ideas rather than names: read model announcements for <em>what changed</em> (data, training method, architecture, inference), and test any new technique on <strong className="text-white">your own task</strong> with a proper evaluation set.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Spending Compute Where It Counts
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure contrasts spending compute during training with spending it at answer time, then shows how majority voting improves with more tries.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-indigo-300">Part 1 · Two Ways to Spend Compute</span>
+        <span className="text-xs text-slate-400">Before release or at answer time</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-300">Train-time</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200">Bigger or better trained</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">More parameters or more data</div>
+          <div className="text-center text-blue-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Longer, better training</div>
+          <div className="text-center text-blue-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">Smarter model for every question</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Test-time</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Think more on this question</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Long reasoning, or N tries</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Vote or verify the answers</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">Better answers when it matters</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 2 · Majority Voting Gets Stronger</span>
+        <span className="text-xs text-slate-400">More tries, more reliable (if p is above 0.5)</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-300">1 try</span>
+            <span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200">p = 0.70</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">One answer, 70% chance it is right</div>
+          <div className="text-center text-blue-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">70% correct</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">5 tries</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Majority vote</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Take the most common answer</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-300">About 84% correct</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">21 tries</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Majority vote</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-slate-200">Take the most common answer</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-300">About 97% correct</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see when voting does not help</span>
+          <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If the model is right less than half the time on a problem, the wrong answer tends to win the vote and more tries make things worse. Voting also assumes tries are somewhat independent, which is not always true. In the code below, p = 0.6 gives only 83% at 21 tries, while p = 0.7 gives 97%.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 compares the two places to invest effort. Part 2 uses the numbers computed in the code for a model that is right 70% of the time. Open the bar to learn when voting fails.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Majority Voting, Best-of-N and Distillation
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script calculates the accuracy of majority voting and best-of-N sampling with exact probabilities, then computes the soft teacher probabilities used in distillation and measures how close three different students are to the teacher with a KL distance.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">test_time_compute.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy and the standard library</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">from math import comb</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Self-consistency: ask several times, take the majority answer</span>
+            <span className="block text-cyan-300">def majority&#95;correct(p, n):</span>
+            <span className="block text-slate-500">    # chance that more than half of n independent answers are right (n is odd)</span>
+            <span className="block">    return sum(comb(n, k) &#42; p &#42;&#42; k &#42; (1 - p) &#42;&#42; (n - k) for k in range(n // 2 + 1, n + 1))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for p in &#91;0.6, 0.7&#93;:</span>
+            <span className="block">    print(&quot;single answer right&quot;, p, &quot;-&gt; majority of 5:&quot;, round(majority&#95;correct(p, 5), 3), &quot;| of 21:&quot;, round(majority&#95;correct(p, 21), 3))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Best-of-n with a verifier: chance that at least one of n samples is correct</span>
+            <span className="block">for p in &#91;0.1, 0.3&#93;:</span>
+            <span className="block">    print(&quot;one sample right&quot;, p, &quot;-&gt; best of 8 (perfect verifier):&quot;, round(1 - (1 - p) &#42;&#42; 8, 3))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Distillation: the student learns from the teacher&apos;s soft probabilities</span>
+            <span className="block text-cyan-300">def softmax(z, T=1.0):</span>
+            <span className="block">    z = np.array(z) / T</span>
+            <span className="block">    e = np.exp(z - z.max())</span>
+            <span className="block">    return e / e.sum()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">teacher&#95;logits = &#91;4.0, 2.0, 0.5&#93;</span>
+            <span className="block">for T in &#91;1.0, 3.0&#93;:</span>
+            <span className="block">    print(&quot;teacher probabilities at temperature&quot;, T, &quot;-&gt;&quot;, np.round(softmax(teacher&#95;logits, T), 3))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def kl(p, q):</span>
+            <span className="block">    return float(np.sum(p &#42; np.log(p / q)))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">teacher = softmax(teacher&#95;logits, 3.0)</span>
+            <span className="block">for name, logits in &#91;(&quot;student far off&quot;, &#91;0.0, 0.0, 0.0&#93;), (&quot;student close&quot;, &#91;3.5, 1.8, 0.7&#93;), (&quot;student identical&quot;, teacher&#95;logits)&#93;:</span>
+            <span className="block">    print(name.ljust(18), &quot;-&gt; KL distance to teacher:&quot;, round(kl(teacher, softmax(logits, 3.0)), 4))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>single answer right 0.6 -&gt; majority of 5: 0.683 | of 21: 0.826</div>
+          <div>single answer right 0.7 -&gt; majority of 5: 0.837 | of 21: 0.974</div>
+          <div>one sample right 0.1 -&gt; best of 8 (perfect verifier): 0.57</div>
+          <div>one sample right 0.3 -&gt; best of 8 (perfect verifier): 0.942</div>
+          <div>teacher probabilities at temperature 1.0 -&gt; &#91;0.858 0.116 0.026&#93;</div>
+          <div>teacher probabilities at temperature 3.0 -&gt; &#91;0.548 0.281 0.171&#93;</div>
+          <div>student far off    -&gt; KL distance to teacher: 0.1105</div>
+          <div>student close      -&gt; KL distance to teacher: 0.0038</div>
+          <div>student identical  -&gt; KL distance to teacher: 0.0</div>
+        </div>
+      </div>
+      <div>
+        A majority of 21 tries lifts a 70% model to about 97%, but a 60% model only to about 83%. Best-of-8 with a perfect checker lifts a 30%-per-try model to about 94%. For distillation, a higher temperature spreads the teacher&apos;s probabilities, and the KL distance shrinks to zero as the student matches the teacher.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What is test-time compute?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="emerging-q1-a" name="emerging-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="emerging-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Spending extra computation while answering, for example by reasoning longer or trying several times</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It improves answers on hard questions without retraining the model.</div>
+          </div>
+          <div>
+            <input id="emerging-q1-b" name="emerging-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="emerging-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Training a bigger model before release</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is train-time compute.</div>
+          </div>
+          <div>
+            <input id="emerging-q1-c" name="emerging-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="emerging-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Compressing the model weights</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is quantization.</div>
+          </div>
+          <div>
+            <input id="emerging-q1-d" name="emerging-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="emerging-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Testing the website in the browser</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The term is about model inference.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: When does majority voting help a lot?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="emerging-q2-a" name="emerging-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="emerging-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) When each single answer is right more than half of the time</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Then correct answers tend to repeat and win the vote.</div>
+          </div>
+          <div>
+            <input id="emerging-q2-b" name="emerging-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="emerging-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) When the model is usually wrong</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Then the same wrong answer tends to win.</div>
+          </div>
+          <div>
+            <input id="emerging-q2-c" name="emerging-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="emerging-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) When you only try once</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Voting needs several tries.</div>
+          </div>
+          <div>
+            <input id="emerging-q2-d" name="emerging-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="emerging-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Only when the model is very small</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Model size is not the requirement.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Test-time compute spends extra effort per question instead of making the model bigger.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Self-consistency</strong> (majority vote) and <strong className="text-white">best-of-N with a verifier</strong> improve results without retraining, if single answers are usually right.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Reasoning models are trained with long reasoning and rewards that can be checked automatically.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">Distillation</strong> trains a small student to match a big teacher&apos;s soft probabilities.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Multimodality, agents, synthetic data and new architectures are major directions.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Follow ideas rather than product names and always test new techniques on your own evaluation set.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Emerging Techniques in One Line</div>
+        <div className="text-center font-bold text-white">
+          Think longer + check more + shrink what you learned + give models tools = better answers at lower cost
+        </div>
+      </div>
+      <div>
+        This series took you from tokens and attention to serving, evaluation and the frontier. The same fundamentals will help you understand whatever comes next.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You have finished the <strong className="text-white">LLM series</strong>. A good next step is to build a small project that combines prompting, structured outputs, retrieval and evaluation, then apply these ideas in <strong className="text-white">RAG</strong> and <strong className="text-white">AI Agents</strong>.
+      </div>
+    </div>
+  </section>
+
+</div>

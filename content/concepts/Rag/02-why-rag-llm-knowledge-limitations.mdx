@@ -1,0 +1,481 @@
+---
+title: "Why RAG? LLM Knowledge Limitations"
+slug: "why-rag-llm-knowledge-limitations"
+order: 2
+category: "RAG"
+subcategory: "RAG Foundations"
+difficulty: "Beginner"
+readTime: "35 min"
+description: "Understand why plain LLMs fail on recent, private and specific facts, and how RAG compares with fine-tuning and long context windows."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+<section>
+  <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300">
+    <strong className="text-cyan-400">The Core Idea:</strong> A language model is a frozen snapshot of the text it was trained on. It cannot know what happened after training, it cannot see your private files, and it sometimes fills gaps with confident guesses. RAG exists because these four limits are impossible to remove by making the model bigger, but easy to work around by letting the model look things up. This lesson explains each limit and shows when RAG, fine-tuning or a long context window is the better tool.
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: What an LLM Really Knows</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>During training, a <strong className="text-white">large language model (LLM)</strong> reads an enormous amount of text and adjusts billions of numbers called <strong className="text-white">parameters</strong> (also called weights) so that it gets better at predicting the next token. A token is a small piece of text such as a word or part of a word. Whatever the model learns ends up spread across those parameters. This is called <strong className="text-white">parametric knowledge</strong>: knowledge stored inside the model itself.</div>
+    <div>Think of a photograph of a huge library. The photo captures a lot, but it is taken at one moment, it is a compressed copy, and it does not tell you which book each detail came from. Parametric knowledge has exactly these three properties:</div>
+    <div className="grid gap-5 md:grid-cols-3">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-blue-400">Frozen</div>
+        <div className="mt-2 text-sm leading-7">Nothing changes after training ends. A model never learns from conversations unless it is trained again.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-violet-400">Compressed</div>
+        <div className="mt-2 text-sm leading-7">Trillions of words are squeezed into a fixed number of parameters. Common patterns survive well; rare details blur.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="text-sm font-bold uppercase tracking-wider text-emerald-400">Unsourced</div>
+        <div className="mt-2 text-sm leading-7">The model produces text from patterns. It does not keep a list of which document each fact came from.</div>
+      </div>
+    </div>
+    <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5">
+      <strong className="text-blue-300">Key point:</strong> A model is excellent at language, reasoning patterns and widely repeated facts. It is unreliable as a database of exact, recent or private facts. RAG moves those facts out of the parameters and into documents that can be searched.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Beginner: The Four Limitations RAG Is Built to Fix</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="mb-2 font-bold text-white">Limitation 1 · Knowledge cutoff</div>
+      <div className="text-sm leading-7">Training data stops at some date, called the <strong className="text-white">knowledge cutoff</strong>. A model is usually released months after its cutoff and then used for a long time, so there is always a gap between what it knows and the present day. Ask about a product launch, a law change or a score from after the cutoff and the model either admits ignorance or, worse, answers from older information as if nothing changed. <strong className="text-emerald-300">RAG fix:</strong> retrieve current documents and put them in the prompt.</div>
+    </div>
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="mb-2 font-bold text-white">Limitation 2 · Hallucinations</div>
+      <div className="text-sm leading-7">A <strong className="text-white">hallucination</strong> is a fluent, confident answer that is false or unsupported. It happens because the model is built to produce likely text, not to verify facts. When it lacks a detail, the most likely-sounding continuation is often an invented one: a wrong date, a made-up statistic, a source that does not exist. Hallucinations are most common for rare, specific or recent facts. <strong className="text-emerald-300">RAG fix:</strong> supply the real passage and instruct the model to answer only from it. This reduces hallucinations a lot, but does not eliminate them, because the model can still misread or ignore the context.</div>
+    </div>
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="mb-2 font-bold text-white">Limitation 3 · Private and proprietary data</div>
+      <div className="text-sm leading-7">Your internal wiki, contracts, customer tickets and product manuals were never in the training data, so the model knows nothing about them. <strong className="text-emerald-300">RAG fix:</strong> keep those documents in your own searchable store and retrieve the relevant pieces per question. Note that retrieved text is still sent to the model inside the prompt, which is why access control and security get their own lessons later in this course.</div>
+    </div>
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="mb-2 font-bold text-white">Limitation 4 · Frequently changing information</div>
+      <div className="text-sm leading-7">Prices, stock levels, policies, schedules and documentation change daily or weekly. Re-training a model for every change is impractical. <strong className="text-emerald-300">RAG fix:</strong> update the document and the next search returns the new version. No model change is needed.</div>
+    </div>
+    <div>Here is how the four limits look in a real support chatbot:</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Customer asks</th>
+            <th className="px-4 py-3">Plain LLM problem</th>
+            <th className="px-4 py-3">With RAG</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3">What is the Pro plan price this month?</td><td className="px-4 py-3 text-rose-300">Old price from training data</td><td className="px-4 py-3 text-emerald-300">Current price from the pricing page</td></tr>
+          <tr><td className="px-4 py-3">How long is the hardware warranty?</td><td className="px-4 py-3 text-rose-300">Confident guess</td><td className="px-4 py-3 text-emerald-300">Exact term from the warranty document</td></tr>
+          <tr><td className="px-4 py-3">How do I reset my account in the new app?</td><td className="px-4 py-3 text-rose-300">Never saw the new app</td><td className="px-4 py-3 text-emerald-300">Steps from the latest help article</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: RAG vs Fine-Tuning</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div><strong className="text-white">Fine-tuning</strong> means continuing the training of an existing model on your own examples, so its parameters shift slightly. A common first reaction is: if the model does not know my data, I should fine-tune it on my data. Sometimes that is right, but fine-tuning and RAG solve different problems.</div>
+    <div className="grid gap-5 md:grid-cols-2">
+      <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-violet-300">Fine-tuning is best for behavior</div>
+        <div className="text-sm leading-7">Teaching a tone of voice, an output format such as strict JSON, a specialized task or a domain style. It changes how the model acts, and this change is permanent in the weights.</div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-emerald-300">RAG is best for facts</div>
+        <div className="text-sm leading-7">Supplying specific, current, private knowledge at answer time. It changes what the model reads, and the knowledge stays in editable documents.</div>
+      </div>
+    </div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Question</th>
+            <th className="px-4 py-3">Fine-tuning</th>
+            <th className="px-4 py-3">RAG</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3 font-semibold text-white">What changes?</td><td className="px-4 py-3">The model parameters</td><td className="px-4 py-3">The prompt content</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Updating a fact</td><td className="px-4 py-3 text-rose-300">Prepare data and train again</td><td className="px-4 py-3 text-emerald-300">Edit the document</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Citing a source</td><td className="px-4 py-3 text-rose-300">Hard; knowledge is blended into weights</td><td className="px-4 py-3 text-emerald-300">Natural; the passage is known</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Per-user access rules</td><td className="px-4 py-3 text-rose-300">Difficult; everyone shares the same weights</td><td className="px-4 py-3 text-emerald-300">Possible by filtering documents</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Teaching style or format</td><td className="px-4 py-3 text-emerald-300">Strong</td><td className="px-4 py-3 text-rose-300">Weak; prompts help only partly</td></tr>
+          <tr><td className="px-4 py-3 font-semibold text-white">Main extra effort</td><td className="px-4 py-3">Training data and compute</td><td className="px-4 py-3">Retrieval pipeline and index</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <strong className="text-emerald-300">They are not rivals.</strong> Many production systems use both: fine-tune for tone and format, and use RAG for the facts. A useful rule of thumb is <em>fine-tune for how to answer, retrieve for what to answer with</em>.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: RAG vs Long Context</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>The <strong className="text-white">context window</strong> is the maximum amount of text a model can read in one request. Some modern models accept very large windows, which raises a fair question: why search at all, when you could paste every document into the prompt? For small collections that is a perfectly good idea. For real knowledge bases it runs into four problems.</div>
+    <div className="grid gap-5 md:grid-cols-2">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-orange-300">Size</div>
+        <div className="text-sm leading-7">Company knowledge bases often hold millions of tokens, more than most context windows can hold, and they keep growing.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-orange-300">Cost and speed</div>
+        <div className="text-sm leading-7">You pay for, and wait for, every token you send, on every question. Sending the whole collection each time is slow and expensive.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-orange-300">Reliability</div>
+        <div className="text-sm leading-7">Research has shown that models can use information in the middle of a very long prompt less reliably than information near the start or end.</div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-semibold text-orange-300">Control</div>
+        <div className="text-sm leading-7">With one giant prompt it is hard to filter by user permissions, point to a single source, or see why an answer was produced.</div>
+      </div>
+    </div>
+    <div>A quick calculation shows the scale. Suppose the knowledge base holds 5 million tokens and a typical RAG prompt, with the question and the top few chunks, uses about 1,500 tokens. Then RAG sends roughly $5{,}000{,}000 \div 1{,}500 \approx 3{,}333$ times fewer tokens per question. (These are illustrative numbers, but the shape of the result holds for any large collection.)</div>
+    <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5">
+      <strong className="text-orange-300">When long context wins:</strong> one document or a small set that fits comfortably, one-off analysis of a whole report, or tasks that really need to read everything. <strong className="text-orange-300">Often best:</strong> use RAG to pick the relevant material, then use a generous context window to read more of it.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Choosing the Right Approach, and What RAG Does Not Fix</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>Use these questions as a decision guide. Start from the problem, not from the tool.</div>
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-white/[0.04] text-slate-200">
+          <tr>
+            <th className="px-4 py-3">Your situation</th>
+            <th className="px-4 py-3">Best starting point</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/10">
+          <tr><td className="px-4 py-3">Answers must use recent or changing facts</td><td className="px-4 py-3 text-emerald-300">RAG</td></tr>
+          <tr><td className="px-4 py-3">Answers must use private documents and show sources</td><td className="px-4 py-3 text-emerald-300">RAG</td></tr>
+          <tr><td className="px-4 py-3">Model must follow a strict style or output format</td><td className="px-4 py-3 text-violet-300">Prompting first, then fine-tuning</td></tr>
+          <tr><td className="px-4 py-3">One short document, one-off question</td><td className="px-4 py-3 text-orange-300">Paste it into the context window</td></tr>
+          <tr><td className="px-4 py-3">Large changing knowledge base plus a specific brand voice</td><td className="px-4 py-3 text-cyan-300">RAG plus fine-tuning</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>RAG is powerful, but it is not magic. Three things it does <strong className="text-white">not</strong> fix:</div>
+    <div className="grid gap-5 md:grid-cols-3">
+      <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-rose-300">Bad retrieval</div>
+        <div className="text-sm leading-7">If the right passage is not found, the model has no evidence. Later lessons on chunking, embeddings and reranking attack this problem.</div>
+      </div>
+      <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-rose-300">Bad documents</div>
+        <div className="text-sm leading-7">If the knowledge base is outdated, duplicated or wrong, RAG faithfully retrieves outdated, duplicated or wrong text.</div>
+      </div>
+      <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+        <div className="mb-2 font-semibold text-rose-300">Weak reading</div>
+        <div className="text-sm leading-7">The model may still misread, ignore or over-trust the context. This is why evaluation and citations matter.</div>
+      </div>
+    </div>
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5">
+      <strong className="text-cyan-300">Good RAG behavior includes saying I do not know.</strong> When retrieval finds nothing relevant, the best answer is an honest refusal, not a guess. The code in section 7 shows a simple way to do this with a minimum similarity score.
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: The Knowledge Gap, Four Problems and the Cost of Context</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>This figure has three panels. Panel A shows the knowledge gap on a timeline. Panel B is a problem explorer: click any problem to see its symptom, cause and fix. Panel C compares how much text each approach must send per question.</div>
+    <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · The Knowledge Gap</span>
+          <span className="text-xs text-slate-400">Time runs from left to right</span>
+        </div>
+        <div>
+          <div className="mb-1 text-xs text-slate-400">Plain LLM</div>
+          <div className="flex h-12 overflow-hidden rounded-xl border border-white/10 text-xs font-semibold">
+            <div className="flex w-3/5 items-center justify-center bg-blue-500/20 px-2 text-center text-blue-200">Training data: known</div>
+            <div className="flex w-2/5 items-center justify-center bg-rose-500/20 px-2 text-center text-rose-200">After cutoff: unknown</div>
+          </div>
+        </div>
+        <div>
+          <div className="mb-1 text-xs text-slate-400">LLM with RAG</div>
+          <div className="flex h-12 overflow-hidden rounded-xl border border-white/10 text-xs font-semibold">
+            <div className="flex w-3/5 items-center justify-center bg-blue-500/20 px-2 text-center text-blue-200">Training data: known</div>
+            <div className="flex w-2/5 items-center justify-center bg-emerald-500/20 px-2 text-center text-emerald-200">Retrieved documents fill the gap</div>
+          </div>
+        </div>
+        <div className="flex justify-between text-[11px] text-slate-500"><span>Past</span><span>Training cutoff</span><span>Today</span></div>
+      </div>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · Problem Explorer</span>
+          <span className="text-xs text-slate-400">Click a problem to open it</span>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <input id="why2-p-cutoff" name="why2-problem" type="radio" className="peer sr-only" />
+            <label htmlFor="why2-p-cutoff" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">1 · Knowledge cutoff</label>
+            <div className="mt-2 hidden space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-sm leading-7 text-slate-300 peer-checked:block">
+              <div><strong className="text-rose-300">Symptom:</strong> Outdated answers about recent events or products.</div>
+              <div><strong className="text-violet-300">Cause:</strong> Training data stops at a fixed date.</div>
+              <div><strong className="text-emerald-300">RAG helps by:</strong> Retrieving current documents at question time.</div>
+              <div><strong className="text-amber-300">Still watch for:</strong> The index itself going stale.</div>
+            </div>
+          </div>
+          <div>
+            <input id="why2-p-halluc" name="why2-problem" type="radio" className="peer sr-only" />
+            <label htmlFor="why2-p-halluc" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">2 · Hallucination</label>
+            <div className="mt-2 hidden space-y-2 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-sm leading-7 text-slate-300 peer-checked:block">
+              <div><strong className="text-rose-300">Symptom:</strong> Fluent, confident answers that are false.</div>
+              <div><strong className="text-violet-300">Cause:</strong> The model produces likely text and does not verify facts.</div>
+              <div><strong className="text-emerald-300">RAG helps by:</strong> Supplying real evidence and asking for answers only from it.</div>
+              <div><strong className="text-amber-300">Still watch for:</strong> The model misreading or ignoring the context.</div>
+            </div>
+          </div>
+          <div>
+            <input id="why2-p-private" name="why2-problem" type="radio" className="peer sr-only" />
+            <label htmlFor="why2-p-private" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">3 · Private data</label>
+            <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-sm leading-7 text-slate-300 peer-checked:block">
+              <div><strong className="text-rose-300">Symptom:</strong> The model knows nothing about your internal files.</div>
+              <div><strong className="text-violet-300">Cause:</strong> Private documents were never part of training.</div>
+              <div><strong className="text-emerald-300">RAG helps by:</strong> Searching your own store and retrieving the relevant pieces.</div>
+              <div><strong className="text-amber-300">Still watch for:</strong> Permissions, because retrieved text goes into the prompt.</div>
+            </div>
+          </div>
+          <div>
+            <input id="why2-p-change" name="why2-problem" type="radio" className="peer sr-only" />
+            <label htmlFor="why2-p-change" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">4 · Changing information</label>
+            <div className="mt-2 hidden space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-sm leading-7 text-slate-300 peer-checked:block">
+              <div><strong className="text-rose-300">Symptom:</strong> Old prices, policies or procedures in answers.</div>
+              <div><strong className="text-violet-300">Cause:</strong> Facts changed after the model was trained.</div>
+              <div><strong className="text-emerald-300">RAG helps by:</strong> Updating one document instead of retraining a model.</div>
+              <div><strong className="text-amber-300">Still watch for:</strong> Old versions of the document staying in the index.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-orange-300">Panel C · Tokens Sent per Question</span>
+          <span className="text-xs text-slate-400">Illustrative numbers, bar lengths not to scale</span>
+        </div>
+        <div>
+          <div className="mb-1 flex flex-wrap justify-between gap-2 text-xs"><span className="text-slate-300">Whole knowledge base in the prompt</span><span className="text-rose-300">about 5,000,000 tokens</span></div>
+          <div className="h-4 w-full rounded-full bg-rose-500/40" />
+        </div>
+        <div>
+          <div className="mb-1 flex flex-wrap justify-between gap-2 text-xs"><span className="text-slate-300">RAG: question plus top chunks</span><span className="text-emerald-300">about 1,500 tokens</span></div>
+          <div className="h-4 w-2 rounded-full bg-emerald-400" />
+        </div>
+        <details className="group rounded-2xl border border-orange-500/20 bg-white/[0.03]">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+            <span>Click to see why fewer tokens is not the only benefit</span>
+            <span className="rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs text-orange-300">Explain <span className="inline-block transition group-open:rotate-180">▼</span></span>
+          </summary>
+          <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">A short, focused prompt is cheaper and faster, and it also gives the model less irrelevant text to be distracted by. It makes it easy to say exactly which passages the answer used, and it lets you filter documents per user before anything reaches the model.</div>
+        </details>
+      </div>
+    </div>
+    <div>How to read it: in Panel A the green block is the whole idea of RAG, a bridge over the gap the model cannot see. Panel B lists the four problems and their limits, and Panel C shows why the bridge is also cheap.</div>
+  </div>
+</section>
+
+<section>
+  <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: Stale Memory vs Live Documents</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div>This program builds a pretend closed-book model that only knows a frozen training snapshot, and a small RAG system that searches live documents. Three questions show the three failure types: a stale fact, a wrong guess, and a question nobody has an answer for. The RAG side uses word-count cosine similarity and a minimum score, so when nothing matches well it refuses instead of guessing. The last lines repeat the token calculation from section 4. Everything uses the standard library only.</div>
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+        <span className="font-mono text-xs font-semibold text-teal-400">stale_memory_vs_rag.py</span>
+        <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span>
+      </div>
+      <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block text-cyan-300">import math</span>
+          <span className="block text-cyan-300">from collections import Counter</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 1. A pretend LLM: it only knows a frozen snapshot from training time</span>
+          <span className="block">training_snapshot = [</span>
+          <span className="block">    (&quot;pro plan&quot;, &quot;The Pro plan costs 20 dollars per month.&quot;),</span>
+          <span className="block">    (&quot;warranty&quot;, &quot;Hardware usually comes with a 12 month warranty.&quot;),</span>
+          <span className="block">]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def closed_book(question):</span>
+          <span className="block">    for topic, fact in training_snapshot:</span>
+          <span className="block">        if topic in question.lower():</span>
+          <span className="block">            return fact</span>
+          <span className="block">    return &quot;It was probably the manager.&quot;   # a confident guess with no evidence</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 2. The live knowledge base: new, private and changing information</span>
+          <span className="block">live_documents = [</span>
+          <span className="block">    &quot;Update 2026: The Pro plan now costs 25 dollars per month.&quot;,</span>
+          <span className="block">    &quot;Internal policy: employees get 5 extra vacation days after 3 years.&quot;,</span>
+          <span className="block">    &quot;Warranty: all hardware products include a 24 month warranty.&quot;,</span>
+          <span className="block">]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">stop_words = set([&quot;the&quot;, &quot;is&quot;, &quot;a&quot;, &quot;of&quot;, &quot;how&quot;, &quot;much&quot;, &quot;does&quot;, &quot;per&quot;, &quot;who&quot;, &quot;to&quot;])</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def vectorize(text):</span>
+          <span className="block">    cleaned = &quot;&quot;.join(ch for ch in text.lower() if ch.isalnum() or ch == &quot; &quot;)</span>
+          <span className="block">    words = [w for w in cleaned.split() if w not in stop_words]</span>
+          <span className="block">    return Counter(words)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-cyan-300">def cosine(a, b):</span>
+          <span className="block">    dot = sum(a[w] * b[w] for w in set(a) &amp; set(b))</span>
+          <span className="block">    norm_a = math.sqrt(sum(v * v for v in a.values()))</span>
+          <span className="block">    norm_b = math.sqrt(sum(v * v for v in b.values()))</span>
+          <span className="block">    if norm_a == 0 or norm_b == 0:</span>
+          <span className="block">        return 0.0</span>
+          <span className="block">    return dot / (norm_a * norm_b)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 3. RAG: retrieve the best document, or refuse if nothing matches well</span>
+          <span className="block text-emerald-300">def rag_answer(question, docs, min_score=0.2):</span>
+          <span className="block">    q = vectorize(question)</span>
+          <span className="block">    best_score, best_doc = max((cosine(q, vectorize(d)), d) for d in docs)</span>
+          <span className="block text-violet-300">    if best_score &lt; min_score:</span>
+          <span className="block text-violet-300">        return &quot;I could not find this in the documents.&quot;</span>
+          <span className="block">    return best_doc</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">questions = [</span>
+          <span className="block">    &quot;How much does the Pro plan cost per month?&quot;,</span>
+          <span className="block">    &quot;How long is the hardware warranty?&quot;,</span>
+          <span className="block">    &quot;Who won the office chess tournament?&quot;,</span>
+          <span className="block">]</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">for q in questions:</span>
+          <span className="block">    print(&quot;Question:&quot;, q)</span>
+          <span className="block">    print(&quot;  Without RAG:&quot;, closed_book(q))</span>
+          <span className="block">    print(&quot;  With RAG:   &quot;, rag_answer(q, live_documents))</span>
+          <span className="block">    print(&quot;&quot;)</span>
+          <span className="block">&nbsp;</span>
+          <span className="block text-slate-500"># 4. The cost of pasting everything into the prompt instead</span>
+          <span className="block">kb_tokens = 5000000</span>
+          <span className="block">rag_tokens = 1500</span>
+          <span className="block">print(&quot;Tokens if the whole knowledge base is pasted in:&quot;, kb_tokens)</span>
+          <span className="block">print(&quot;Tokens with RAG (question + top chunks):&quot;, rag_tokens)</span>
+          <span className="block">print(&quot;Reduction factor:&quot;, round(kb_tokens / rag_tokens))</span>
+        </code>
+      </pre>
+    </div>
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+      <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+        <code>
+          <span className="block">Question: How much does the Pro plan cost per month?</span>
+          <span className="block">  Without RAG: The Pro plan costs 20 dollars per month.</span>
+          <span className="block">  With RAG:    Update 2026: The Pro plan now costs 25 dollars per month.</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">Question: How long is the hardware warranty?</span>
+          <span className="block">  Without RAG: Hardware usually comes with a 12 month warranty.</span>
+          <span className="block">  With RAG:    Warranty: all hardware products include a 24 month warranty.</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">Question: Who won the office chess tournament?</span>
+          <span className="block">  Without RAG: It was probably the manager.</span>
+          <span className="block">  With RAG:    I could not find this in the documents.</span>
+          <span className="block">&nbsp;</span>
+          <span className="block">Tokens if the whole knowledge base is pasted in: 5000000</span>
+          <span className="block">Tokens with RAG (question + top chunks): 1500</span>
+          <span className="block">Reduction factor: 3333</span>
+        </code>
+      </pre>
+    </div>
+    <div>Read the three results in order. The first shows a <strong className="text-white">stale fact</strong> being replaced by an updated document. The second shows a plausible but wrong memory being replaced by the exact term. The third shows the most important RAG habit: when the documents do not contain the answer, say so. The score threshold of 0.2 is a simple stand-in for the more careful relevance checks you will meet in later lessons.</div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+  <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q1. A model was trained with data up to a certain date. Which problem does this create?</div>
+      <div>
+        <input id="rag2-q1-a" name="rag2-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag2-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) It cannot know about events or facts after the cutoff</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> This is the knowledge cutoff. Retrieval of current documents closes the gap.</div>
+      </div>
+      <div>
+        <input id="rag2-q1-b" name="rag2-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag2-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It can no longer produce grammatical sentences</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Language skills are not affected by the cutoff. Only knowledge of later facts is missing.</div>
+      </div>
+      <div>
+        <input id="rag2-q1-c" name="rag2-q1" type="radio" className="peer sr-only" />
+        <label htmlFor="rag2-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It forgets older facts every day</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The model is frozen. It does not forget or learn on its own after training.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q2. You want a chatbot to always reply in a strict company tone and JSON format. Which tool is the best first fit?</div>
+      <div>
+        <input id="rag2-q2-a" name="rag2-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag2-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) RAG alone</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> RAG supplies facts, not behavior. It does not reliably teach style or format.</div>
+      </div>
+      <div>
+        <input id="rag2-q2-b" name="rag2-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag2-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Clear prompting, and fine-tuning if prompting is not enough</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Style and format are behavior, which is where fine-tuning is strongest.</div>
+      </div>
+      <div>
+        <input id="rag2-q2-c" name="rag2-q2" type="radio" className="peer sr-only" />
+        <label htmlFor="rag2-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) A larger vector database</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A database stores documents. It does not change how the model writes.</div>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="font-semibold text-white">Q3. Why not simply paste a 5-million-token knowledge base into every prompt?</div>
+      <div>
+        <input id="rag2-q3-a" name="rag2-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag2-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) It may not fit, and it is slow, expensive and harder to control</label>
+        <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Size, cost, latency, reliability and control all favor retrieving only what is relevant.</div>
+      </div>
+      <div>
+        <input id="rag2-q3-b" name="rag2-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag2-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Models refuse to read more than one page</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Models can read long prompts. The issue is size limits, cost and reliability, not refusal.</div>
+      </div>
+      <div>
+        <input id="rag2-q3-c" name="rag2-q3" type="radio" className="peer sr-only" />
+        <label htmlFor="rag2-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Long prompts delete the knowledge base</label>
+        <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Prompts never modify stored documents.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+  <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>An LLM stores knowledge in its parameters: frozen at training time, compressed, and without sources.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Four limits motivate RAG: knowledge cutoff, hallucinations, private data and frequently changing information.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>RAG reduces hallucinations by supplying evidence, but it cannot eliminate them.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Fine-tuning changes behavior (style, format, skills); RAG supplies facts. Many systems use both.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>Long context is great for small inputs, but for large knowledge bases RAG wins on size, cost, speed and control.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>RAG does not fix bad retrieval, bad documents or a model that misreads context.</div></div>
+    <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"><span className="text-emerald-400">✓</span><div>A good RAG system says it could not find the answer instead of guessing.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+  <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Every limit in this lesson comes from the same root: facts stored in frozen parameters. RAG changes where facts live. They move into documents you control, which can be updated, filtered, cited and searched. Fine-tuning and long context remain useful tools, but for knowledge that is recent, private, large or changing, retrieval is usually the best foundation.</div>
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Frozen memory + Live documents = Current, grounded, traceable answers</div>
+    <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5">
+      <strong className="text-violet-300">Up Next:</strong> RAG Architecture and the End-to-End Pipeline. You will see every component in one picture: the offline indexing pipeline, the online query pipeline, and how retrieval, context and generation connect.
+    </div>
+  </div>
+</section>
+
+</div>

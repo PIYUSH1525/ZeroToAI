@@ -83,6 +83,10 @@ const CARD_ACCENTS: Record<
   },
 };
 
+export const metadata = {
+  alternates: { canonical: "/" },
+};
+
 export default function HomePage() {
   const categoriesWithTopics = getCategoriesWithTopics();
   const allConcepts = getAllConcepts();

@@ -1,0 +1,448 @@
+---
+title: "ReAct, Reflection and Self-Correction"
+slug: "11-react-reflection-and-self-correction"
+order: 11
+category: "AI Agents"
+subcategory: "Reasoning"
+difficulty: "Intermediate"
+readTime: "28 min"
+description: "Learn the ReAct pattern of interleaving reasoning and acting, how reflection lets an agent critique its work, how self-correction with real feedback fixes errors, and how to design safe retry loops."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> <strong className="text-white">ReAct</strong> interleaves thinking and acting: <strong className="text-white">Thought → Action → Observation</strong>, repeated. <strong className="text-white">Reflection</strong> adds a step where the agent critiques its own output, and <strong className="text-white">self-correction</strong> uses real feedback, such as a failed test, to try again, within a <strong className="text-white">retry limit</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: What Is ReAct?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">ReAct</strong> (Reason + Act) is a pattern in which the agent <strong className="text-white">alternates</strong> between reasoning in words and taking an action. The reasoning guides which action to take. The action returns an observation that guides the next reasoning step.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Without ReAct</th>
+              <th className="px-5 py-3">With ReAct</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Think everything through first, then act</td><td className="px-5 py-3">Think a little, act, look, think again</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Mistakes are found at the end</td><td className="px-5 py-3">Mistakes are noticed as soon as an observation surprises the agent</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Hard to see why an action was chosen</td><td className="px-5 py-3">The thoughts explain each action</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Why it works:</strong> Real information from tools <strong className="text-white">corrects</strong> the model&apos;s guesses at every step, and the written thoughts keep the plan on track.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Reason → Act → Observe in Practice
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In the code the agent answers a two-part question. Look at how each thought leads to an action and each observation leads to the next thought:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Thought:</strong> I must find the capital of France first.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Action:</strong> lookup[capital of France]</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Observation:</strong> Paris</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Thought:</strong> Now I need the population of that city.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Action and observation:</strong> lookup[population of Paris] gives about 2.1 million, then the final answer.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Note:</strong> The second action only became possible because the first observation said <em>Paris</em>. That dependency is why interleaving beats planning everything in advance.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Reflection
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Reflection</strong> means the agent <strong className="text-white">reviews its own work</strong> before finishing: <em>Is this correct? Did I answer the whole question? What could be wrong?</em> A separate critique prompt, or a second model call, produces feedback that is used to revise the output.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Reflection question</th>
+              <th className="px-5 py-3">Catches</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Did I answer every part of the question?</td><td className="px-5 py-3">Missing parts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Do the numbers add up?</td><td className="px-5 py-3">Arithmetic and logic errors</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Is every claim supported by a source?</td><td className="px-5 py-3">Invented facts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Does it follow the required format?</td><td className="px-5 py-3">Format errors</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Limit:</strong> A model reviewing its own text can miss its own mistakes. Reflection is much stronger when it uses <strong className="text-white">real checks</strong>: tests, calculators or retrieved sources.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Self-Correction With Feedback
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Self-correction</strong> is the loop: produce, check, read the failure, fix, check again. The best feedback is <strong className="text-white">concrete and external</strong>, such as a failing test message.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> The first attempt at a sum function has an off-by-one bug. The test says <em>total(3) returned 3 but should be 6</em>. That exact message goes back to the model, which fixes the bug on attempt 2.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Weak feedback</th>
+              <th className="px-5 py-3">Strong feedback</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">That is wrong, try again</td><td className="px-5 py-3">total(3) returned 3 but should be 6</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Improve the answer</td><td className="px-5 py-3">The second paragraph has no source</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Error</td><td className="px-5 py-3">TypeError at line 4: cannot add str and int</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Retry Loops and Their Limits
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Self-correction needs boundaries, or it becomes an endless loop that burns tokens:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Control</th>
+              <th className="px-5 py-3">Setting</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Maximum attempts</td><td className="px-5 py-3">Usually 2 to 5</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Stop if no progress</td><td className="px-5 py-3">If the same error repeats, change approach or ask for help</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Always include the new feedback</td><td className="px-5 py-3">Retrying with the same prompt gives the same failure</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Budget</td><td className="px-5 py-3">Cap tokens, time and cost for the whole loop</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Keep the best attempt</td><td className="px-5 py-3">If all attempts fail, return the best one with a warning</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Important:</strong> Retrying the <strong className="text-white">identical</strong> request rarely helps. A good retry changes something: new feedback, a different tool, a simpler plan, or a human.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: ReAct and the Self-Correction Loop
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows one turn of the ReAct loop, then the write, test, reflect and fix cycle from the code.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-amber-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-amber-300">Part 1 · The ReAct Loop</span>
+        <span className="text-xs text-slate-400">Think, act, look, repeat</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Thought</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Reason</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">I must find the capital first</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Chooses the action</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Action</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Act</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">lookup[capital of France]</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Uses a tool</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Observation</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Look</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Paris</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Informs the next thought</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The Self-Correction Loop</span>
+        <span className="text-xs text-slate-400">From failure to fix</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Write</div>
+          <div className="mt-2 text-lg font-bold text-white">Attempt 1</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Off-by-one bug.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Test</div>
+          <div className="mt-2 text-lg font-bold text-white">Fails</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">total(3) returned 3, should be 6.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Reflect</div>
+          <div className="mt-2 text-lg font-bold text-white">Read the error</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Spot the range mistake.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Fix</div>
+          <div className="mt-2 text-lg font-bold text-white">Attempt 2</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">All tests pass.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-amber-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why feedback must be concrete</span>
+          <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">The model can only fix what it can see. A precise message such as total(3) returned 3 but should be 6 points straight at the bug, while a vague message gives it nothing new to work with.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows how thought, action and observation connect. Part 2 shows an error being found and fixed. Open the bar to see why concrete feedback matters.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A ReAct Trace and a Self-Correcting Coder
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script prints a ReAct trace for a two-step question, then runs a self-correction loop: a stand-in model writes code with a bug, a test fails, the failure message is fed back, and the second attempt passes. The attempt count is limited.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">react_and_reflection.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># ReAct: Thought -&gt; Action -&gt; Observation, repeated</span>
+            <span className="block">KB = &#123;&quot;capital of France&quot;: &quot;Paris&quot;, &quot;population of Paris&quot;: &quot;about 2.1 million&quot;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">steps = &#91;</span>
+            <span className="block">    (&quot;I must find the capital of France first.&quot;, &quot;lookup&quot;, &quot;capital of France&quot;),</span>
+            <span className="block">    (&quot;Now I need the population of that city.&quot;, &quot;lookup&quot;, &quot;population of Paris&quot;),</span>
+            <span className="block">&#93;</span>
+            <span className="block">for number, (thought, action, argument) in enumerate(steps, 1):</span>
+            <span className="block">    print(&quot;Thought&quot;, number, &quot;:&quot;, thought)</span>
+            <span className="block">    print(&quot;Action&quot;, number, &quot;:&quot;, action + &quot;&#91;&quot; + argument + &quot;&#93;&quot;)</span>
+            <span className="block">    print(&quot;Observation&quot;, number, &quot;:&quot;, KB&#91;argument&#93;)</span>
+            <span className="block">print(&quot;Final answer: Paris has&quot;, KB&#91;&quot;population of Paris&quot;&#93;, &quot;people.&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Reflection and self-correction: write, test, read the failure, fix, retry</span>
+            <span className="block text-cyan-300">def fake&#95;llm&#95;write(feedback=None):</span>
+            <span className="block">    if feedback is None:</span>
+            <span className="block">        return &quot;def total(n):&#92;n    return sum(range(n))&quot;            # first attempt has an off-by-one bug</span>
+            <span className="block">    return &quot;def total(n):&#92;n    return sum(range(n + 1))&quot;            # after seeing the failure, it fixes it</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def run&#95;tests(source):</span>
+            <span className="block">    namespace = &#123;&#125;</span>
+            <span className="block">    exec(source, namespace)</span>
+            <span className="block">    cases = &#91;(3, 6), (10, 55)&#93;</span>
+            <span className="block">    return &#91;(n, want, namespace&#91;&quot;total&quot;&#93;(n)) for n, want in cases if namespace&#91;&quot;total&quot;&#93;(n) != want&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">feedback = None</span>
+            <span className="block">for attempt in range(1, 4):</span>
+            <span className="block">    source = fake&#95;llm&#95;write(feedback)</span>
+            <span className="block">    failures = run&#95;tests(source)</span>
+            <span className="block">    if not failures:</span>
+            <span className="block">        print(&quot;Attempt&quot;, attempt, &quot;-&gt; all tests pass&quot;)</span>
+            <span className="block">        break</span>
+            <span className="block">    n, want, got = failures&#91;0&#93;</span>
+            <span className="block">    feedback = &quot;total(&quot; + str(n) + &quot;) returned &quot; + str(got) + &quot; but should be &quot; + str(want)</span>
+            <span className="block">    print(&quot;Attempt&quot;, attempt, &quot;-&gt; FAILED:&quot;, feedback)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Thought 1 : I must find the capital of France first.</div>
+          <div>Action 1 : lookup&#91;capital of France&#93;</div>
+          <div>Observation 1 : Paris</div>
+          <div>Thought 2 : Now I need the population of that city.</div>
+          <div>Action 2 : lookup&#91;population of Paris&#93;</div>
+          <div>Observation 2 : about 2.1 million</div>
+          <div>Final answer: Paris has about 2.1 million people.</div>
+          <div>Attempt 1 -&gt; FAILED: total(3) returned 3 but should be 6</div>
+          <div>Attempt 2 -&gt; all tests pass</div>
+        </div>
+      </div>
+      <div>
+        Observation 1 (Paris) makes Thought 2 possible. In the second part, only the first attempt fails. The exact error message is fed back, and attempt 2 passes. In a real system the code would run in a sandbox and the loop would stop after a few attempts.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What does the Observation step in ReAct provide?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag11-q1-a" name="ag11-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag11-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Real information from the tool that guides the next thought</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Observations correct the model with facts.</div>
+          </div>
+          <div>
+            <input id="ag11-q1-b" name="ag11-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag11-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The final answer always</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Observations feed the next thought.</div>
+          </div>
+          <div>
+            <input id="ag11-q1-c" name="ag11-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag11-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) A new model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The model is unchanged.</div>
+          </div>
+          <div>
+            <input id="ag11-q1-d" name="ag11-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag11-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Nothing, it is optional</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It is essential to the loop.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: Which retry is most likely to help?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag11-q2-a" name="ag11-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag11-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) One that includes the specific failure message</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> New concrete information lets the model change something.</div>
+          </div>
+          <div>
+            <input id="ag11-q2-b" name="ag11-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag11-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Repeating the identical prompt</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It usually reproduces the same failure.</div>
+          </div>
+          <div>
+            <input id="ag11-q2-c" name="ag11-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag11-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Retrying forever</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Always limit attempts.</div>
+          </div>
+          <div>
+            <input id="ag11-q2-d" name="ag11-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag11-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Deleting the test</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That hides the problem.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>ReAct alternates thoughts, actions and observations.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Observations from tools correct the model&apos;s guesses at every step.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Reflection means reviewing one&apos;s own work against questions or real checks.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Self-correction works best with concrete, external feedback such as test failures.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A good retry changes something: new feedback, a different tool or a different plan.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Limit attempts and budget, and return the best attempt with a warning if all fail.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">ReAct and Correction in One Line</div>
+        <div className="text-center font-bold text-white">
+          Think → act → observe → critique with real feedback → fix → stop after a few tries
+        </div>
+      </div>
+      <div>
+        These patterns are the engine of coding agents and research agents.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> When tasks have many branches, parallel steps and pauses, loose loops are not enough. In <strong className="text-white">Agent Workflows and State Machines</strong> you will learn to structure agents with explicit states, branches and checkpoints.
+      </div>
+    </div>
+  </section>
+
+</div>

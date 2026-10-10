@@ -1,0 +1,472 @@
+---
+title: "Introduction to AI Agents"
+slug: "01-introduction-to-ai-agents"
+order: 1
+category: "AI Agents"
+subcategory: "Foundations"
+difficulty: "Beginner"
+readTime: "25 min"
+description: "Learn what AI agents are, how they differ from plain LLMs and chatbots, why they are useful for multi-step work, and where they are used today, with a tiny agent loop built from scratch in Python."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> An <strong className="text-white">AI agent</strong> is a system where a language model <strong className="text-white">decides what to do next</strong>, uses <strong className="text-white">tools</strong> to act in the world, looks at the <strong className="text-white">results</strong>, and repeats until a goal is reached. A chatbot answers once. An agent <strong className="text-white">works on a task</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: What Are AI Agents?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        An <strong className="text-white">AI agent</strong> is a program that pursues a <strong className="text-white">goal</strong> on its own. A language model acts as its brain: it reads the situation, chooses an action (such as calling a tool), sees what happened, and chooses the next action. This repeating cycle continues until the task is finished or a limit is reached.
+      </div>
+      <div>
+        Think of a human assistant. You say <em>book me the cheapest flight to Delhi next Friday</em>, and they search, compare, pick, and book. You did not tell them each click. An agent is the software version of that assistant.
+      </div>
+      <div className="grid gap-5 md:grid-cols-4">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Goal</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">What to achieve</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>A task in plain language, such as <em>find the cheapest item</em>.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-violet-300">Model</span>
+            <span className="rounded bg-violet-950/80 px-2 py-0.5 font-mono text-xs text-violet-300">The brain</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>An LLM that reasons about what to do next.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Tools</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">The hands</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Functions and APIs the agent can call: search, database, calculator.</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-orange-300">Loop</span>
+            <span className="rounded bg-orange-950/80 px-2 py-0.5 font-mono text-xs text-orange-300">The persistence</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div>Act, observe the result, decide again, until done.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">One-line definition:</strong> Agent = LLM + tools + a loop + a goal.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: LLM vs Chatbot vs Agent
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        These three words are often mixed up. They are layers, each adding something to the one before it:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3"></th>
+              <th className="px-5 py-3">Plain LLM</th>
+              <th className="px-5 py-3">Chatbot</th>
+              <th className="px-5 py-3">AI Agent</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">What it is</td><td className="px-5 py-3">A model that predicts the next token</td><td className="px-5 py-3">An app around an LLM with a chat window and memory of the conversation</td><td className="px-5 py-3">An LLM that plans and acts in a loop</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Takes actions in the world?</td><td className="px-5 py-3">No, it only produces text</td><td className="px-5 py-3">Usually no, it replies with text</td><td className="px-5 py-3">Yes, through tools</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Handles multi-step tasks?</td><td className="px-5 py-3">Only inside one answer</td><td className="px-5 py-3">One question and answer at a time</td><td className="px-5 py-3">Yes, it keeps going until the goal is met</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Uses live data?</td><td className="px-5 py-3">No, only what it was trained on</td><td className="px-5 py-3">Sometimes</td><td className="px-5 py-3">Yes, it fetches what it needs</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Who decides the next step?</td><td className="px-5 py-3">The person, every time</td><td className="px-5 py-3">The person, every time</td><td className="px-5 py-3">The model, within limits you set</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Example</td><td className="px-5 py-3">A raw model API call</td><td className="px-5 py-3">A customer FAQ bot</td><td className="px-5 py-3">A coding agent that edits files and runs tests</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Important:</strong> The line is not sharp. Many products sit between a chatbot and an agent. The useful question is: <em>does the model choose actions and loop on the results?</em> If yes, it is acting as an agent.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Why Agents Are Useful
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Agents are useful when a task cannot be solved in one reply because the answer depends on <strong className="text-white">steps, fresh data or actions</strong>:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Need</th>
+              <th className="px-5 py-3">How an agent helps</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Many steps</td><td className="px-5 py-3">Breaks work into steps and carries them out</td><td className="px-5 py-3">Research a topic, then write a report</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Fresh or private data</td><td className="px-5 py-3">Calls tools to fetch it</td><td className="px-5 py-3">Check an order status in a database</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Real actions</td><td className="px-5 py-3">Sends emails, edits files, books, pays (with permission)</td><td className="px-5 py-3">Create a calendar event</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Handling surprises</td><td className="px-5 py-3">Reads results and adapts</td><td className="px-5 py-3">Retry with another search when the first fails</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Saving human time</td><td className="px-5 py-3">Does repetitive digital work</td><td className="px-5 py-3">Sort and answer routine support tickets</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Rule of thumb:</strong> If you can write the exact steps in advance, a normal <strong className="text-white">workflow or script</strong> is cheaper and more reliable. Use an agent when the steps <em>depend on what is found along the way</em>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Real-World Agent Examples
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Area</th>
+              <th className="px-5 py-3">What the agent does</th>
+              <th className="px-5 py-3">Typical tools</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Coding assistants</td><td className="px-5 py-3">Read a codebase, edit files, run tests, fix errors</td><td className="px-5 py-3">File system, terminal, test runner</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Customer support</td><td className="px-5 py-3">Understand a request, look up the order, answer or hand over to a human</td><td className="px-5 py-3">Order database, help-center search, ticket system</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Research assistants</td><td className="px-5 py-3">Search sources, read pages, compare and summarize with citations</td><td className="px-5 py-3">Web search, document reader</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Data analysis</td><td className="px-5 py-3">Write queries, run them, build charts, explain results</td><td className="px-5 py-3">SQL, Python, plotting</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Personal assistants</td><td className="px-5 py-3">Manage email, calendar and reminders</td><td className="px-5 py-3">Email, calendar, notes</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">IT operations</td><td className="px-5 py-3">Watch alerts, diagnose a fault, apply a safe fix</td><td className="px-5 py-3">Monitoring, logs, runbooks</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Pattern to notice</div>
+        <div className="text-sm leading-relaxed text-slate-300">In every example the agent is given <strong className="text-white">a goal</strong> and <strong className="text-white">a small, well-chosen set of tools</strong>. The quality of the tools often matters as much as the quality of the model.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Levels of Autonomy and When Not to Use an Agent
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Agents are not all-or-nothing. It helps to think in levels, from least to most independent:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Level</th>
+              <th className="px-5 py-3">Who decides</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">0 · Plain LLM</td><td className="px-5 py-3">Person, every step</td><td className="px-5 py-3">Ask a question, get text</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">1 · Workflow with LLM steps</td><td className="px-5 py-3">Your code decides the order</td><td className="px-5 py-3">Summarize, then classify, then store</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">2 · Agent with tools</td><td className="px-5 py-3">The model picks tools inside limits</td><td className="px-5 py-3">Support agent with a lookup tool</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">3 · Agent with approval</td><td className="px-5 py-3">The model proposes, a human approves risky actions</td><td className="px-5 py-3">Refund agent that asks before paying</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">4 · Autonomous agent</td><td className="px-5 py-3">The model plans over many steps alone</td><td className="px-5 py-3">Long-running research or coding agent</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Costs of agents:</strong> More <strong className="text-white">latency</strong> (many model calls), more <strong className="text-white">cost</strong> (tokens add up), and less <strong className="text-white">predictability</strong> (the path can differ every run). Start at the lowest level that solves the problem, and move up only when needed.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Chatbot vs. Agent and the Four Ingredients
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure compares a chatbot with an agent on the same question, then lists the four ingredients that make something an agent.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-cyan-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300">Part 1 · Chatbot vs. Agent</span>
+        <span className="text-xs text-slate-400">Same question, different behavior</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Chatbot</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">One call</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Question: 17% of the cheapest item?</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Replies once from what it knows</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Cannot see the price list, guesses</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Agent</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Loop with tools</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Step 1: call the cheapest-item tool</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Step 2: call the percent tool</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Step 3: read the result and answer</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Answers from real data: 76.5</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The Four Ingredients</span>
+        <span className="text-xs text-slate-400">Every agent has all four</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Goal</div>
+          <div className="mt-2 text-lg font-bold text-white">What to do</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Given in plain language.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Model</div>
+          <div className="mt-2 text-lg font-bold text-white">Reasoning</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Chooses the next action.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Tools</div>
+          <div className="mt-2 text-lg font-bold text-white">Acting</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Search, database, calculator, APIs.</div>
+        </div>
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Loop</div>
+          <div className="mt-2 text-lg font-bold text-white">Persistence</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Repeat until done or a limit is hit.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-cyan-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see when NOT to use an agent</span>
+          <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If the steps are always the same, write a normal script or workflow. It is faster, cheaper and easier to test. Choose an agent only when the next step depends on what the previous step found.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows that the agent reaches the answer by looping through tools. Part 2 lists the four ingredients. Open the bar to see when a simple workflow is the better choice.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Chatbot and a Tiny Agent Side by Side
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script runs the same question through a chatbot (one call) and a tiny agent (a loop with two tools). A simple rule-based function plays the role of the language model so you can see every step without an API key.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">chatbot_vs_agent.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># Chatbot vs agent: the agent loops (decide -&gt; use a tool -&gt; look at the result -&gt; repeat)</span>
+            <span className="block">PRICES = &#123;&quot;laptop&quot;: 900, &quot;phone&quot;: 600, &quot;tablet&quot;: 450&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def tool&#95;cheapest():</span>
+            <span className="block">    name = min(PRICES, key=PRICES.get)</span>
+            <span className="block">    return name, PRICES&#91;name&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def tool&#95;percent(value, pct):</span>
+            <span className="block">    return round(value &#42; pct / 100, 2)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">TOOLS = &#123;&quot;cheapest&quot;: tool&#95;cheapest, &quot;percent&quot;: tool&#95;percent&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def chatbot(question):</span>
+            <span className="block text-slate-500">    # One call, no tools, no loop: it can only answer from what it already knows</span>
+            <span className="block">    return &quot;I cannot see the live price list, so I can only guess.&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def fake&#95;llm(goal, history):</span>
+            <span className="block text-slate-500">    # Stands in for a real model: reads what happened so far and picks the next step</span>
+            <span className="block">    used = &#91;h&#91;&quot;action&quot;&#93; for h in history&#93;</span>
+            <span className="block">    if &quot;cheapest&quot; not in used:</span>
+            <span className="block">        return &#123;&quot;action&quot;: &quot;cheapest&quot;, &quot;args&quot;: &#123;&#125;&#125;</span>
+            <span className="block">    if &quot;percent&quot; not in used:</span>
+            <span className="block">        price = history&#91;-1&#93;&#91;&quot;result&quot;&#93;&#91;1&#93;</span>
+            <span className="block">        return &#123;&quot;action&quot;: &quot;percent&quot;, &quot;args&quot;: &#123;&quot;value&quot;: price, &quot;pct&quot;: 17&#125;&#125;</span>
+            <span className="block">    return &#123;&quot;action&quot;: &quot;finish&quot;, &quot;answer&quot;: &quot;17% of the cheapest item costs &quot; + str(history&#91;-1&#93;&#91;&quot;result&quot;&#93;)&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">goal = &quot;What is 17% of the price of the cheapest item?&quot;</span>
+            <span className="block">print(&quot;Chatbot:&quot;, chatbot(goal))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">history = &#91;&#93;</span>
+            <span className="block">for step in range(1, 6):</span>
+            <span className="block">    decision = fake&#95;llm(goal, history)</span>
+            <span className="block">    if decision&#91;&quot;action&quot;&#93; == &quot;finish&quot;:</span>
+            <span className="block">        print(&quot;Agent final answer:&quot;, decision&#91;&quot;answer&quot;&#93;)</span>
+            <span className="block">        break</span>
+            <span className="block">    result = TOOLS&#91;decision&#91;&quot;action&quot;&#93;&#93;(&#42;&#42;decision&#91;&quot;args&quot;&#93;)</span>
+            <span className="block">    history.append(&#123;&quot;action&quot;: decision&#91;&quot;action&quot;&#93;, &quot;result&quot;: result&#125;)</span>
+            <span className="block">    print(&quot;Step&quot;, step, &quot;| action:&quot;, decision&#91;&quot;action&quot;&#93;, &quot;| result:&quot;, result)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Chatbot: I cannot see the live price list, so I can only guess.</div>
+          <div>Step 1 | action: cheapest | result: (&apos;tablet&apos;, 450)</div>
+          <div>Step 2 | action: percent | result: 76.5</div>
+          <div>Agent final answer: 17% of the cheapest item costs 76.5</div>
+        </div>
+      </div>
+      <div>
+        The chatbot can only guess, while the agent calls the first tool, reads its result, uses that result to call the second tool, and then answers. The loop of decide, act, observe is the whole idea of an agent. Later lessons replace the rule-based function with a real model.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What most clearly separates an agent from a chatbot?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag01-q1-a" name="ag01-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag01-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The model chooses actions and loops on the results</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Choosing tool actions and repeating until the goal is met is the core of an agent.</div>
+          </div>
+          <div>
+            <input id="ag01-q1-b" name="ag01-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag01-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It has a nicer chat window</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The interface does not decide whether something is an agent.</div>
+          </div>
+          <div>
+            <input id="ag01-q1-c" name="ag01-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag01-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It uses a larger model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Model size is not the difference.</div>
+          </div>
+          <div>
+            <input id="ag01-q1-d" name="ag01-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag01-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It never makes mistakes</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Agents can and do make mistakes.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: When is a fixed workflow better than an agent?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag01-q2-a" name="ag01-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag01-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) When the steps are always the same and known in advance</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A script is cheaper, faster and more predictable.</div>
+          </div>
+          <div>
+            <input id="ag01-q2-b" name="ag01-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag01-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) When the task needs fresh data</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Workflows can fetch data too. The question is whether the steps vary.</div>
+          </div>
+          <div>
+            <input id="ag01-q2-c" name="ag01-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag01-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) When you want the model to decide everything</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is the case for an agent.</div>
+          </div>
+          <div>
+            <input id="ag01-q2-d" name="ag01-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag01-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Never, agents are always better</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Agents add cost, latency and unpredictability.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>An AI agent is an LLM that decides actions, uses tools and loops on the results until a goal is reached.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A plain LLM predicts text, a chatbot adds a chat interface and memory, and an agent adds tools and an action loop.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Agents are useful for multi-step tasks that need fresh data or real actions.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Real examples: coding assistants, support agents, research assistants, data analysts and IT operations.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Autonomy is a spectrum: workflows, tool agents, agents with approval, and fully autonomous agents.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use the simplest option that works. Agents cost more and are less predictable than fixed workflows.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">An Agent in One Line</div>
+        <div className="text-center font-bold text-white">
+          Goal → model decides → tool acts → result observed → repeat until done
+        </div>
+      </div>
+      <div>
+        Everything in this series is about making that loop smarter, safer, more reliable and cheaper.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You now know <em>what</em> an agent is. In <strong className="text-white">How AI Agents Work</strong> you will open the box and study the architecture, the observe, reason, act loop and the agent lifecycle.
+      </div>
+    </div>
+  </section>
+
+</div>

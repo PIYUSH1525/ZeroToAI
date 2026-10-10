@@ -1,0 +1,487 @@
+---
+title: "Production Agent Architecture"
+slug: "23-production-agent-architecture"
+order: 23
+category: "AI Agents"
+subcategory: "Production"
+difficulty: "Advanced"
+readTime: "30 min"
+description: "Learn how to run agents for real users: the agent backend and API layer, databases and state persistence, job queues, retries and idempotency, scaling with capacity planning, and deployment practices."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A production agent is <strong className="text-white">not</strong> one script. It is a <strong className="text-white">backend</strong>: an <strong className="text-white">API</strong> accepts requests, a <strong className="text-white">queue</strong> holds jobs, <strong className="text-white">workers</strong> run the agent loop, a <strong className="text-white">database</strong> stores state and results, and <strong className="text-white">monitoring</strong> watches everything. The design goal is that <strong className="text-white">no single failure loses work</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: The Agent Backend
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        In a demo, you run an agent in a notebook and wait. In production, many users send requests at once, runs can take minutes, and servers restart. So the agent runs as a <strong className="text-white">service</strong> made of several parts:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Part</th>
+              <th className="px-5 py-3">Job</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">API layer</td><td className="px-5 py-3">Receives requests, checks identity, returns a job id or a result</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Queue</td><td className="px-5 py-3">Holds work until a worker is free</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Workers</td><td className="px-5 py-3">Run the agent loop: call the model, run tools, update state</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Database</td><td className="px-5 py-3">Stores jobs, state, results and history</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Cache</td><td className="px-5 py-3">Speeds up repeated work and reduces cost</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Monitoring</td><td className="px-5 py-3">Logs, traces, metrics and alerts</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Key idea:</strong> Separate <strong className="text-white">accepting</strong> work from <strong className="text-white">doing</strong> work. The API answers fast, and workers take their time.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: APIs for Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Agent runs are slow compared with normal web requests, so the API usually works asynchronously:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Submit:</strong> The client sends the task. The API stores a job and replies immediately with a job id.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Wait:</strong> The client polls for status, or receives live updates through streaming or webhooks.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Fetch:</strong> When the status is done, the client reads the result.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Cancel (optional):</strong> The client can stop a run that is no longer needed.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">What the API must also do</div>
+        <div className="text-sm leading-relaxed text-slate-300">Authenticate users, enforce rate limits and quotas, validate input, never expose secrets, and return clear errors.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Databases and State Persistence
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Everything the agent needs to <strong className="text-white">resume</strong> must be stored outside the process: the goal, the step history, tool results and the current status. If a worker dies, another worker can load the state and continue.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Store</th>
+              <th className="px-5 py-3">Typical content</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Relational database</td><td className="px-5 py-3">Jobs, users, status, results</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Key-value store</td><td className="px-5 py-3">Fast session state and locks</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Object storage</td><td className="px-5 py-3">Large files and artifacts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Vector database</td><td className="px-5 py-3">Semantic memory and documents</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> Jobs live in a database table with a status column: queued, running, done or failed. A restart does not lose them.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Queues, Retries and Idempotency
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A <strong className="text-white">queue</strong> decouples the API from the workers and smooths traffic spikes. Because work can be retried, every job must be safe to run <strong className="text-white">more than once</strong>.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Idea</th>
+              <th className="px-5 py-3">Purpose</th>
+              <th className="px-5 py-3">In the code</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Status transitions</td><td className="px-5 py-3">Track where each job is</td><td className="px-5 py-3">queued, running, done, failed</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Retries with a limit</td><td className="px-5 py-3">Recover from temporary failures</td><td className="px-5 py-3">req-2 failed once, then succeeded on attempt 2</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Give-up state</td><td className="px-5 py-3">Stop hopeless jobs</td><td className="px-5 py-3">req-3 failed after 3 attempts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Idempotency key</td><td className="px-5 py-3">Ignore duplicate submissions</td><td className="px-5 py-3">The second req-1 was ignored</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Why idempotency matters:</strong> Networks cause duplicate requests, and workers crash mid-job. Without idempotency a customer could be refunded twice or emailed twice.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Scaling and Deployment
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Capacity planning</strong> starts with <strong className="text-white">Little&apos;s law</strong>: the number of runs in progress equals the arrival rate times the time each run takes.
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$\text{concurrent runs} = \text{requests per second} \times \text{seconds per run}$$
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> 5 requests per second at 20 seconds per run means 100 runs at once. With 4 runs per worker, you need 25 workers.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Practice</th>
+              <th className="px-5 py-3">Why</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Stateless workers</td><td className="px-5 py-3">Any worker can run any job, so you can add or remove workers freely</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Autoscale on queue length</td><td className="px-5 py-3">Match capacity to demand</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Respect model provider rate limits</td><td className="px-5 py-3">The model API can be the real bottleneck</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Containers and a deployment pipeline</td><td className="px-5 py-3">Repeatable releases and fast rollbacks</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Secrets from a secret manager</td><td className="px-5 py-3">Never in code or prompts</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Graceful shutdown</td><td className="px-5 py-3">Finish or re-queue running jobs on a restart</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Staged rollouts and monitoring</td><td className="px-5 py-3">Catch bad releases early</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Request Path of a Production Agent
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows the path of a request through the API, queue, worker and database, then summarizes what the code demonstrated about jobs and capacity.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-emerald-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 1 · The Request Path</span>
+        <span className="text-xs text-slate-400">From user to result</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-4">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">API</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Accept</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Check the user</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Store the job</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Return a job id</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Queue</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Hold</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Jobs wait their turn</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Smooths spikes</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Worker</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Run</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Load state</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Run the agent loop</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">Save progress</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">Database</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">Remember</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Status and results</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Client fetches the result</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · What the Code Showed</span>
+        <span className="text-xs text-slate-400">Four jobs, four lessons</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">req-1</div>
+          <div className="mt-2 text-lg font-bold text-white">Done</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Ran once. A duplicate was ignored.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">req-2</div>
+          <div className="mt-2 text-lg font-bold text-white">Retried</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Failed once, succeeded on attempt 2.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">req-3</div>
+          <div className="mt-2 text-lg font-bold text-white">Gave up</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Failed after 3 attempts.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Capacity</div>
+          <div className="mt-2 text-lg font-bold text-white">25 workers</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">5 req/s times 20 s over 4 per worker.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-emerald-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why workers should be stateless</span>
+          <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If all progress lives in the database, any worker can pick up any job, and a crashed worker is replaced without losing work. State kept only in a worker&apos;s memory is lost when it dies.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 reads left to right. Part 2 explains the four jobs and the capacity result. Open the bar to see why stateless workers matter.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Durable Job Queue and Capacity Planning
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script builds a small durable job queue in a database with status transitions, retries with a limit, a give-up state and an idempotency key that ignores duplicate submissions. It ends with a capacity calculation based on Little&apos;s law.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">agent_backend.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import json, sqlite3</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># A durable job queue in a database: the heart of a production agent backend</span>
+            <span className="block">db = sqlite3.connect(&quot;:memory:&quot;)</span>
+            <span className="block">db.execute(&quot;&quot;&quot;CREATE TABLE jobs (id INTEGER PRIMARY KEY, idem&#95;key TEXT UNIQUE, payload TEXT,</span>
+            <span className="block">              status TEXT, attempts INTEGER DEFAULT 0, result TEXT)&quot;&quot;&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def submit(idem&#95;key, payload):</span>
+            <span className="block">    try:</span>
+            <span className="block">        cursor = db.execute(&quot;INSERT INTO jobs (idem&#95;key, payload, status) VALUES (?, ?, &apos;queued&apos;)&quot;, (idem&#95;key, json.dumps(payload)))</span>
+            <span className="block">        return &quot;queued as job &quot; + str(cursor.lastrowid)</span>
+            <span className="block">    except sqlite3.IntegrityError:</span>
+            <span className="block">        return &quot;duplicate request ignored (same idempotency key)&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def claim&#95;next():</span>
+            <span className="block">    row = db.execute(&quot;SELECT id, payload, attempts FROM jobs WHERE status = &apos;queued&apos; ORDER BY id LIMIT 1&quot;).fetchone()</span>
+            <span className="block">    if row:</span>
+            <span className="block">        db.execute(&quot;UPDATE jobs SET status = &apos;running&apos;, attempts = attempts + 1 WHERE id = ?&quot;, (row&#91;0&#93;,))</span>
+            <span className="block">    return row</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def run&#95;agent(payload, attempt):</span>
+            <span className="block">    if attempt &lt;= payload&#91;&quot;fail&#95;times&quot;&#93;:</span>
+            <span className="block">        raise RuntimeError(&quot;tool timeout&quot;)</span>
+            <span className="block">    return &quot;report for &quot; + payload&#91;&quot;topic&quot;&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">MAX&#95;ATTEMPTS = 3</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def worker&#95;loop():</span>
+            <span className="block">    while True:</span>
+            <span className="block">        row = claim&#95;next()</span>
+            <span className="block">        if row is None:</span>
+            <span className="block">            return</span>
+            <span className="block">        job&#95;id, payload, attempts = row&#91;0&#93;, json.loads(row&#91;1&#93;), row&#91;2&#93; + 1</span>
+            <span className="block">        try:</span>
+            <span className="block">            result = run&#95;agent(payload, attempts)</span>
+            <span className="block">            db.execute(&quot;UPDATE jobs SET status = &apos;done&apos;, result = ? WHERE id = ?&quot;, (result, job&#95;id))</span>
+            <span className="block">        except RuntimeError:</span>
+            <span className="block">            status = &quot;failed&quot; if attempts &gt;= MAX&#95;ATTEMPTS else &quot;queued&quot;          # retry or give up</span>
+            <span className="block">            db.execute(&quot;UPDATE jobs SET status = ? WHERE id = ?&quot;, (status, job&#95;id))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(submit(&quot;req-1&quot;, &#123;&quot;topic&quot;: &quot;solar&quot;, &quot;fail&#95;times&quot;: 0&#125;))</span>
+            <span className="block">print(submit(&quot;req-2&quot;, &#123;&quot;topic&quot;: &quot;wind&quot;, &quot;fail&#95;times&quot;: 1&#125;))</span>
+            <span className="block">print(submit(&quot;req-1&quot;, &#123;&quot;topic&quot;: &quot;solar&quot;, &quot;fail&#95;times&quot;: 0&#125;))</span>
+            <span className="block">print(submit(&quot;req-3&quot;, &#123;&quot;topic&quot;: &quot;coal&quot;, &quot;fail&#95;times&quot;: 5&#125;))</span>
+            <span className="block">worker&#95;loop()</span>
+            <span className="block">for row in db.execute(&quot;SELECT id, idem&#95;key, status, attempts, result FROM jobs ORDER BY id&quot;):</span>
+            <span className="block">    print(row)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Capacity planning with Little&apos;s law: concurrent runs = arrival rate x time per run</span>
+            <span className="block text-cyan-300">def workers&#95;needed(requests&#95;per&#95;second, seconds&#95;per&#95;run, runs&#95;per&#95;worker):</span>
+            <span className="block">    concurrent = requests&#95;per&#95;second &#42; seconds&#95;per&#95;run</span>
+            <span className="block">    return concurrent, -(-concurrent // runs&#95;per&#95;worker)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">concurrent, workers = workers&#95;needed(5, 20, 4)</span>
+            <span className="block">print(&quot;5 requests/s x 20 s per run =&quot;, concurrent, &quot;runs at once -&gt;&quot;, workers, &quot;workers of 4 runs each&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>queued as job 1</div>
+          <div>queued as job 2</div>
+          <div>duplicate request ignored (same idempotency key)</div>
+          <div>queued as job 3</div>
+          <div>(1, &apos;req-1&apos;, &apos;done&apos;, 1, &apos;report for solar&apos;)</div>
+          <div>(2, &apos;req-2&apos;, &apos;done&apos;, 2, &apos;report for wind&apos;)</div>
+          <div>(3, &apos;req-3&apos;, &apos;failed&apos;, 3, None)</div>
+          <div>5 requests/s x 20 s per run = 100 runs at once -&gt; 25 workers of 4 runs each</div>
+        </div>
+      </div>
+      <div>
+        The duplicate submission is ignored, the flaky job succeeds on its second attempt, and the hopeless job is marked failed after three attempts. A real system would use a proper queue and database server, but the status logic is the same.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What does an idempotency key protect against?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag23-q1-a" name="ag23-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag23-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Running the same request twice, for example after a duplicate submission</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The second request with the same key is ignored.</div>
+          </div>
+          <div>
+            <input id="ag23-q1-b" name="ag23-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag23-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Slow models</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It does not speed up a model.</div>
+          </div>
+          <div>
+            <input id="ag23-q1-c" name="ag23-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag23-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Large prompts</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It does not shrink prompts.</div>
+          </div>
+          <div>
+            <input id="ag23-q1-d" name="ag23-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag23-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Missing tools</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It does not add tools.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: According to Little&apos;s law, 5 requests per second at 20 seconds per run means how many concurrent runs?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag23-q2-a" name="ag23-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag23-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) 100</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> 5 × 20 = 100 runs in progress at once.</div>
+          </div>
+          <div>
+            <input id="ag23-q2-b" name="ag23-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag23-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) 25</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is the worker count with 4 runs per worker.</div>
+          </div>
+          <div>
+            <input id="ag23-q2-c" name="ag23-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag23-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) 4</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is runs per worker.</div>
+          </div>
+          <div>
+            <input id="ag23-q2-d" name="ag23-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag23-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) 20</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is only the run time.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>A production agent is a backend of API, queue, workers, database, cache and monitoring.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Separate accepting work from doing work. The API returns a job id and workers do the run.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Store all state outside the worker so any worker can resume any job.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Use status transitions, retry limits, a give-up state and idempotency keys.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Capacity planning: concurrent runs = arrival rate × seconds per run.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Deploy with containers, autoscaling, secret managers, graceful shutdown and staged rollouts.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Production in One Line</div>
+        <div className="text-center font-bold text-white">
+          Accept fast → queue durably → run on stateless workers → persist everything → scale on demand
+        </div>
+      </div>
+      <div>
+        Production is about making failures boring.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Running at scale also means running at a cost. In <strong className="text-white">Agent Performance and Cost Optimization</strong> you will learn how to cut latency, tokens and spend.
+      </div>
+    </div>
+  </section>
+
+</div>

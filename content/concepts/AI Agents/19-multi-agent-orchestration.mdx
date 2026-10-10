@@ -1,0 +1,467 @@
+---
+title: "Multi-Agent Orchestration"
+slug: "19-multi-agent-orchestration"
+order: 19
+category: "AI Agents"
+subcategory: "Multi-Agent"
+difficulty: "Advanced"
+readTime: "30 min"
+description: "Learn how multi-agent systems are run: routing requests to the right agent, delegating and handing off work, coordinating results, managing shared state safely, and building multi-agent workflows."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> <strong className="text-white">Orchestration</strong> is the control layer of a multi-agent system. It <strong className="text-white">routes</strong> each request to the right agent, <strong className="text-white">delegates</strong> and hands off work, <strong className="text-white">coordinates</strong> results, protects <strong className="text-white">shared state</strong> from conflicts, and ties it together in a <strong className="text-white">workflow</strong>.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Routing
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Routing</strong> decides which agent should handle a request. A good router keeps each specialist focused and avoids waking up the wrong, expensive one.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Routing method</th>
+              <th className="px-5 py-3">How it works</th>
+              <th className="px-5 py-3">Trade-off</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Rules and keywords</td><td className="px-5 py-3">Match words to agent skills</td><td className="px-5 py-3">Fast and cheap, but brittle</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Classifier or small model</td><td className="px-5 py-3">A cheap model picks the agent</td><td className="px-5 py-3">Flexible, small cost</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">LLM router</td><td className="px-5 py-3">A language model reads and decides</td><td className="px-5 py-3">Most flexible, slowest</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Embedding match</td><td className="px-5 py-3">Compare the request with agent descriptions</td><td className="px-5 py-3">Good for many agents</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> A keyword router sends <em>invoice charged twice</em> to billing, <em>error at login</em> to technical, and a request that matches nothing to a general agent.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Delegation and Handoffs
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Delegation</strong> means one agent gives a task to another. A <strong className="text-white">handoff</strong> transfers the whole conversation to a different agent. Both need clear <strong className="text-white">instructions, context and an expected result</strong>.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Good delegation includes</th>
+              <th className="px-5 py-3">Why</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">The goal in one sentence</td><td className="px-5 py-3">The receiver knows what to do</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Only the needed context</td><td className="px-5 py-3">Saves tokens and avoids confusion</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">The expected output format</td><td className="px-5 py-3">Easy to merge</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Limits</td><td className="px-5 py-3">Time, budget, allowed tools</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Common mistake:</strong> Handing over <em>the whole conversation</em> every time. Pass a short, precise brief instead.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Coordination
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Coordination</strong> makes sure the pieces fit: that tasks are not duplicated, results are merged and the final answer is consistent.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Coordination job</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Avoid duplicate work</td><td className="px-5 py-3">Two agents should not research the same question</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Order dependent tasks</td><td className="px-5 py-3">Analysis waits for the data</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Merge results</td><td className="px-5 py-3">Combine three summaries into one</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Resolve conflicts</td><td className="px-5 py-3">Two agents disagree: ask a judge or a human</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Track progress</td><td className="px-5 py-3">Know which tasks are done, running or failed</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Tip:</strong> A <strong className="text-white">task board</strong> (a list of tasks with status and owner) is a simple and effective coordination tool.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Managing Shared State
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When several agents read and write the same data, they can overwrite each other. A safe approach is <strong className="text-white">optimistic concurrency</strong>: each write names the <strong className="text-white">version</strong> it read, and the write fails if someone else changed the data first.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> Agents A and B both read version 1. A writes first, so the version becomes 2. B&apos;s write, still based on version 1, is <strong className="text-white">rejected</strong>. B reads again and its second write succeeds. Both notes survive.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Technique</th>
+              <th className="px-5 py-3">Use</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Version checks</td><td className="px-5 py-3">Detect conflicting writes</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Append-only logs</td><td className="px-5 py-3">Never overwrite, only add</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Ownership</td><td className="px-5 py-3">Only one agent may write each field</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Locks</td><td className="px-5 py-3">Block others while writing (use sparingly)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Multi-Agent Workflows
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A complete <strong className="text-white">multi-agent workflow</strong> combines everything: a router picks the specialist, the specialist works (using tools and shared state), results are validated, and a coordinator returns the final result.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Receive:</strong> A request arrives.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Route:</strong> Pick the specialist.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Delegate:</strong> Send a short, clear brief.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Work and update state:</strong> The specialist uses its tools and writes to shared state with version checks.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Validate and return:</strong> Check the result, merge if needed and answer.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Do not forget:</strong> Add step limits, timeouts and escalation to a human at the orchestration level too. A system of agents can loop just like a single agent.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Routing and a Shared-State Conflict
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows how the router in the code sends four requests to different agents, then walks through a write conflict on shared state.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-emerald-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 1 · Routing Decisions in the Code</span>
+        <span className="text-xs text-slate-400">Four requests, four destinations</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-4">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Billing</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">invoice, charge</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Why was my invoice charged twice?</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">billing agent</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Technical</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">error, login</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">The app shows an error at login</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">technical agent</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Sales</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">upgrade, plan</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">How much is the upgrade plan?</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">sales agent</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-rose-300">General</span>
+            <span className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[11px] text-rose-200">no match</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Tell me a joke</div>
+          <div className="text-center text-rose-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">general agent</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · The Shared-State Conflict</span>
+        <span className="text-xs text-slate-400">Optimistic concurrency</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Both read</div>
+          <div className="mt-2 text-lg font-bold text-white">Version 1</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">A and B start from the same data.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">A writes</div>
+          <div className="mt-2 text-lg font-bold text-white">Accepted</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Version becomes 2.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">B writes</div>
+          <div className="mt-2 text-lg font-bold text-white">Rejected</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">B used the old version 1.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">B retries</div>
+          <div className="mt-2 text-lg font-bold text-white">Accepted</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Re-read, then write; version 3.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-emerald-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why we do not simply overwrite</span>
+          <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">If B overwrote the data, A&apos;s note would be lost without anyone noticing. A version check turns a silent loss into a visible conflict that can be retried.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 shows each request with its destination. Part 2 follows the two agents through the conflict. Open the bar to see why silent overwrites are dangerous.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: A Router, a Version-Checked State and a Workflow
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script builds a keyword router for three specialist agents with a general fallback, shows two agents writing to shared state with version checks (one write is rejected and retried), and runs a small coordinator workflow.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">orchestration.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block text-slate-500"># Routing, delegation, coordination and shared state</span>
+            <span className="block">SKILLS = &#123;</span>
+            <span className="block">    &quot;billing&quot;: &#123;&quot;billing&quot;, &quot;invoice&quot;, &quot;refund&quot;, &quot;charge&quot;, &quot;payment&quot;&#125;,</span>
+            <span className="block">    &quot;technical&quot;: &#123;&quot;error&quot;, &quot;crash&quot;, &quot;bug&quot;, &quot;login&quot;, &quot;password&quot;&#125;,</span>
+            <span className="block">    &quot;sales&quot;: &#123;&quot;price&quot;, &quot;buy&quot;, &quot;plan&quot;, &quot;upgrade&quot;, &quot;discount&quot;&#125;,</span>
+            <span className="block">&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def route(question):</span>
+            <span className="block">    words = set(question.lower().replace(&quot;?&quot;, &quot;&quot;).replace(&quot;,&quot;, &quot;&quot;).split())</span>
+            <span className="block">    scores = &#123;agent: len(words &amp; vocabulary) for agent, vocabulary in SKILLS.items()&#125;</span>
+            <span className="block">    best = max(scores, key=scores.get)</span>
+            <span className="block">    return best if scores&#91;best&#93; &gt; 0 else &quot;general&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for q in &#91;&quot;Why was my invoice charged twice?&quot;, &quot;The app shows an error at login&quot;, &quot;How much is the upgrade plan?&quot;, &quot;Tell me a joke&quot;&#93;:</span>
+            <span className="block">    print(q.ljust(36), &quot;-&gt; routed to:&quot;, route(q))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Shared state with optimistic concurrency: a write must name the version it read</span>
+            <span className="block text-cyan-300">class SharedState:</span>
+            <span className="block text-cyan-300">    def &#95;&#95;init&#95;&#95;(self):</span>
+            <span className="block">        self.version, self.data = 1, &#123;&quot;notes&quot;: &#91;&#93;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">    def update(self, expected&#95;version, note):</span>
+            <span className="block">        if expected&#95;version != self.version:</span>
+            <span className="block">            return False                                      # someone else changed it first</span>
+            <span className="block">        self.data&#91;&quot;notes&quot;&#93; = self.data&#91;&quot;notes&quot;&#93; + &#91;note&#93;</span>
+            <span className="block">        self.version += 1</span>
+            <span className="block">        return True</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">state = SharedState()</span>
+            <span className="block">seen&#95;by&#95;a = seen&#95;by&#95;b = state.version                         # both agents read version 1</span>
+            <span className="block">print(&quot;Agent A writes:&quot;, state.update(seen&#95;by&#95;a, &quot;A: found the invoice&quot;), &quot;-&gt; version&quot;, state.version)</span>
+            <span className="block">print(&quot;Agent B writes:&quot;, state.update(seen&#95;by&#95;b, &quot;B: refund approved&quot;), &quot;-&gt; conflict, must re-read&quot;)</span>
+            <span className="block">print(&quot;Agent B retries:&quot;, state.update(state.version, &quot;B: refund approved&quot;), &quot;-&gt; version&quot;, state.version)</span>
+            <span className="block">print(&quot;Final notes:&quot;, state.data&#91;&quot;notes&quot;&#93;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Delegation and coordination: a coordinator hands off, then merges the results</span>
+            <span className="block text-cyan-300">def run&#95;workflow(question):</span>
+            <span className="block">    specialist = route(question)</span>
+            <span className="block">    result = specialist + &quot; agent handled: &quot; + question</span>
+            <span className="block">    return &#123;&quot;routed&#95;to&quot;: specialist, &quot;result&quot;: result, &quot;status&quot;: &quot;done&quot;&#125;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(run&#95;workflow(&quot;Why was my invoice charged twice?&quot;))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Why was my invoice charged twice?    -&gt; routed to: billing</div>
+          <div>The app shows an error at login      -&gt; routed to: technical</div>
+          <div>How much is the upgrade plan?        -&gt; routed to: sales</div>
+          <div>Tell me a joke                       -&gt; routed to: general</div>
+          <div>Agent A writes: True -&gt; version 2</div>
+          <div>Agent B writes: False -&gt; conflict, must re-read</div>
+          <div>Agent B retries: True -&gt; version 3</div>
+          <div>Final notes: &#91;&apos;A: found the invoice&apos;, &apos;B: refund approved&apos;&#93;</div>
+          <div>&#123;&apos;routed&#95;to&apos;: &apos;billing&apos;, &apos;result&apos;: &apos;billing agent handled: Why was my invoice charged twice?&apos;, &apos;status&apos;: &apos;done&apos;&#125;</div>
+        </div>
+      </div>
+      <div>
+        The router sends each request to the right specialist and falls back to the general agent. The shared-state demo shows a rejected write and a successful retry, so both notes survive. The final line is the coordinator&apos;s result for the billing question.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: What does a router do in a multi-agent system?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag19-q1-a" name="ag19-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag19-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Chooses which agent should handle each request</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Routing keeps specialists focused.</div>
+          </div>
+          <div>
+            <input id="ag19-q1-b" name="ag19-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag19-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Trains the model</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Routing happens at run time.</div>
+          </div>
+          <div>
+            <input id="ag19-q1-c" name="ag19-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag19-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Stores the user&apos;s password</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> A router is not a secret store.</div>
+          </div>
+          <div>
+            <input id="ag19-q1-d" name="ag19-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag19-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Removes the need for agents</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It selects among agents.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What does a version check on shared state prevent?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag19-q2-a" name="ag19-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag19-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) One agent silently overwriting another agent&apos;s changes</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A stale write is rejected so it can be retried.</div>
+          </div>
+          <div>
+            <input id="ag19-q2-b" name="ag19-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag19-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The model from answering</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It has no effect on answering.</div>
+          </div>
+          <div>
+            <input id="ag19-q2-c" name="ag19-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag19-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Tool calls</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Tool calls are separate.</div>
+          </div>
+          <div>
+            <input id="ag19-q2-d" name="ag19-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag19-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Logging</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Logging continues.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Orchestration is the control layer: routing, delegation, coordination, shared state and workflow.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Routers can use rules, a small classifier, an LLM or embeddings, and need a fallback.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Delegate with a short brief: goal, needed context, output format and limits.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Coordination avoids duplicate work, orders dependent tasks, merges results and resolves conflicts.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Protect shared state with version checks, append-only logs or ownership.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Add limits, timeouts and human escalation at the orchestration level.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Orchestration in One Line</div>
+        <div className="text-center font-bold text-white">
+          Route → delegate → coordinate → update shared state safely → validate → answer
+        </div>
+      </div>
+      <div>
+        Orchestration is what turns several separate agents into one reliable system.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> You can now design teams of agents. In <strong className="text-white">Agent Frameworks</strong> you will see why frameworks exist and how they package the loop, tools, state and workflows you have been building by hand.
+      </div>
+    </div>
+  </section>
+
+</div>

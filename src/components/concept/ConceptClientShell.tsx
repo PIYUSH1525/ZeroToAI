@@ -87,32 +87,29 @@ export default function ConceptClientShell({
     }, 30);
   };
 
-  const handleTabClick = (tab: "content" | "code" | "visuals" | "related") => {
+  // Find sections by their declared type (data-type in the MDX), never by guessing from the title.
+  const codeSection = toc.find((t) => t.type === "code");
+  const visualSection = toc.find((t) => t.type === "visualization");
+
+  type TabId = "content" | "code" | "visuals" | "related";
+
+  const handleTabClick = (tab: TabId) => {
     setActiveTab(tab);
 
-    if (tab === "code") {
-      const codeSection = toc.find(
-        (t) =>
-          t.title.toLowerCase().includes("code") ||
-          t.title.toLowerCase().includes("python") ||
-          t.title.toLowerCase().includes("implementation")
-      );
-      if (codeSection) {
-        scrollToSection(codeSection.id);
-      }
-    } else if (tab === "visuals") {
-      const visualSection = toc.find(
-        (t) =>
-          t.title.toLowerCase().includes("visual") ||
-          t.title.toLowerCase().includes("diagram") ||
-          t.title.toLowerCase().includes("architecture") ||
-          t.title.toLowerCase().includes("pipeline")
-      );
-      if (visualSection) {
-        scrollToSection(visualSection.id);
-      }
+    if (tab === "code" && codeSection) {
+      scrollToSection(codeSection.id);
+    } else if (tab === "visuals" && visualSection) {
+      scrollToSection(visualSection.id);
     }
   };
+
+  // Only show the Code / Visualizations buttons when the lesson really has such a section.
+  const subTabs: { id: TabId; label: string }[] = [
+    { id: "content", label: "Content" },
+    ...(codeSection ? [{ id: "code" as const, label: "Code" }] : []),
+    ...(visualSection ? [{ id: "visuals" as const, label: "Visualizations" }] : []),
+    { id: "related", label: "Related" },
+  ];
 
   return (
     <div className="min-h-screen bg-[#05070E] text-white">
@@ -204,14 +201,7 @@ export default function ConceptClientShell({
 
         {/* 3. Sub-navigation Bar: Content | Code | Visualizations | Related (Screen 3) */}
         <div className="mt-4 flex items-center gap-2 overflow-x-auto border-b border-white/[0.08] pb-3">
-          {(
-            [
-              { id: "content", label: "Content" },
-              { id: "code", label: "Code" },
-              { id: "visuals", label: "Visualizations" },
-              { id: "related", label: "Related" },
-            ] as const
-          ).map((tab) => {
+          {subTabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button

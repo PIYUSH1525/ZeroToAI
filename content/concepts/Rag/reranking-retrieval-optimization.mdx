@@ -1,0 +1,351 @@
+---
+title: "Reranking and Retrieval Optimization"
+slug: "reranking-retrieval-optimization"
+order: 14
+category: "RAG"
+subcategory: "Retrieval"
+difficulty: "Intermediate"
+readTime: "20 min"
+description: "Learn why a second ranking stage improves precision, how cross-encoders differ from bi-encoders, how a reranking pipeline works, and how contextual compression trims passages."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> First-stage retrieval is fast but rough: it must compare a query with millions of chunks, so it uses cheap scoring. <strong className="text-white">Reranking</strong> adds a second, more careful look at a small shortlist. A slower and smarter model reads the query together with each candidate and puts the truly best passages on top, so the model sees fewer, better chunks.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: Why Rerank?</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Think of hiring. A quick screen of thousands of resumes uses simple rules and lets in more people than you will hire. Then interviewers spend real time on the shortlist. You cannot interview thousands, and you should not hire from the rough screen alone. Retrieval and reranking work the same way.</div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Stage 1, retrieve</div>
+          <div className="text-sm leading-7">Cheap and wide. Fetch the top 20 to 100 candidates. Goal: do not miss the answer, which means high recall.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Stage 2, rerank</div>
+          <div className="text-sm leading-7">Costly and sharp. Re-score only the shortlist and keep the top few. Goal: put the best passages first, which means high precision.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5"><strong className="text-blue-300">Why it helps:</strong> the best chunk is often retrieved but ranked fourth or tenth. Without reranking it may be cut off by a small top-k, or buried in the prompt where the model uses it less reliably.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: Bi-Encoders vs Cross-Encoders</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The difference lies in how the two texts are processed.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Aspect</th><th className="px-4 py-3">Bi-encoder (embedding search)</th><th className="px-4 py-3">Cross-encoder (reranker)</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Reads</td><td className="px-4 py-3">Query and chunk separately, each becomes a vector</td><td className="px-4 py-3">Query and chunk together in one pass</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Chunk vectors precomputed</td><td className="px-4 py-3 text-emerald-300">Yes, stored in the index</td><td className="px-4 py-3 text-rose-300">No, computed per query</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Speed</td><td className="px-4 py-3 text-emerald-300">Very fast over millions of chunks</td><td className="px-4 py-3 text-rose-300">Slow, so only for a shortlist</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Accuracy</td><td className="px-4 py-3 text-amber-300">Good</td><td className="px-4 py-3 text-emerald-300">Usually higher, it sees word interactions</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Typical role</td><td className="px-4 py-3">Candidate retrieval</td><td className="px-4 py-3">Reranking</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>Because a cross-encoder sees both texts at once, it can notice things a single vector cannot: that a negation applies to the question topic, that an answer is about a different product, or that a number matches. Other rerankers include hosted reranking services and prompting a language model to score or order the passages.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: The Reranking Pipeline</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">1.</strong> Retrieve N candidates, for example N equals 50, from dense, sparse or hybrid search.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">2.</strong> Score each candidate together with the query using the reranker.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">3.</strong> Sort by the new score and keep the top M, for example M equals 5.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">4.</strong> Optionally drop passages below a minimum score so weak matches never reach the prompt.</div>
+      </div>
+      <div>The cost is simple to estimate: reranking time is roughly the number of candidates times the time per pair. If a reranker needs about 10 milliseconds per pair, then 50 candidates take about 500 milliseconds when scored one at a time. Batching the pairs on a GPU shortens this a lot, but the principle stands: more candidates improve recall at the price of latency, so choose N from measurements.</div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Tuning N and M:</strong> raise N until the right chunk reliably appears among the candidates, then lower it again until latency is acceptable. Keep M small, because only a few high quality passages are needed in the prompt.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Contextual Compression and Retrieval Filtering</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Even a well-ranked chunk usually contains sentences the question does not need. <strong className="text-white">Contextual compression</strong> shortens each retrieved passage to the parts that matter for this question, either by extracting relevant sentences or by asking a model to summarize them. It saves prompt tokens and reduces distraction.</div>
+      <div><strong className="text-white">Retrieval filtering</strong> removes whole passages that score below a relevance threshold, or that duplicate each other. Together these steps turn a long list of loosely related chunks into a short, dense context.</div>
+      <div className="rounded-xl border border-orange-500/20 bg-orange-500/[0.05] p-5"><strong className="text-orange-300">Risk:</strong> compression can delete the sentence that qualifies the answer, such as an exception or a date. Compare answers with and without compression on your test questions before turning it on.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Measuring Gains and Respecting Limits</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Reranking should earn its place. Measure it on your labeled questions, as in the retrieval fundamentals lesson: compare hit rate in the final top few passages and the average rank of the first relevant chunk before and after. A metric that rewards putting relevant results near the top, such as nDCG, is also common.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Question</th><th className="px-4 py-3">How to check</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Does the reranker improve final quality?</td><td className="px-4 py-3">Compare MRR and hit rate at the prompt size, with and without it</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Is latency acceptable?</td><td className="px-4 py-3">Measure end-to-end time at realistic candidate counts</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Is the extra cost worth it?</td><td className="px-4 py-3">Compare the cost per query against the quality gain</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Does order matter to the model?</td><td className="px-4 py-3">Test best-first against best-at-the-edges ordering in the prompt</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>Reranking cannot fix a failure of stage 1. If the right chunk is not among the candidates, no reranker will find it. Always diagnose recall first, then precision.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: From a Wide Net to a Sharp Shortlist</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A shows the pipeline. Panel B shows how the code below reorders two candidates. Panel C is an explorer of the main reranking choices.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel A · The Pipeline</span><span className="text-xs text-slate-400">Each stage narrows the list</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Query</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Retrieve 50</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Rerank</span><span className="text-blue-400">→</span><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-center text-blue-200">Keep top 5</span><span className="text-blue-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Compress and filter</span></div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel B · Before and After</span><span className="text-xs text-slate-400">From the code in section 7</span></div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-white/[0.04] text-slate-300">
+                <tr><th className="px-4 py-3 text-center">Document</th><th className="px-4 py-3 text-center">Stage 1 word count</th><th className="px-4 py-3 text-center">Reranker score</th><th className="px-4 py-3 text-center">Final order</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300">
+                <tr><td className="px-4 py-3 text-center">A, subscription pricing</td><td className="px-4 py-3 text-center text-amber-300">3, first</td><td className="px-4 py-3 text-center">0.56</td><td className="px-4 py-3 text-center text-rose-300">second</td></tr>
+                <tr><td className="px-4 py-3 text-center">B, how to cancel a plan</td><td className="px-4 py-3 text-center text-amber-300">1, second</td><td className="px-4 py-3 text-center">1.12</td><td className="px-4 py-3 text-center text-emerald-300">first</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="text-center text-xs text-slate-300">Repeating a word many times won the first stage, but the reranker saw that only B answers the question</div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Choices</span><span className="text-xs text-slate-400">Click a choice to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c14-choice-0" name="c14-choice" type="radio" className="peer sr-only" />
+              <label htmlFor="c14-choice-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Cross-encoder model</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Pro:</strong> Accurate and cheap per pair</div>
+                <div><strong className="text-violet-300">Con:</strong> Needs hosting and a candidate limit</div>
+              </div>
+            </div>
+            <div>
+              <input id="c14-choice-1" name="c14-choice" type="radio" className="peer sr-only" />
+              <label htmlFor="c14-choice-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">Hosted reranking API</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-blue-300">Pro:</strong> No infrastructure</div>
+                <div><strong className="text-blue-300">Con:</strong> Data leaves your systems and adds a network call</div>
+              </div>
+            </div>
+            <div>
+              <input id="c14-choice-2" name="c14-choice" type="radio" className="peer sr-only" />
+              <label htmlFor="c14-choice-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">LLM as reranker</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Pro:</strong> Very flexible, can follow instructions</div>
+                <div><strong className="text-orange-300">Con:</strong> Slowest and most expensive</div>
+              </div>
+            </div>
+            <div>
+              <input id="c14-choice-3" name="c14-choice" type="radio" className="peer sr-only" />
+              <label htmlFor="c14-choice-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-amber-400/50 peer-checked:bg-amber-500/10 peer-checked:text-amber-300">Compression</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-amber-300">Pro:</strong> Fewer tokens in the prompt</div>
+                <div><strong className="text-amber-300">Con:</strong> May cut an important qualifier</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why stage 1 still matters</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">A reranker can only reorder what it is given. If stage 1 fails to retrieve the right passage, the reranker never sees it, so both stages need to be good.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the flow, Panel B shows a real reordering, and Panel C compares the choices you will face.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: A Two-Stage Ranker with Compression</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program stands in for both stages with simple scorers. Stage 1 counts how many words of the query appear in each text, which favors repetition. Stage 2 reads the query and each candidate together: it maps synonyms such as plan to subscription, rewards candidates that cover all query terms, and gives a small bonus when the matched terms are close together. Finally it compresses the winning passage to the sentences that matter.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">rerank_demo.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">synonyms = dict([(&quot;plan&quot;, &quot;subscription&quot;), (&quot;membership&quot;, &quot;subscription&quot;), (&quot;stop&quot;, &quot;cancel&quot;)])</span>
+            <span className="block">stop_words = set([&quot;how&quot;, &quot;to&quot;, &quot;a&quot;, &quot;the&quot;, &quot;your&quot;, &quot;and&quot;, &quot;can&quot;, &quot;i&quot;, &quot;do&quot;, &quot;press&quot;, &quot;open&quot;])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">documents = [</span>
+            <span className="block">    (&quot;A&quot;, &quot;Subscription pricing: compare each subscription tier and see how to upgrade a subscription.&quot;),</span>
+            <span className="block">    (&quot;B&quot;, &quot;To cancel your plan, open Settings and press Stop. Cancellations take effect at the end of the billing period. Support can also help by chat.&quot;),</span>
+            <span className="block">    (&quot;C&quot;, &quot;Invoices for every plan are emailed on the first day of the month.&quot;),</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def terms(text):</span>
+            <span className="block">    cleaned = &quot;&quot;.join(ch if ch.isalnum() else &quot; &quot; for ch in text.lower()).split()</span>
+            <span className="block">    return [synonyms.get(w, w) for w in cleaned if w not in stop_words]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def first_stage(query, text):</span>
+            <span className="block">    q = set(terms(query))</span>
+            <span className="block">    return sum(1 for w in text.lower().replace(&quot;,&quot;, &quot; &quot;).replace(&quot;.&quot;, &quot; &quot;).split() if w in q)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def rerank_score(query, text):</span>
+            <span className="block">    q = set(terms(query))</span>
+            <span className="block">    t = terms(text)</span>
+            <span className="block">    coverage = len(q &amp; set(t)) / len(q)</span>
+            <span className="block">    first = [i for i, w in enumerate(t) if w in q]</span>
+            <span className="block">    closeness = 1 / (1 + (max(first) - min(first))) if len(first) &gt; 1 else 0</span>
+            <span className="block">    return round(coverage + 0.5 * closeness, 2)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">query = &quot;how to cancel a subscription&quot;</span>
+            <span className="block">print(&quot;Query:&quot;, query)</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">print(&quot;Stage 1, simple word counts:&quot;)</span>
+            <span className="block">stage1 = sorted(documents, key=lambda d: -first_stage(query, d[1]))</span>
+            <span className="block">for doc_id, text in stage1:</span>
+            <span className="block">    print(&quot;  &quot;, doc_id, first_stage(query, text))</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">print(&quot;Stage 2, rerank the top 2 by reading query and text together:&quot;)</span>
+            <span className="block">top2 = stage1[:2]</span>
+            <span className="block">reranked = sorted(top2, key=lambda d: -rerank_score(query, d[1]))</span>
+            <span className="block">for doc_id, text in reranked:</span>
+            <span className="block">    print(&quot;  &quot;, doc_id, rerank_score(query, text))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">best_text = reranked[0][1]</span>
+            <span className="block">sentences = [s.strip() for s in best_text.split(&quot;.&quot;) if s.strip()]</span>
+            <span className="block">kept = [s for s in sentences if set(terms(query)) &amp; set(terms(s))]</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">print(&quot;Compression keeps&quot;, len(&quot; &quot;.join(kept)), &quot;of&quot;, len(best_text), &quot;characters&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Query: how to cancel a subscription</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Stage 1, simple word counts:</span>
+            <span className="block">   A 3</span>
+            <span className="block">   B 1</span>
+            <span className="block">   C 0</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Stage 2, rerank the top 2 by reading query and text together:</span>
+            <span className="block">   B 1.12</span>
+            <span className="block">   A 0.56</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">Compression keeps 49 of 141 characters</span>
+          </code>
+        </pre>
+      </div>
+      <div>Stage 1 puts the pricing document first only because it repeats the word subscription three times. The second stage notices that it never mentions cancelling, while the cancellation document covers both ideas, so it moves to the top. Compression then keeps a single relevant sentence and drops most of the characters. Real rerankers are neural models, but the structure of the pipeline is the same.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. Why are cross-encoders used only on a shortlist?</div>
+        <div>
+          <input id="rag14-q1-a" name="rag14-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag14-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) They must read the query with every candidate, which is too slow for millions of chunks</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Nothing can be precomputed for them.</div>
+        </div>
+        <div>
+          <input id="rag14-q1-b" name="rag14-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag14-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) They cannot read long text</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The limit is speed, not reading ability.</div>
+        </div>
+        <div>
+          <input id="rag14-q1-c" name="rag14-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag14-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) They only work after compression</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Compression is a separate optional step.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. What does stage 1 retrieval mainly aim for?</div>
+        <div>
+          <input id="rag14-q2-a" name="rag14-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag14-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Perfect precision</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Precision is the job of the later stages.</div>
+        </div>
+        <div>
+          <input id="rag14-q2-b" name="rag14-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag14-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) High recall, so the right chunk is among the candidates</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A chunk missed here is lost to all later stages.</div>
+        </div>
+        <div>
+          <input id="rag14-q2-c" name="rag14-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag14-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Making the prompt shorter</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Prompt size is handled by reranking and compression.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. What is a risk of contextual compression?</div>
+        <div>
+          <input id="rag14-q3-a" name="rag14-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag14-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) It makes retrieval slower than reranking</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Compression usually saves tokens, speed varies.</div>
+        </div>
+        <div>
+          <input id="rag14-q3-b" name="rag14-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag14-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It changes the embedding model</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Compression does not touch embeddings.</div>
+        </div>
+        <div>
+          <input id="rag14-q3-c" name="rag14-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag14-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) It may remove a sentence that qualifies the answer, such as an exception</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Always test answers with and without it.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Reranking adds a slower, more accurate second ranking over a short candidate list.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Stage 1 aims for recall; reranking restores precision.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Bi-encoders embed texts separately and can be precomputed; cross-encoders read pairs together and are more accurate but slower.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>A typical pipeline retrieves tens of candidates, reranks them and keeps a handful.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Latency is roughly the number of candidates times the time per pair, so choose the candidate count by measurement.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Contextual compression and score filtering shorten the context but can drop qualifiers.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>A reranker cannot recover a chunk that stage 1 failed to retrieve.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">The Retrieval phase is now complete: you can search by meaning and words, apply rules, and sharpen the shortlist. The retrieval side of RAG is a funnel, and each stage has one clear job. The next phase improves what goes into that funnel, the query itself, and what comes out of it, the context.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Retrieve broadly → Filter → Rerank → Compress → Context</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Query Transformation. You will learn how to rewrite, expand, normalize and decompose user questions, and how multi-query retrieval improves recall.</div>
+    </div>
+  </section>
+</div>

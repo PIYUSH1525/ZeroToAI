@@ -5,6 +5,13 @@ export const metadata = {
   title: "AI Learning Roadmap // MLRoadmap",
   description:
     "A step-by-step guide to go from complete beginner to AI practitioner.",
+  alternates: { canonical: "/roadmap" },
+  openGraph: {
+    title: "AI Learning Roadmap // NeuralPath",
+    description:
+      "A step-by-step guide to go from complete beginner to AI practitioner.",
+    url: "/roadmap",
+  },
 };
 
 export default function RoadmapPage() {

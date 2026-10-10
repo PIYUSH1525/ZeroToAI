@@ -1,0 +1,395 @@
+---
+title: "Agentic and Research-Level RAG"
+slug: "agentic-research-level-rag"
+order: 27
+category: "RAG"
+subcategory: "Advanced"
+difficulty: "Advanced"
+readTime: "25 min"
+description: "Explore agent-controlled retrieval with planning and tools, retrieval and embedding fine-tuning, ColBERT-style late interaction, learned sparse retrieval and current research directions."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> The pipelines in this course follow a fixed route. <strong className="text-white">Agentic RAG</strong> gives a language model control of the route: it decides what to search for, which tool to use, whether the evidence is enough and when to stop. At the same time, research keeps improving the retrieval models themselves. This final lesson maps both directions, with a clear view of what is proven, what is promising, and what is only fashionable.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Intermediate: From Pipelines to Agents</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>In a pipeline, the developer fixes the steps. In an <strong className="text-white">agent</strong>, the model chooses the next step at run time by repeating a simple loop: <strong className="text-white">plan</strong> what is needed, <strong className="text-white">act</strong> by calling a tool, <strong className="text-white">observe</strong> the result, and <strong className="text-white">decide</strong> whether to continue or answer.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Aspect</th><th className="px-4 py-3">Fixed pipeline</th><th className="px-4 py-3">Agentic RAG</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Who chooses the steps</td><td className="px-4 py-3">The developer</td><td className="px-4 py-3">The model, step by step</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Handles unexpected question types</td><td className="px-4 py-3 text-rose-300">Poorly</td><td className="px-4 py-3 text-emerald-300">Better</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Predictability, cost, latency</td><td className="px-4 py-3 text-emerald-300">High</td><td className="px-4 py-3 text-rose-300">Lower, varies by question</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Debugging</td><td className="px-4 py-3 text-emerald-300">Simple</td><td className="px-4 py-3 text-amber-300">Needs full traces of every step</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5"><strong className="text-blue-300">Rule of thumb:</strong> use a fixed pipeline whenever it solves the problem, and use an agent only for questions whose steps cannot be known in advance.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: Agent Patterns for Retrieval</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Planning plus retrieval</div>
+          <div className="text-sm leading-7">The agent first breaks the task into steps, then retrieves for each, and revises the plan when results surprise it.</div>
+        </div>
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">Tool-based retrieval</div>
+          <div className="text-sm leading-7">Search, SQL, calculators, web search and APIs are all tools. The agent picks the right one for each sub-question.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Iterative retrieval</div>
+          <div className="text-sm leading-7">The agent reads, notices what is missing, and searches again with a better query until the evidence is sufficient.</div>
+        </div>
+        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-orange-300">Multi-step reasoning workflows</div>
+          <div className="text-sm leading-7">Several steps with intermediate results, such as finding a price and then computing a yearly total.</div>
+        </div>
+      </div>
+      <div>Agents bring risks that fixed pipelines avoid. Errors compound across steps, loops can run without end, costs are unpredictable, and every tool and every retrieved document is a new path for prompt injection to cause real actions.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">Cap</strong> the number of steps, tool calls and total cost per request.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">Restrict</strong> tools to the minimum, with read-only access by default.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">Approve</strong> sensitive actions with a human.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">Trace</strong> every thought, call and result.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-violet-300">Evaluate</strong> whole trajectories, not just the final answer.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Fine-Tuning Retrieval and Embeddings</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Off-the-shelf embedding models are general. If your domain has special vocabulary, such as legal, medical or internal product language, <strong className="text-white">fine-tuning</strong> the retriever or the embedding model on your own examples can raise retrieval quality noticeably.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Collect</strong> pairs of questions and the passages that answer them, from logs, experts or carefully reviewed synthetic data.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Add hard negatives</strong> passages that look relevant but are not, so the model learns to tell them apart.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Train</strong> with a contrastive objective that pulls matching pairs together and pushes others apart.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Compare</strong> against the original model on a held-out golden set.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-emerald-300">Re-embed</strong> the whole index with the new model, since vectors from different models cannot be mixed.</div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Try the cheaper things first:</strong> better chunking, hybrid search and reranking often give comparable gains without training. Fine-tune when evaluation shows that the embedding model itself is the bottleneck, and you have enough good data.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: ColBERT, Late Interaction and Learned Sparse Retrieval</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Standard dense retrieval compresses a whole passage into one vector. <strong className="text-white">ColBERT</strong>, a late-interaction model, keeps <strong className="text-white">one vector per token</strong> and compares query and document tokens at search time. The score sums, for each query token, its best match among the document tokens, an operation called <strong className="text-white">MaxSim</strong>:</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$S(q,d) = \sum_{i \in q} \max_{j \in d} \; q_i \cdot d_j$$</div>
+      <div>This keeps fine-grained detail that a single vector blurs, at the price of storing many more vectors per document. It is often used to rerank or to retrieve with specialized indexes.</div>
+      <div><strong className="text-white">Learned sparse retrieval</strong> goes the other direction. A model learns which words matter and which related words to add, and produces sparse weighted vectors. They keep the inverted-index machinery and exact-match strengths of keyword search, with some semantic reach added.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Approach</th><th className="px-4 py-3">Representation</th><th className="px-4 py-3">Strength</th><th className="px-4 py-3">Cost</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Single-vector dense</td><td className="px-4 py-3">One vector per passage</td><td className="px-4 py-3">Simple, fast, small</td><td className="px-4 py-3">Blurs fine detail</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Late interaction (ColBERT)</td><td className="px-4 py-3">One vector per token</td><td className="px-4 py-3">Fine-grained matching</td><td className="px-4 py-3">Much more storage</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Learned sparse</td><td className="px-4 py-3">Weighted words with expansions</td><td className="px-4 py-3">Exact terms plus some meaning, uses inverted indexes</td><td className="px-4 py-3">Needs a trained model</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Research Directions</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The field moves fast. These themes are active, and each deserves a measured, evidence-first attitude.</div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-cyan-300">Retrieval-augmented pretraining</div>
+          <div className="text-sm leading-7">Training language models with a retriever in the loop, so knowledge lives partly in an external store from the start. Research such as REALM and RETRO explored this.</div>
+        </div>
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-blue-300">RAG plus fine-tuning</div>
+          <div className="text-sm leading-7">Fine-tune the generator to use retrieved context faithfully and to ignore irrelevant passages, while retrieval supplies the facts.</div>
+        </div>
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Long context versus RAG</div>
+          <div className="text-sm leading-7">Larger windows do not make retrieval obsolete: cost, latency, control and reliability still favor selecting the right text. Expect the two to be combined.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Self-improving RAG</div>
+          <div className="text-sm leading-7">Systems that learn from feedback, such as clicks and corrections, by updating queries, indexes or models. Promising, but needs safeguards against learning the wrong lessons.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5"><strong className="text-cyan-300">How to stay sane:</strong> for any new technique, ask what failure of your current system it addresses, test it on your golden dataset, and measure quality, cost and latency together. Many ideas look strong on a paper benchmark and add little to a well-tuned simple system.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: The Agent Loop and Token-Level Matching</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A shows the agent loop. Panel B shows the trace and the MaxSim scores from the code below. Panel C is a technique explorer.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel A · The Agent Loop</span><span className="text-xs text-slate-400">Repeat until the evidence is enough or the budget ends</span></div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs"><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Plan</span><span className="text-violet-400">→</span><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Choose a tool</span><span className="text-violet-400">→</span><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Act</span><span className="text-violet-400">→</span><span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-2 text-center text-violet-200">Observe</span><span className="text-violet-400">→</span><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-center text-emerald-200">Enough evidence? Answer</span></div>
+          <div className="text-center text-xs text-slate-300">If not enough, return to Plan with what was learned, within a step limit</div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel B · From the Code</span><span className="text-xs text-slate-400">A tool-using agent and late interaction</span></div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-white/[0.04] text-slate-300">
+                <tr><th className="px-4 py-3 text-center">Item</th><th className="px-4 py-3 text-center">Result</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300">
+                <tr><td className="px-4 py-3 text-center">Step 1, search tool</td><td className="px-4 py-3 text-center">Found: Pro plan costs 25 dollars per month</td></tr>
+                <tr><td className="px-4 py-3 text-center">Step 2, multiply tool</td><td className="px-4 py-3 text-center">25 times 12 equals 300</td></tr>
+                <tr><td className="px-4 py-3 text-center">Step 3</td><td className="px-4 py-3 text-center text-emerald-300">Finish: 300 dollars per year</td></tr>
+                <tr><td className="px-4 py-3 text-center">MaxSim: budget airfare france</td><td className="px-4 py-3 text-center text-emerald-300">2.95, the better match</td></tr>
+                <tr><td className="px-4 py-3 text-center">MaxSim: cheap hotel paris</td><td className="px-4 py-3 text-center text-amber-300">2.80, shares words but wrong topic</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Technique Explorer</span><span className="text-xs text-slate-400">Click a technique to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c27-tech-0" name="c27-tech" type="radio" className="peer sr-only" />
+              <label htmlFor="c27-tech-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Agentic RAG</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Use when:</strong> The steps cannot be known in advance</div>
+                <div><strong className="text-violet-300">Risk:</strong> Cost, loops and compounding errors</div>
+              </div>
+            </div>
+            <div>
+              <input id="c27-tech-1" name="c27-tech" type="radio" className="peer sr-only" />
+              <label htmlFor="c27-tech-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">Embedding fine-tuning</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-emerald-300">Use when:</strong> Domain vocabulary defeats general models</div>
+                <div><strong className="text-emerald-300">Risk:</strong> Needs good data and a full re-embed</div>
+              </div>
+            </div>
+            <div>
+              <input id="c27-tech-2" name="c27-tech" type="radio" className="peer sr-only" />
+              <label htmlFor="c27-tech-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-orange-400/50 peer-checked:bg-orange-500/10 peer-checked:text-orange-300">ColBERT-style late interaction</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-orange-500/25 bg-orange-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-orange-300">Use when:</strong> Fine-grained matching matters</div>
+                <div><strong className="text-orange-300">Risk:</strong> Storage and specialized indexes</div>
+              </div>
+            </div>
+            <div>
+              <input id="c27-tech-3" name="c27-tech" type="radio" className="peer sr-only" />
+              <label htmlFor="c27-tech-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">Learned sparse retrieval</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-blue-300">Use when:</strong> You want keyword strengths with some semantics</div>
+                <div><strong className="text-blue-300">Risk:</strong> Extra model and tuning</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why the simple baseline still matters</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">A well-chunked, hybrid, reranked pipeline with good evaluation solves a surprising share of real problems. Advanced techniques should be justified by a measured gap, not by novelty.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A is the control loop, Panel B shows both ideas on tiny examples, and Panel C reminds you of the cost of each.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: A Tiny Tool-Using Agent and MaxSim Scoring</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The first half is a minimal agent with two tools, search and multiply, and a step limit. The decision rule is written by hand so the program is deterministic, while a real agent would let a language model choose each action. It answers what the Pro plan costs for a year by searching for the monthly price, then multiplying it by 12. The second half scores two candidate passages for a query with MaxSim, using a tiny hand-made table of token vectors in place of a trained model.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">agent_and_maxsim.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import math</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">docs = [</span>
+            <span className="block">    &quot;Pro plan costs 25 dollars per month.&quot;,</span>
+            <span className="block">    &quot;Basic plan costs 10 dollars per month.&quot;,</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def search(query):</span>
+            <span className="block">    q = set(w for w in query.lower().replace(&quot;?&quot;, &quot;&quot;).split() if len(w) &gt; 2)</span>
+            <span className="block">    return max(docs, key=lambda d: len(q &amp; set(d.lower().replace(&quot;.&quot;, &quot;&quot;).split())))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def find_number(text):</span>
+            <span className="block">    for word in text.split():</span>
+            <span className="block">        if word.isdigit():</span>
+            <span className="block">            return int(word)</span>
+            <span className="block">    return None</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def multiply(a, b):</span>
+            <span className="block">    return a * b</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def agent(question, max_steps=4):</span>
+            <span className="block">    price = None</span>
+            <span className="block">    trace = []</span>
+            <span className="block">    for step in range(1, max_steps + 1):</span>
+            <span className="block">        if price is None:</span>
+            <span className="block">            result = search(&quot;pro plan costs month&quot;)</span>
+            <span className="block">            price = find_number(result)</span>
+            <span className="block">            trace.append(&quot;step &quot; + str(step) + &quot;: search -&gt; &quot; + result)</span>
+            <span className="block">        else:</span>
+            <span className="block">            total = multiply(price, 12)</span>
+            <span className="block">            trace.append(&quot;step &quot; + str(step) + &quot;: multiply &quot; + str(price) + &quot; x 12 = &quot; + str(total))</span>
+            <span className="block">            trace.append(&quot;step &quot; + str(step + 1) + &quot;: finish&quot;)</span>
+            <span className="block">            return total, trace</span>
+            <span className="block">    return None, trace</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">total, trace = agent(&quot;What does the Pro plan cost for a year?&quot;)</span>
+            <span className="block">for line in trace:</span>
+            <span className="block">    print(line)</span>
+            <span className="block">print(&quot;Answer:&quot;, total, &quot;dollars per year&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Late interaction (ColBERT style): one vector per token, scored with MaxSim</span>
+            <span className="block">token_vectors = dict([</span>
+            <span className="block">    (&quot;cheap&quot;, [1.0, 0.0]), (&quot;budget&quot;, [0.95, 0.3]), (&quot;hotel&quot;, [0.3, -0.95]),</span>
+            <span className="block">    (&quot;flights&quot;, [0.0, 1.0]), (&quot;airfare&quot;, [0.05, 0.998]), (&quot;paris&quot;, [0.6, 0.8]), (&quot;france&quot;, [0.58, 0.81]),</span>
+            <span className="block">])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def cosine(a, b):</span>
+            <span className="block">    dot = sum(x * y for x, y in zip(a, b))</span>
+            <span className="block">    return dot / (math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b)))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def maxsim(query_tokens, doc_tokens):</span>
+            <span className="block">    return sum(max(cosine(token_vectors[q], token_vectors[d]) for d in doc_tokens) for q in query_tokens)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">query = [&quot;cheap&quot;, &quot;flights&quot;, &quot;paris&quot;]</span>
+            <span className="block">candidates = [(&quot;budget airfare france&quot;, [&quot;budget&quot;, &quot;airfare&quot;, &quot;france&quot;]), (&quot;cheap hotel paris&quot;, [&quot;cheap&quot;, &quot;hotel&quot;, &quot;paris&quot;])]</span>
+            <span className="block">print(&quot;&quot;)</span>
+            <span className="block">for name, tokens in candidates:</span>
+            <span className="block">    print(name.ljust(24), &quot;MaxSim&quot;, round(maxsim(query, tokens), 2))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">step 1: search -&gt; Pro plan costs 25 dollars per month.</span>
+            <span className="block">step 2: multiply 25 x 12 = 300</span>
+            <span className="block">step 3: finish</span>
+            <span className="block">Answer: 300 dollars per year</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">budget airfare france    MaxSim 2.95</span>
+            <span className="block">cheap hotel paris        MaxSim 2.8</span>
+          </code>
+        </pre>
+      </div>
+      <div>The trace shows the plan, act and observe cycle: the agent searches, reads the price, calls the multiplication tool and finishes in three steps, well within its limit of four. In the MaxSim part, the passage budget airfare france scores higher than cheap hotel paris, although it shares no word with the query. Each query token finds its best partner among the passage tokens: cheap with budget, flights with airfare and paris with france. The second passage shares two words but has no match for flights, which is the kind of detail a single averaged vector can blur.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. What distinguishes agentic RAG from a fixed RAG pipeline?</div>
+        <div>
+          <input id="rag27-q1-a" name="rag27-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag27-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The model chooses the next step, such as which tool to call and whether to continue</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> A loop of plan, act, observe and decide replaces a fixed route.</div>
+        </div>
+        <div>
+          <input id="rag27-q1-b" name="rag27-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag27-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It never uses retrieval</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Retrieval is one of its tools.</div>
+        </div>
+        <div>
+          <input id="rag27-q1-c" name="rag27-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag27-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It always costs less</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Agents are usually less predictable and often costlier.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. Why must an agent have step and cost limits?</div>
+        <div>
+          <input id="rag27-q2-a" name="rag27-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag27-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Models cannot call tools twice</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They can; the point is control.</div>
+        </div>
+        <div>
+          <input id="rag27-q2-b" name="rag27-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag27-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Errors compound and loops can run indefinitely, making cost and latency unpredictable</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Limits keep the system controllable.</div>
+        </div>
+        <div>
+          <input id="rag27-q2-c" name="rag27-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag27-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Limits improve embeddings</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Embeddings are unrelated to step limits.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. What does MaxSim compute in late interaction?</div>
+        <div>
+          <input id="rag27-q3-a" name="rag27-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag27-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) A single cosine between two averaged vectors</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That describes single-vector dense retrieval.</div>
+        </div>
+        <div>
+          <input id="rag27-q3-b" name="rag27-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag27-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The number of shared characters</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> MaxSim works on token vectors, not characters.</div>
+        </div>
+        <div>
+          <input id="rag27-q3-c" name="rag27-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag27-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) For each query token, the best similarity to any document token, summed over query tokens</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> It matches at the token level.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Agentic RAG lets the model choose steps and tools in a plan, act, observe, decide loop.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Use a fixed pipeline where it is enough, and an agent for questions whose steps are not known in advance.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Control agents with step, tool and cost limits, minimal permissions, approvals for sensitive actions and full traces.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Fine-tuning retrieval or embeddings helps with domain vocabulary, needs good question-passage data with hard negatives, and requires a full re-embed.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>ColBERT keeps one vector per token and scores with MaxSim, trading storage for fine-grained matching.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Learned sparse retrieval gives weighted, expanded term vectors that work with inverted indexes.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Judge every new technique on your own golden dataset for quality, cost and latency before adopting it.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">You have walked the whole path: from why RAG exists, through data, embeddings, retrieval, queries, context and evaluation, to production and research. The pattern that links everything is the same simple loop: make a change, measure it on real questions, and keep what helps. That habit will outlast any particular technique.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Foundations → Data → Embeddings → Retrieval → Query and Context → Advanced RAG → Evaluation → Production → Research</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> Your next project. Build a small RAG system on documents you care about, create a golden dataset of twenty real questions, and let the measurements decide which of the ideas in this course to add.</div>
+    </div>
+  </section>
+</div>

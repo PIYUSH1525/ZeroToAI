@@ -1,0 +1,390 @@
+---
+title: "RAG Evaluation"
+slug: "rag-evaluation"
+order: 23
+category: "RAG"
+subcategory: "Evaluation"
+difficulty: "Intermediate"
+readTime: "25 min"
+description: "Learn how to evaluate RAG systems: retrieval metrics, generation metrics, golden datasets, automated and LLM-as-a-judge evaluation, human review and failure analysis."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+  <section>
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-6 text-[16px] leading-8 text-slate-300"><strong className="text-cyan-400">The Core Idea:</strong> A RAG demo that works on five handpicked questions proves very little. <strong className="text-white">Evaluation</strong> replaces impressions with numbers: does retrieval find the right evidence, does the answer stay faithful to it, and does it actually address the question? Because RAG has two stages that can fail independently, a good evaluation measures both separately, then points to what to fix.</div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">1. Beginner: Why RAG Needs Its Own Evaluation</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>When a RAG answer is wrong, the cause may lie in retrieval, in generation, or in the documents themselves. Judging only the final text hides which.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">What went wrong</th><th className="px-4 py-3">Final answer looks like</th><th className="px-4 py-3">Where to fix</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">The right chunk was never retrieved</td><td className="px-4 py-3">Wrong or vague</td><td className="px-4 py-3">Chunking, embeddings, retrieval</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">The right chunk was retrieved but ignored</td><td className="px-4 py-3">Wrong, though the evidence was there</td><td className="px-4 py-3">Prompt, model, context order</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">The model added facts of its own</td><td className="px-4 py-3">Fluent but unsupported</td><td className="px-4 py-3">Grounding instructions, verification</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">The source document is wrong</td><td className="px-4 py-3">Faithful but incorrect</td><td className="px-4 py-3">Data quality</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5"><strong className="text-blue-300">Rule:</strong> evaluate the stages separately first, then the whole system. A single score for the whole pipeline cannot tell you what to change.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">2. Intermediate: Retrieval Evaluation</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>These measures compare what was retrieved with what should have been. You already know precision and recall from the retrieval lesson. Two additional measures are especially useful for RAG.</div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-violet-300">Context precision</div>
+          <div className="text-sm leading-7">What share of the retrieved chunks are relevant? Low values mean noise in the prompt.</div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-semibold text-emerald-300">Context recall</div>
+          <div className="text-sm leading-7">What share of the facts needed for the answer appear anywhere in the retrieved context? Low values mean the answer cannot be produced.</div>
+        </div>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$\text{context recall} = \dfrac{\text{needed facts found in the retrieved context}}{\text{all needed facts}}$$</div>
+      <div>Other retrieval measures include hit rate, recall@k and MRR. Context recall is the most direct signal that retrieval is the bottleneck.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">3. Intermediate: Generation Evaluation</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Generation quality has three separate aspects, and an answer can pass one while failing another.</div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Aspect</th><th className="px-4 py-3">Question it answers</th><th className="px-4 py-3">Compared against</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Answer relevance</td><td className="px-4 py-3">Does the answer actually address the question?</td><td className="px-4 py-3">The question</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Faithfulness, or groundedness</td><td className="px-4 py-3">Is every claim supported by the retrieved context?</td><td className="px-4 py-3">The retrieved context</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Correctness, or factuality</td><td className="px-4 py-3">Is the answer true?</td><td className="px-4 py-3">A reference answer or trusted facts</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">$$\text{faithfulness} = \dfrac{\text{claims supported by the context}}{\text{all claims in the answer}}$$</div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5"><strong className="text-emerald-300">Faithful is not the same as correct:</strong> if the retrieved document is wrong or outdated, a perfectly faithful answer is still wrong. That is why correctness needs a reference, and why data quality is part of evaluation.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">4. Intermediate: Golden Datasets and Evaluation Methods</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>A <strong className="text-white">golden dataset</strong> is a set of questions with known good answers and the sources that support them. It is the ruler against which you measure every change.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Collect</strong> real questions from users or logs, covering common cases, rare cases and questions with no answer.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Label</strong> the needed source chunks and a short reference answer, checked by someone who knows the topic.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Extend</strong> with synthetic questions generated by a model from your documents, but review them, since generated questions can be too easy or unnatural.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-orange-300">Maintain</strong> the set as documents and user needs change.</div>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-slate-200">
+            <tr><th className="px-4 py-3">Method</th><th className="px-4 py-3">Strength</th><th className="px-4 py-3">Weakness</th></tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            <tr><td className="px-4 py-3 font-semibold text-white">Automated metrics</td><td className="px-4 py-3">Fast, cheap, repeatable</td><td className="px-4 py-3">Rough, can miss meaning</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">LLM-as-a-judge</td><td className="px-4 py-3">Scales, understands language, follows a rubric</td><td className="px-4 py-3">Can be biased toward long or first-listed answers and must be checked against humans</td></tr>
+            <tr><td className="px-4 py-3 font-semibold text-white">Human evaluation</td><td className="px-4 py-3">Most trusted, catches subtle problems</td><td className="px-4 py-3">Slow and costly, so use it on samples and high-stakes cases</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>When using an <strong className="text-white">LLM-as-a-judge</strong>, give it a clear rubric, ask for a reason before the score, and compare its scores with human labels on a sample. A judge you have not calibrated is an opinion, not a measurement.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">5. Advanced: Failure Analysis and the Improvement Loop</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Numbers tell you how well the system performs. <strong className="text-white">Failure analysis</strong> tells you why. For each failed question, walk the pipeline from left to right and stop at the first broken stage.</div>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Was the source in the knowledge base at all?</strong> If not, it is a data gap.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Was it retrieved?</strong> If context recall is low, look at chunking, embeddings, filters and query transformation.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Was it ranked high and included?</strong> If not, look at reranking and context selection.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Did the answer use it faithfully?</strong> If not, look at prompts, ordering and verification.</div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4"><strong className="text-cyan-300">Was the answer complete and relevant?</strong> If not, look at instructions and answer format.</div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5"><strong className="text-cyan-300">Make it routine:</strong> run the golden set after every change, keep the history of scores, and treat a drop as a failing test. Remember that small test sets are noisy, so a change of a point or two may be chance. Look for consistent improvement and examine the individual questions that changed.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">6. Visual Explanation: Measuring Both Halves of RAG</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>Panel A separates retrieval measures from generation measures. Panel B shows the scores from the code below on four test questions. Panel C is a diagnosis explorer.</div>
+      <div className="space-y-10 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-violet-300">Panel A · Two Halves, Different Questions</span><span className="text-xs text-slate-400">Measure each half on its own</span></div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-3 rounded-2xl border border-blue-500/25 bg-blue-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-blue-300">Retrieval</div>
+              <div><span className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] text-blue-200">Did we find the evidence?</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Context precision</div>
+              <div className="text-center text-blue-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Context recall</div>
+              <div className="text-center text-blue-400">↓</div>
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Low recall: fix search and chunks</div>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.05] p-5 text-center">
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-300">Generation</div>
+              <div><span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Did we use it well?</span></div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Answer relevance</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">Faithfulness and correctness</div>
+              <div className="text-center text-emerald-400">↓</div>
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">Low faithfulness: fix prompt and checks</div>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-blue-300">Panel B · Results from the Code</span><span className="text-xs text-slate-400">Four golden questions</span></div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full text-center text-xs">
+              <thead className="bg-white/[0.04] text-slate-300">
+                <tr><th className="px-4 py-3 text-center">Question</th><th className="px-4 py-3 text-center">Context recall</th><th className="px-4 py-3 text-center">Faithfulness</th><th className="px-4 py-3 text-center">Correct</th><th className="px-4 py-3 text-center">Diagnosis</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-slate-300">
+                <tr><td className="px-4 py-3 text-center">1. refund time</td><td className="px-4 py-3 text-center">1.0</td><td className="px-4 py-3 text-center">1.00</td><td className="px-4 py-3 text-center">1.0</td><td className="px-4 py-3 text-center text-emerald-300">pass</td></tr>
+                <tr><td className="px-4 py-3 text-center">2. shipping time</td><td className="px-4 py-3 text-center">1.0</td><td className="px-4 py-3 text-center">1.00</td><td className="px-4 py-3 text-center">1.0</td><td className="px-4 py-3 text-center text-emerald-300">pass</td></tr>
+                <tr><td className="px-4 py-3 text-center">3. premium shipping</td><td className="px-4 py-3 text-center text-rose-300">0.0</td><td className="px-4 py-3 text-center text-rose-300">0.14</td><td className="px-4 py-3 text-center">0.0</td><td className="px-4 py-3 text-center text-rose-300">retrieval failure</td></tr>
+                <tr><td className="px-4 py-3 text-center">4. password length</td><td className="px-4 py-3 text-center">1.0</td><td className="px-4 py-3 text-center text-amber-300">0.75</td><td className="px-4 py-3 text-center text-rose-300">0.0</td><td className="px-4 py-3 text-center text-amber-300">generation failure</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="text-center text-xs text-slate-300">Average correctness is 0.5, but the table shows that two different problems cause it</div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-2 text-center"><span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Panel C · Diagnosis Explorer</span><span className="text-xs text-slate-400">Click a symptom to open it</span></div>
+          <div className="space-y-3">
+            <div>
+              <input id="c23-diag-0" name="c23-diag" type="radio" className="peer sr-only" />
+              <label htmlFor="c23-diag-0" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">Low context recall</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-rose-300">Likely stage:</strong> Retrieval</div>
+                <div><strong className="text-rose-300">Look at:</strong> Chunking, embeddings, filters, query rewriting</div>
+              </div>
+            </div>
+            <div>
+              <input id="c23-diag-1" name="c23-diag" type="radio" className="peer sr-only" />
+              <label htmlFor="c23-diag-1" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-amber-400/50 peer-checked:bg-amber-500/10 peer-checked:text-amber-300">High recall, low faithfulness</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-amber-300">Likely stage:</strong> Generation</div>
+                <div><strong className="text-amber-300">Look at:</strong> Prompt, context order, verification step</div>
+              </div>
+            </div>
+            <div>
+              <input id="c23-diag-2" name="c23-diag" type="radio" className="peer sr-only" />
+              <label htmlFor="c23-diag-2" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Faithful but incorrect</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-violet-300">Likely stage:</strong> Data</div>
+                <div><strong className="text-violet-300">Look at:</strong> Outdated or wrong source documents</div>
+              </div>
+            </div>
+            <div>
+              <input id="c23-diag-3" name="c23-diag" type="radio" className="peer sr-only" />
+              <label htmlFor="c23-diag-3" className="block cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-cyan-400/50 peer-checked:bg-cyan-500/10 peer-checked:text-cyan-300">Good scores, unhappy users</label>
+              <div className="mt-2 hidden space-y-2 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.06] p-4 text-center text-sm leading-7 text-slate-300 peer-checked:block">
+                <div><strong className="text-cyan-300">Likely stage:</strong> The test set</div>
+                <div><strong className="text-cyan-300">Look at:</strong> Add real user questions to the golden set</div>
+              </div>
+            </div>
+          </div>
+          <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+            <summary className="flex cursor-pointer items-center justify-center gap-3 px-5 py-4 text-center text-sm font-semibold text-slate-200"><span>Click to see why averages hide problems</span><span className="inline-block text-indigo-300 transition group-open:rotate-180">▼</span></summary>
+            <div className="border-t border-white/10 px-5 py-4 text-center text-sm leading-relaxed text-slate-300">An average correctness of 0.5 could mean every answer is half right or that half the answers are perfect and half are wrong. Always look at the failing cases, which is where the fixes are.</div>
+          </details>
+        </div>
+      </div>
+      <div>How to read it: Panel A names the two halves, Panel B shows that different questions fail for different reasons, and Panel C turns a symptom into the next place to look.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">7. Python Implementation: A Small RAG Evaluation Harness</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>The program holds five chunks and a golden dataset of four questions. Each entry records the chunks that should be retrieved, the facts the answer needs, and what the system under test actually retrieved and answered. For every question it computes context precision, context recall, a word-overlap faithfulness score, answer correctness and a rule-based judge verdict, then assigns a failure type by walking the pipeline from left to right.</div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3"><span className="font-mono text-xs font-semibold text-teal-400">rag_evaluation.py</span><span className="font-mono text-[11px] text-slate-400">Python 3.10+ · Standard library only</span></div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">chunks = dict([</span>
+            <span className="block">    (&quot;c1&quot;, &quot;Refunds are issued within 5 business days.&quot;),</span>
+            <span className="block">    (&quot;c2&quot;, &quot;Standard shipping takes 5 to 7 business days.&quot;),</span>
+            <span className="block">    (&quot;c3&quot;, &quot;Premium members get free shipping.&quot;),</span>
+            <span className="block">    (&quot;c4&quot;, &quot;Support is open Monday to Friday.&quot;),</span>
+            <span className="block">    (&quot;c5&quot;, &quot;Passwords must contain 12 characters.&quot;),</span>
+            <span className="block">])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">stop_words = set([&quot;the&quot;, &quot;a&quot;, &quot;is&quot;, &quot;are&quot;, &quot;to&quot;, &quot;of&quot;, &quot;for&quot;, &quot;must&quot;, &quot;do&quot;, &quot;does&quot;, &quot;how&quot;, &quot;many&quot;, &quot;long&quot;])</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Golden dataset plus what the system under test produced</span>
+            <span className="block">cases = [</span>
+            <span className="block">    (&quot;How long do refunds take?&quot;, [&quot;c1&quot;], [&quot;5 business days&quot;], [&quot;c1&quot;, &quot;c4&quot;, &quot;c2&quot;], &quot;Refunds are issued within 5 business days.&quot;),</span>
+            <span className="block">    (&quot;How long is shipping?&quot;, [&quot;c2&quot;], [&quot;5 to 7 business days&quot;], [&quot;c3&quot;, &quot;c2&quot;, &quot;c4&quot;], &quot;Standard shipping takes 5 to 7 business days.&quot;),</span>
+            <span className="block">    (&quot;Do premium members pay for shipping?&quot;, [&quot;c3&quot;], [&quot;free shipping&quot;], [&quot;c2&quot;, &quot;c1&quot;, &quot;c4&quot;], &quot;Premium members pay a flat fee of 5 dollars.&quot;),</span>
+            <span className="block">    (&quot;How many characters must a password have?&quot;, [&quot;c5&quot;], [&quot;12 characters&quot;], [&quot;c5&quot;, &quot;c4&quot;, &quot;c1&quot;], &quot;Passwords must contain 16 characters.&quot;),</span>
+            <span className="block">]</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def words(text):</span>
+            <span className="block">    cleaned = &quot;&quot;.join(ch if ch.isalnum() else &quot; &quot; for ch in text.lower()).split()</span>
+            <span className="block">    return set(w for w in cleaned if w not in stop_words)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def faithfulness(answer, evidence):</span>
+            <span className="block">    a = words(answer)</span>
+            <span className="block">    return len(a &amp; words(evidence)) / len(a)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def judge(answer, evidence):</span>
+            <span className="block text-slate-500">    # a rule-based stand-in for an LLM judge</span>
+            <span className="block">    return &quot;faithful&quot; if faithfulness(answer, evidence) &gt;= 0.8 else &quot;unfaithful&quot;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">totals = [0.0, 0.0, 0.0, 0.0, 0.0]</span>
+            <span className="block">print(&quot;Q | ctx precision | ctx recall | faithfulness | answer correct | verdict&quot;)</span>
+            <span className="block">for number, (question, gold_ids, facts, retrieved, answer) in enumerate(cases, start=1):</span>
+            <span className="block">    evidence = &quot; &quot;.join(chunks[c] for c in retrieved)</span>
+            <span className="block">    precision = len(set(gold_ids) &amp; set(retrieved)) / len(retrieved)</span>
+            <span className="block">    context_recall = sum(1 for f in facts if f in evidence) / len(facts)</span>
+            <span className="block">    faith = faithfulness(answer, evidence)</span>
+            <span className="block">    correct = sum(1 for f in facts if f in answer) / len(facts)</span>
+            <span className="block">    if context_recall &lt; 1:</span>
+            <span className="block">        verdict = &quot;retrieval failure&quot;</span>
+            <span className="block">    elif correct &lt; 1:</span>
+            <span className="block">        verdict = &quot;generation failure&quot;</span>
+            <span className="block">    else:</span>
+            <span className="block">        verdict = &quot;pass&quot;</span>
+            <span className="block">    for i, value in enumerate([precision, context_recall, faith, correct]):</span>
+            <span className="block">        totals[i] += value</span>
+            <span className="block">    print(number, &quot;|&quot;, round(precision, 2), &quot;|&quot;, context_recall, &quot;|&quot;, round(faith, 2), &quot;|&quot;, correct, &quot;|&quot;, verdict, &quot;| judge:&quot;, judge(answer, evidence))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">n = len(cases)</span>
+            <span className="block">print(&quot;Average ctx precision:&quot;, round(totals[0] / n, 2), &quot;| ctx recall:&quot;, round(totals[1] / n, 2), &quot;| faithfulness:&quot;, round(totals[2] / n, 2), &quot;| answer correct:&quot;, round(totals[3] / n, 2))</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-400">Expected output</div>
+        <pre className="overflow-x-auto font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Q | ctx precision | ctx recall | faithfulness | answer correct | verdict</span>
+            <span className="block">1 | 0.33 | 1.0 | 1.0 | 1.0 | pass | judge: faithful</span>
+            <span className="block">2 | 0.33 | 1.0 | 1.0 | 1.0 | pass | judge: faithful</span>
+            <span className="block">3 | 0.0 | 0.0 | 0.14 | 0.0 | retrieval failure | judge: unfaithful</span>
+            <span className="block">4 | 0.33 | 1.0 | 0.75 | 0.0 | generation failure | judge: unfaithful</span>
+            <span className="block">Average ctx precision: 0.25 | ctx recall: 0.75 | faithfulness: 0.72 | answer correct: 0.5</span>
+          </code>
+        </pre>
+      </div>
+      <div>Questions 1 and 2 pass. Question 3 is a retrieval failure: the premium shipping chunk was never retrieved, so context recall is 0 and the answer invented a fee. Question 4 is a generation failure: the right chunk was retrieved, but the answer says 16 characters instead of 12, which lowers faithfulness. Averaging gives only a single number, whereas the per-question table shows where to work. The overlap-based faithfulness here is a crude proxy, and production systems use stronger checks.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Knowledge Check</h2>
+    <div className="space-y-8 text-[16px] leading-8 text-slate-300">
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q1. An answer is faithful to its context but still wrong. What is the most likely cause?</div>
+        <div>
+          <input id="rag23-q1-a" name="rag23-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag23-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) The embedding dimension is too high</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That affects retrieval, not truth.</div>
+        </div>
+        <div>
+          <input id="rag23-q1-b" name="rag23-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag23-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The judge model is too small</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Faithfulness here is already satisfied.</div>
+        </div>
+        <div>
+          <input id="rag23-q1-c" name="rag23-q1" type="radio" className="peer sr-only" />
+          <label htmlFor="rag23-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">C) The retrieved source document itself is wrong or outdated</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Faithfulness measures support, not truth.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q2. Context recall is low for a question. Where should you look first?</div>
+        <div>
+          <input id="rag23-q2-a" name="rag23-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag23-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Retrieval: chunking, embeddings, filters and query rewriting</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> The needed facts never reached the model.</div>
+        </div>
+        <div>
+          <input id="rag23-q2-b" name="rag23-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag23-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) The final answer format</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Format cannot create missing evidence.</div>
+        </div>
+        <div>
+          <input id="rag23-q2-c" name="rag23-q2" type="radio" className="peer sr-only" />
+          <label htmlFor="rag23-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) The user interface</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The failure happens before the interface.</div>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="font-semibold text-white">Q3. Why must an LLM-as-a-judge be calibrated against human labels?</div>
+        <div>
+          <input id="rag23-q3-a" name="rag23-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag23-q3-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">A) Judges cannot read English</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> They can; the issue is bias and consistency.</div>
+        </div>
+        <div>
+          <input id="rag23-q3-b" name="rag23-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag23-q3-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">B) Judges can have biases such as favoring longer answers, so their scores need checking</label>
+          <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Calibration turns an opinion into a measurement.</div>
+        </div>
+        <div>
+          <input id="rag23-q3-c" name="rag23-q3" type="radio" className="peer sr-only" />
+          <label htmlFor="rag23-q3-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Human labels are never needed again</label>
+          <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Periodic comparison keeps the judge honest.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Key Points</h2>
+    <div className="space-y-3 text-[16px] leading-8 text-slate-300">
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Evaluate retrieval and generation separately, then the whole system.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Context precision and context recall describe retrieval; recall is the clearest sign that retrieval is the bottleneck.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Generation has answer relevance, faithfulness (groundedness) and correctness (factuality), which can fail independently.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Faithful does not mean correct: wrong sources produce faithful but wrong answers.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>A golden dataset of real, labeled questions is the ruler for every change; review synthetic questions.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Use automated metrics for speed, calibrated LLM judges for scale and humans for trust and high-stakes cases.</div>
+      </div>
+      <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <span className="text-emerald-400">✓</span>
+        <div>Failure analysis walks the pipeline from left to right and stops at the first broken stage; rerun the golden set after every change.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">The Big Picture</h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">Evaluation is what turns RAG from craft into engineering. With a golden set and a handful of metrics, every idea in this course becomes a testable hypothesis: change one thing, measure, keep it or drop it.</div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-center font-mono text-sm text-cyan-300">Golden questions → Run the system → Measure retrieval and generation → Diagnose → Improve → Repeat</div>
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-5"><strong className="text-violet-300">Up Next:</strong> RAG Optimization and Performance. You will start the Production phase by tuning chunks, embeddings, retrieval, reranking and context, and by controlling latency, throughput, caching and cost.</div>
+    </div>
+  </section>
+</div>

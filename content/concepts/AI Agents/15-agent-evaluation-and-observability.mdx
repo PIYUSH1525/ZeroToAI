@@ -1,0 +1,458 @@
+---
+title: "Agent Evaluation and Observability"
+slug: "15-agent-evaluation-and-observability"
+order: 15
+category: "AI Agents"
+subcategory: "Reliability"
+difficulty: "Intermediate"
+readTime: "30 min"
+description: "Learn how to measure and debug agents: task success, tool-use evaluation, trajectory evaluation, structured logging, tracing, and a practical debugging method."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> An agent is judged on <strong className="text-white">what it achieved</strong> (task success), <strong className="text-white">which tools it used</strong> and <strong className="text-white">how it got there</strong> (trajectory). <strong className="text-white">Logs</strong> and <strong className="text-white">traces</strong> record every step so you can <strong className="text-white">debug</strong> failures instead of guessing.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Agent Evaluation
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Evaluating an agent is harder than evaluating a single answer, because an agent takes <strong className="text-white">many steps</strong> and can reach the goal in different ways. You need to look at three levels:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Level</th>
+              <th className="px-5 py-3">Question</th>
+              <th className="px-5 py-3">Example metric</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Outcome</td><td className="px-5 py-3">Did it achieve the goal?</td><td className="px-5 py-3">Task success rate</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Tool use</td><td className="px-5 py-3">Did it use the right tools correctly?</td><td className="px-5 py-3">Tool precision</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Trajectory</td><td className="px-5 py-3">Was the path sensible and efficient?</td><td className="px-5 py-3">Extra steps vs. a reference path</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Remember:</strong> An agent can succeed by luck or waste ten steps getting there. Outcome metrics alone hide both problems.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Task Success
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Task success</strong> is the share of tasks the agent completes correctly. To measure it you need a <strong className="text-white">test set</strong> of realistic tasks with a clear way to check each result.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Way to check</th>
+              <th className="px-5 py-3">Example</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Exact check</td><td className="px-5 py-3">The right order id, the right number</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Programmatic test</td><td className="px-5 py-3">The generated code passes its unit tests</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">State check</td><td className="px-5 py-3">The database now contains the new record</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Judge model or human</td><td className="px-5 py-3">Is the summary accurate and complete?</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> Three of four tasks succeeded, so the success rate is 75%. Always report it on <strong className="text-white">many</strong> tasks, and run each task several times because agents are not fully repeatable.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Tool-Use and Trajectory Evaluation
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Tool-use evaluation</strong> checks the calls: right tool, right arguments, no needless calls. <strong className="text-white">Trajectory evaluation</strong> compares the whole sequence of steps with a reference or with rules.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Metric</th>
+              <th className="px-5 py-3">Meaning</th>
+              <th className="px-5 py-3">Warning sign</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Tool precision</td><td className="px-5 py-3">Share of calls that used an appropriate tool</td><td className="px-5 py-3">t3 scored 0.0: it called only the calculator</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Exact match</td><td className="px-5 py-3">Same steps as the reference</td><td className="px-5 py-3">Too strict, since several paths can be valid</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Extra steps</td><td className="px-5 py-3">How many more steps than needed</td><td className="px-5 py-3">t2 repeated a search</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Repeated calls</td><td className="px-5 py-3">Same call again and again</td><td className="px-5 py-3">A loop in the making</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Reference paths</div>
+        <div className="text-sm leading-relaxed text-slate-300">Reference trajectories are useful but not sacred. Several different paths can be correct, so combine them with outcome checks.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: Logging and Tracing
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">Logging</strong> records events. <strong className="text-white">Tracing</strong> links the events of one run into a timeline, so you can follow a task from the user request to the final answer, including every model call and tool call.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Record</th>
+              <th className="px-5 py-3">Why</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Run id on every line</td><td className="px-5 py-3">Links all steps of one task</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Step, tool and arguments</td><td className="px-5 py-3">Shows what the agent did</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Latency in ms</td><td className="px-5 py-3">Finds slow steps</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Status and error</td><td className="px-5 py-3">Finds failures</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Tokens and cost</td><td className="px-5 py-3">Finds expensive steps</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Model input and output (carefully)</td><td className="px-5 py-3">Explains decisions</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-rose-300">Privacy:</strong> Logs can contain personal data and secrets. Redact them and set retention limits.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: Debugging Agents
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        When an agent fails, use a repeatable method instead of guessing:
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Find the failed run:</strong> Search by run id or by a failed status.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Read the trace from the top:</strong> Find the first step where reality differed from what you expected.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Classify the cause:</strong> Bad tool, bad prompt, bad context, bad data, or a system failure.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Reproduce it:</strong> Replay the same inputs, ideally from a recorded trace.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Fix and add a test:</strong> Add the case to the evaluation set so it never comes back.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">In the code:</strong> The first failing step of the failed run is step 3, and it is also the slowest at 2100 ms. The trace points straight at the problem.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: Measuring Agents and Debugging Them
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The figure shows the three evaluation levels with the numbers from the code, then a simple debugging loop.
+      </div>
+      <div className="space-y-8 rounded-3xl border border-indigo-500/20 bg-[#080b14] p-5 font-mono sm:p-8">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-indigo-300">Part 1 · Three Levels of Evaluation</span>
+        <span className="text-xs text-slate-400">Outcome, tools, path</span>
+      </div>
+      <div className="grid gap-5 md:grid-cols-3">
+        <div className="space-y-3 rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Outcome</span>
+            <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-200">Success rate</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">3 of 4 tasks succeeded</div>
+          <div className="text-center text-cyan-400">↓</div>
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-300">75%</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Tool use</span>
+            <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] text-violet-200">Precision</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">t3 used only the wrong tool</div>
+          <div className="text-center text-violet-400">↓</div>
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm font-semibold text-amber-300">t3 scored 0.0</div>
+        </div>
+        <div className="space-y-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">Trajectory</span>
+            <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-200">Extra steps</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-slate-200">t2 and t3 took one step more than needed</div>
+          <div className="text-center text-emerald-400">↓</div>
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-300">Waste found</div>
+        </div>
+      </div>
+    </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-emerald-300">Part 2 · From Trace to Fix</span>
+        <span className="text-xs text-slate-400">Debugging loop</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Find</div>
+          <div className="mt-2 text-lg font-bold text-white">Failed run</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">By run id.</div>
+        </div>
+        <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-violet-400">Read</div>
+          <div className="mt-2 text-lg font-bold text-white">The trace</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Find the first surprise.</div>
+        </div>
+        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Cause</div>
+          <div className="mt-2 text-lg font-bold text-white">Classify</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Tool, prompt, context, data.</div>
+        </div>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-5 text-center">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Fix</div>
+          <div className="mt-2 text-lg font-bold text-white">Add a test</div>
+          <div className="mt-2 text-xs leading-relaxed text-slate-400">Keep it fixed.</div>
+        </div>
+      </div>
+      <details className="group rounded-2xl border border-indigo-500/20 bg-white/[0.03]">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-4 text-sm font-semibold text-slate-200">
+          <span>Click to see why one run is not enough</span>
+          <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-300">Compare <span className="inline-block transition group-open:rotate-180">▼</span></span>
+        </summary>
+        <div className="border-t border-white/10 px-5 py-4 text-sm leading-relaxed text-slate-300">Agents vary between runs. A task that passed once may fail the next time, so run each test several times and report the success rate with its uncertainty.</div>
+      </details>
+    </div>
+      </div>
+      <div>
+        Part 1 gives the result for outcome, tool use and trajectory. Part 2 shows the debugging loop. Open the bar to see why repeated runs matter.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Success, Tool Precision, Trajectories and Traces
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script evaluates four recorded agent runs. It computes the success rate, the tool precision, exact trajectory matches and extra steps, prints a structured trace as JSON lines, and finds the first failing and the slowest step of a failed run.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">agent_evaluation.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · standard library only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import json</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">runs = &#91;</span>
+            <span className="block">    &#123;&quot;task&quot;: &quot;t1&quot;, &quot;success&quot;: True,  &quot;tools&quot;: &#91;&quot;search&quot;, &quot;read&quot;, &quot;answer&quot;&#93;, &quot;reference&quot;: &#91;&quot;search&quot;, &quot;read&quot;, &quot;answer&quot;&#93;&#125;,</span>
+            <span className="block">    &#123;&quot;task&quot;: &quot;t2&quot;, &quot;success&quot;: True,  &quot;tools&quot;: &#91;&quot;search&quot;, &quot;search&quot;, &quot;read&quot;, &quot;answer&quot;&#93;, &quot;reference&quot;: &#91;&quot;search&quot;, &quot;read&quot;, &quot;answer&quot;&#93;&#125;,</span>
+            <span className="block">    &#123;&quot;task&quot;: &quot;t3&quot;, &quot;success&quot;: False, &quot;tools&quot;: &#91;&quot;calculator&quot;, &quot;calculator&quot;, &quot;calculator&quot;&#93;, &quot;reference&quot;: &#91;&quot;search&quot;, &quot;answer&quot;&#93;&#125;,</span>
+            <span className="block">    &#123;&quot;task&quot;: &quot;t4&quot;, &quot;success&quot;: True,  &quot;tools&quot;: &#91;&quot;search&quot;, &quot;answer&quot;&#93;, &quot;reference&quot;: &#91;&quot;search&quot;, &quot;answer&quot;&#93;&#125;,</span>
+            <span className="block">&#93;</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 1. Task success: did the agent reach the goal?</span>
+            <span className="block">success&#95;rate = sum(r&#91;&quot;success&quot;&#93; for r in runs) / len(runs)</span>
+            <span className="block">print(&quot;Task success rate:&quot;, round(success&#95;rate &#42; 100), &quot;%&quot;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 2. Tool-use evaluation: were the tools it called the right ones?</span>
+            <span className="block text-cyan-300">def tool&#95;precision(run):</span>
+            <span className="block">    right = sum(1 for tool in run&#91;&quot;tools&quot;&#93; if tool in run&#91;&quot;reference&quot;&#93;)</span>
+            <span className="block">    return right / len(run&#91;&quot;tools&quot;&#93;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Tool precision per task:&quot;, &#123;r&#91;&quot;task&quot;&#93;: round(tool&#95;precision(r), 2) for r in runs&#125;)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 3. Trajectory evaluation: how close was the path to the ideal one?</span>
+            <span className="block">for r in runs:</span>
+            <span className="block">    exact = r&#91;&quot;tools&quot;&#93; == r&#91;&quot;reference&quot;&#93;</span>
+            <span className="block">    extra = len(r&#91;&quot;tools&quot;&#93;) - len(r&#91;&quot;reference&quot;&#93;)</span>
+            <span className="block">    print(r&#91;&quot;task&quot;&#93;, &quot;| exact match:&quot;, exact, &quot;| extra steps:&quot;, extra)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 4. Logging and tracing: one structured line per step, tied together by a run id</span>
+            <span className="block">trace = &#91;</span>
+            <span className="block">    &#123;&quot;run&quot;: &quot;t3&quot;, &quot;step&quot;: 1, &quot;tool&quot;: &quot;calculator&quot;, &quot;ms&quot;: 40, &quot;status&quot;: &quot;ok&quot;&#125;,</span>
+            <span className="block">    &#123;&quot;run&quot;: &quot;t3&quot;, &quot;step&quot;: 2, &quot;tool&quot;: &quot;calculator&quot;, &quot;ms&quot;: 35, &quot;status&quot;: &quot;ok&quot;&#125;,</span>
+            <span className="block">    &#123;&quot;run&quot;: &quot;t3&quot;, &quot;step&quot;: 3, &quot;tool&quot;: &quot;calculator&quot;, &quot;ms&quot;: 2100, &quot;status&quot;: &quot;timeout&quot;&#125;,</span>
+            <span className="block">&#93;</span>
+            <span className="block">for line in trace:</span>
+            <span className="block">    print(json.dumps(line))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># 5. Debugging: find the first problem and the slowest step in a failed run</span>
+            <span className="block">first&#95;bad = next(s for s in trace if s&#91;&quot;status&quot;&#93; != &quot;ok&quot;)</span>
+            <span className="block">slowest = max(trace, key=lambda s: s&#91;&quot;ms&quot;&#93;)</span>
+            <span className="block">print(&quot;First failing step:&quot;, first&#95;bad&#91;&quot;step&quot;&#93;, first&#95;bad&#91;&quot;tool&quot;&#93;, &quot;| slowest step:&quot;, slowest&#91;&quot;step&quot;&#93;, str(slowest&#91;&quot;ms&quot;&#93;) + &quot; ms&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Task success rate: 75 %</div>
+          <div>Tool precision per task: &#123;&apos;t1&apos;: 1.0, &apos;t2&apos;: 1.0, &apos;t3&apos;: 0.0, &apos;t4&apos;: 1.0&#125;</div>
+          <div>t1 | exact match: True | extra steps: 0</div>
+          <div>t2 | exact match: False | extra steps: 1</div>
+          <div>t3 | exact match: False | extra steps: 1</div>
+          <div>t4 | exact match: True | extra steps: 0</div>
+          <div>&#123;&quot;run&quot;: &quot;t3&quot;, &quot;step&quot;: 1, &quot;tool&quot;: &quot;calculator&quot;, &quot;ms&quot;: 40, &quot;status&quot;: &quot;ok&quot;&#125;</div>
+          <div>&#123;&quot;run&quot;: &quot;t3&quot;, &quot;step&quot;: 2, &quot;tool&quot;: &quot;calculator&quot;, &quot;ms&quot;: 35, &quot;status&quot;: &quot;ok&quot;&#125;</div>
+          <div>&#123;&quot;run&quot;: &quot;t3&quot;, &quot;step&quot;: 3, &quot;tool&quot;: &quot;calculator&quot;, &quot;ms&quot;: 2100, &quot;status&quot;: &quot;timeout&quot;&#125;</div>
+          <div>First failing step: 3 calculator | slowest step: 3 2100 ms</div>
+        </div>
+      </div>
+      <div>
+        The headline number (75%) hides the story: t3 failed because it used the wrong tool three times, and t2 succeeded but wasted a step. The structured trace of the failed run shows that its last step timed out and was also the slowest.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: Why is task success alone not enough to judge an agent?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag15-q1-a" name="ag15-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag15-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) The agent might succeed by luck or waste many steps, which other metrics reveal</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Tool use and trajectory metrics explain how it got there.</div>
+          </div>
+          <div>
+            <input id="ag15-q1-b" name="ag15-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag15-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Success rate cannot be computed</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It can be computed.</div>
+          </div>
+          <div>
+            <input id="ag15-q1-c" name="ag15-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag15-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Success is always 100%</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Agents often fail.</div>
+          </div>
+          <div>
+            <input id="ag15-q1-d" name="ag15-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ag15-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Only speed matters</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Speed is one dimension among several.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: What is the purpose of a run id in logs?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ag15-q2-a" name="ag15-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag15-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) It links all steps of one task into a single trace</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> This lets you follow one run from start to finish.</div>
+          </div>
+          <div>
+            <input id="ag15-q2-b" name="ag15-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag15-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) It makes the model faster</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> It has no effect on speed.</div>
+          </div>
+          <div>
+            <input id="ag15-q2-c" name="ag15-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag15-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) It stores the password</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Logs should never hold secrets.</div>
+          </div>
+          <div>
+            <input id="ag15-q2-d" name="ag15-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ag15-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) It chooses the tool</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The run id is only an identifier.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Evaluate agents at three levels: outcome, tool use and trajectory.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Task success needs a realistic test set and a reliable check for each task.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Tool precision and extra steps reveal wrong or wasteful behavior that success rates hide.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Logs record events, and traces link them with a run id into one timeline.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Record latency, status, errors, tokens and cost, and redact sensitive data.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Debug by finding the first surprise in the trace, classifying the cause and adding a test.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Evaluation in One Line</div>
+        <div className="text-center font-bold text-white">
+          Test set + success rate + tool and trajectory metrics + traces = agents you can improve with evidence
+        </div>
+      </div>
+      <div>
+        What you cannot measure you cannot improve, and what you cannot trace you cannot debug.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> One agent can only do so much. In <strong className="text-white">Introduction to Multi-Agent Systems</strong> you will learn why and when several specialized agents work better than one.
+      </div>
+    </div>
+  </section>
+
+</div>

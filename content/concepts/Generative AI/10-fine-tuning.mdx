@@ -1,0 +1,441 @@
+---
+title: "Fine-Tuning LLMs: SFT, LoRA and QLoRA"
+slug: "10-fine-tuning"
+order: 10
+category: "Generative AI"
+subcategory: "Fine-Tuning"
+difficulty: "Intermediate"
+readTime: "30 min"
+description: "Learn how a pretrained base model becomes a helpful specialist: supervised fine-tuning with instruction data, why full fine-tuning is costly, how LoRA and QLoRA train tiny adapters, and when to fine-tune instead of prompting or using RAG."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> A base model knows a lot but does not behave like an assistant. <strong className="text-white">Fine-tuning</strong> teaches it a behavior with a small, high-quality dataset. <strong className="text-white">LoRA</strong> makes this cheap by freezing the model and training only tiny adapter matrices.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: Why Fine-Tune a Model That Already Knows So Much?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        After pre-training, a <strong className="text-white">base model</strong> knows a huge amount about language and the world, but it behaves like a very well-read autocomplete. Ask it <em>What is the capital of France?</em> and it might continue with <em>What is the capital of Germany?</em> because that is what often follows a question in its training text.
+      </div>
+      <div>
+        <strong className="text-white">Fine-tuning</strong> continues training the model on a much smaller, carefully chosen dataset so that it learns a <strong className="text-white">behavior</strong>: follow instructions, answer politely, use a company&apos;s writing style, speak medical language, or output clean JSON.
+      </div>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-blue-300">Pre-training</span>
+            <span className="rounded bg-blue-950/80 px-2 py-0.5 font-mono text-xs text-blue-300">Learn the world</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Data:</strong> Trillions of raw tokens</div>
+            <div><strong className="text-white">Goal:</strong> General knowledge and language skill</div>
+            <div><strong className="text-white">Cost:</strong> Millions of GPU-hours</div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="font-bold text-emerald-300">Fine-tuning</span>
+            <span className="rounded bg-emerald-950/80 px-2 py-0.5 font-mono text-xs text-emerald-300">Learn a behavior</span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-300">
+            <div><strong className="text-white">Data:</strong> Thousands to hundreds of thousands of good examples</div>
+            <div><strong className="text-white">Goal:</strong> A specific style, task or format</div>
+            <div><strong className="text-white">Cost:</strong> A few GPU-hours to a few days</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-cyan-300">Analogy:</strong> Pre-training is like going through school: broad general knowledge. Fine-tuning is the job training: learning how to apply that knowledge in one specific role.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: Supervised Fine-Tuning (SFT) and Instruction Data
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The most common first step is <strong className="text-white">supervised fine-tuning (SFT)</strong>, also called <em>instruction tuning</em>. The training data is a set of examples written as <strong className="text-white">instruction and ideal answer</strong> pairs:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Instruction (prompt)</th>
+              <th className="px-5 py-3">Ideal response (target)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Explain gradient descent to a 10-year-old.</td><td className="px-5 py-3">Imagine walking down a foggy hill by feeling the slope under your feet...</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Convert this to JSON: name Ana, age 31</td><td className="px-5 py-3">a JSON object with the name and age fields</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Summarize this email in one sentence.</td><td className="px-5 py-3">A one-sentence summary written in a clear and polite tone.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        The training loop is the <strong className="text-white">same next-token loss</strong> as pre-training, but usually computed <strong className="text-white">only on the response part</strong>. The model is not rewarded for repeating the question, only for producing a good answer.
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Quality over quantity:</strong> A small set of <strong className="text-white">high-quality, varied</strong> examples often beats a huge noisy set. Many successful assistants were tuned with only thousands of carefully written examples.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Medium: Full Fine-Tuning and Its Problem
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The simplest approach is <strong className="text-white">full fine-tuning</strong>: update <strong className="text-white">every</strong> weight of the model. It is powerful, but it has serious costs:
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Problem</th>
+              <th className="px-5 py-3">What it means for a 7B model</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Memory</td><td className="px-5 py-3">Weights, gradients and optimizer states together need roughly 16 bytes per parameter, so about <strong className="text-white">112 GB</strong> for 7 billion parameters. Far beyond a normal GPU.</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Storage</td><td className="px-5 py-3">Every fine-tuned version is a full copy of about 14 GB (16-bit weights).</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Forgetting</td><td className="px-5 py-3">Changing all weights can erase some of the original skills. This is called <strong className="text-white">catastrophic forgetting</strong>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">The big question:</strong> Do we really need to change all 7 billion numbers to teach a new style? Research says no. The needed change is usually <strong className="text-white">simple</strong>, and that is what LoRA exploits.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Medium: LoRA (Low-Rank Adaptation)
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">LoRA</strong> keeps the original weight matrix $W$ <strong className="text-white">frozen</strong> and learns only a small <em>correction</em> next to it. The correction is the product of two thin matrices, $B$ and $A$:
+      </div>
+      <div className="rounded-xl border border-white/10 bg-[#060913] p-5 text-center text-white">
+        $$W_{new} = W + \frac{\alpha}{r} \, B A$$
+      </div>
+      <div>
+        If $W$ is a $4096 \times 4096$ table, then $A$ is $r \times 4096$ and $B$ is $4096 \times r$, where the <strong className="text-white">rank</strong> $r$ is tiny, such as 8. So instead of training $16{,}777{,}216$ numbers we train only $2 \times 4096 \times 8 = 65{,}536$, about <strong className="text-white">0.39%</strong>.
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-start gap-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-mono text-sm font-bold text-blue-300">1</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Freeze the base model:</strong> No original weight changes, so the original knowledge is protected.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/20 font-mono text-sm font-bold text-violet-300">2</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Add small adapters:</strong> Insert $A$ and $B$ next to chosen layers, usually the attention matrices.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 font-mono text-sm font-bold text-emerald-300">3</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Start safe:</strong> $B$ starts as all zeros, so the model begins <strong className="text-white">exactly</strong> as the pretrained one.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/20 font-mono text-sm font-bold text-orange-300">4</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Train only $A$ and $B$:</strong> Gradients flow into the adapters only, so memory and time drop sharply.</div>
+        </div>
+        <div className="flex items-start gap-4 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/20 font-mono text-sm font-bold text-rose-300">5</span>
+          <div className="text-sm leading-relaxed"><strong className="text-white">Ship a tiny file:</strong> The adapter is a few megabytes. You can load, swap or merge it into $W$ whenever you like.</div>
+        </div>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-emerald-300">Why it works:</strong> Fine-tuning changes are usually <strong className="text-white">low-rank</strong>: they live in a small number of directions. A thin pair of matrices is enough to capture them, so quality stays close to full fine-tuning.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Advanced: QLoRA, Forgetting and Choosing the Right Tool
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        <strong className="text-white">QLoRA</strong> goes one step further. It stores the frozen base model in <strong className="text-white">4-bit</strong> numbers (about 0.5 byte per parameter, so a 7B model shrinks from about 14 GB to about 3.5 GB) and trains 16-bit LoRA adapters on top. This lets one consumer GPU fine-tune models that would otherwise need a data-center.
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-white/[0.04] text-xs uppercase tracking-wider text-slate-400">
+            <tr>
+              <th className="px-5 py-3">Method</th>
+              <th className="px-5 py-3">Trains</th>
+              <th className="px-5 py-3">Rough memory for a 7B model</th>
+              <th className="px-5 py-3">Best when</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-slate-300">
+            <tr><td className="px-5 py-3 font-semibold text-white">Prompting / RAG</td><td className="px-5 py-3">Nothing</td><td className="px-5 py-3">Just the model for inference</td><td className="px-5 py-3">Knowledge changes often, or you only need a better prompt</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">Full fine-tuning</td><td className="px-5 py-3">All weights</td><td className="px-5 py-3">About 112 GB</td><td className="px-5 py-3">You have a big budget and need maximum change</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">LoRA</td><td className="px-5 py-3">Small adapters</td><td className="px-5 py-3">About 14 GB for the 16-bit base, plus a little</td><td className="px-5 py-3">Style, format or domain adaptation on one good GPU</td></tr>
+            <tr><td className="px-5 py-3 font-semibold text-white">QLoRA</td><td className="px-5 py-3">Small adapters on a 4-bit base</td><td className="px-5 py-3">About 4 to 6 GB in practice</td><td className="px-5 py-3">Limited hardware, such as a single consumer GPU</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Fine-tune, prompt or retrieve?</div>
+        <div className="text-sm leading-relaxed text-slate-300">Use <strong className="text-white">prompting</strong> first, it is free. Use <strong className="text-white">RAG</strong> when the model needs fresh or private facts. Use <strong className="text-white">fine-tuning</strong> to change <em>behavior</em>: tone, format, domain language or a skill. Fine-tuning is poor at teaching many new facts.</div>
+      </div>
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] p-5 text-sm leading-relaxed">
+        <strong className="text-amber-300">Next stage: alignment.</strong> After SFT, many assistants are refined with preference data, where humans or AI judges say which of two answers is better. Methods such as <strong className="text-white">RLHF</strong> and <strong className="text-white">DPO</strong> use this to make answers more helpful and safe. That is a topic of its own.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Visual Explanation: The Fine-Tuning Pipeline and the Method Explorer
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This is the path from a base model to a specialist assistant, followed by a quick explorer that compares the four tools from this lesson for a 7B model.
+      </div>
+      <Mermaid chart="graph LR; A[Pretrained base model] --> B[Instruction and answer pairs]; B --> C[Freeze base weights]; C --> D[Train small LoRA adapters]; D --> E[Evaluate on held-out examples]; E --> F[Merge adapters or load them on demand]; F --> G[Specialist assistant]" />
+      <div className="space-y-6 rounded-2xl border border-white/10 bg-[#060913] p-6 shadow-[0_0_40px_rgba(0,240,255,0.04)] sm:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="rounded-full bg-indigo-500/20 px-3 py-0.5 font-mono text-[11px] font-bold text-indigo-300">🧰 METHOD EXPLORER · CLICK A METHOD</span>
+          <span className="font-mono text-xs text-slate-400">7B model, rough numbers</span>
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          <div>
+            <input id="ft-method-1" name="ft-method" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-method-1" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">Full fine-tune</label>
+            <div className="mt-3 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Trains: all 7 billion weights<br />
+              Memory: about 112 GB<br />
+              Output: a new 14 GB model<br />
+              <span className="text-rose-300">Maximum power, maximum cost.</span>
+            </div>
+          </div>
+          <div>
+            <input id="ft-method-2" name="ft-method" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-method-2" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">LoRA</label>
+            <div className="mt-3 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Trains: about 0.4% of the weights<br />
+              Memory: about 14 GB plus adapters<br />
+              Output: a tiny adapter file<br />
+              <span className="text-emerald-300">The popular sweet spot.</span>
+            </div>
+          </div>
+          <div>
+            <input id="ft-method-3" name="ft-method" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-method-3" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-blue-400/50 peer-checked:bg-blue-500/10 peer-checked:text-blue-300">QLoRA</label>
+            <div className="mt-3 hidden rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Trains: the same small adapters<br />
+              Memory: about 4 to 6 GB<br />
+              Output: a tiny adapter file<br />
+              <span className="text-blue-300">Fits on a single consumer GPU.</span>
+            </div>
+          </div>
+          <div>
+            <input id="ft-method-4" name="ft-method" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-method-4" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-center font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-violet-400/50 peer-checked:bg-violet-500/10 peer-checked:text-violet-300">Prompt / RAG</label>
+            <div className="mt-3 hidden rounded-lg border border-violet-500/30 bg-violet-500/10 p-4 font-mono text-xs leading-6 text-slate-200 peer-checked:block">
+              Trains: nothing<br />
+              Memory: just the model for inference<br />
+              Output: better answers from better context<br />
+              <span className="text-violet-300">Always try this first.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-type="code" className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Python Implementation: Training a LoRA Adapter From Scratch
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        This script shows LoRA working on a small scale. The big weight matrix <code>W</code> is <strong className="text-white">frozen</strong>. The new skill is a low-rank change, and we recover it by training only the thin matrices <code>A</code> and <code>B</code>, which hold just a quarter of the parameters of <code>W</code> in this tiny example and less than half a percent in a real layer.
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#060911]">
+        <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-3">
+          <span className="font-mono text-xs font-semibold text-teal-400">lora_from_scratch.py</span>
+          <span className="font-mono text-[11px] text-slate-400">Python 3.10+ · NumPy only</span>
+        </div>
+        <pre className="overflow-x-auto p-6 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import numpy as np</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">rng = np.random.default_rng(0)</span>
+            <span className="block">d, r, n = 16, 2, 200</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">W = rng.normal(size=(d, d))                              # frozen pretrained weights</span>
+            <span className="block">delta = rng.normal(size=(d, r)) @ rng.normal(size=(r, d)) / d    # the new skill is a low-rank change</span>
+            <span className="block">X = rng.normal(size=(n, d))</span>
+            <span className="block">Y = X @ (W + delta).T                                    # what the fine-tuned model should output</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">A = rng.normal(size=(r, d)) * 0.1                        # LoRA matrices: the ONLY things we train</span>
+            <span className="block">B = np.zeros((d, r))                                     # B starts at zero, so we begin exactly at the pretrained model</span>
+            <span className="block">lr = 1.0</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-cyan-300">def current_loss():</span>
+            <span className="block">    return np.mean((X @ (W + B @ A).T - Y) ** 2)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print(&quot;Trainable parameters: LoRA =&quot;, A.size + B.size, &quot;| full fine-tuning =&quot;, W.size)</span>
+            <span className="block">print(&quot;Loss before training:&quot;, round(float(current_loss()), 5))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">for step in range(601):</span>
+            <span className="block">    E = X @ (W + B @ A).T - Y</span>
+            <span className="block">    G = (2 / (n * d)) * E.T @ X                          # gradient with respect to the combined update B @ A</span>
+            <span className="block">    dB, dA = G @ A.T, B.T @ G</span>
+            <span className="block">    B -= lr * dB</span>
+            <span className="block">    A -= lr * dA</span>
+            <span className="block">    if step in (100, 300, 600):</span>
+            <span className="block">        print(&quot;step&quot;, step, &quot;| loss&quot;, format(current_loss(), &quot;.2e&quot;))</span>
+            <span className="block">&nbsp;</span>
+            <span className="block text-slate-500"># Same idea at real scale: one 4096 x 4096 layer with rank 8</span>
+            <span className="block">full, lora = 4096 * 4096, 2 * 4096 * 8</span>
+            <span className="block">print(&quot;One real layer: full =&quot;, format(full, &quot;,&quot;), &quot;| LoRA =&quot;, format(lora, &quot;,&quot;), &quot;|&quot;, round(100 * lora / full, 2), &quot;% of the size&quot;)</span>
+          </code>
+        </pre>
+      </div>
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5">
+        <div className="mb-2 font-mono text-xs font-bold text-emerald-300">EXPECTED OUTPUT (your numbers may differ slightly)</div>
+        <div className="space-y-1 font-mono text-xs leading-6 text-slate-200">
+          <div>Trainable parameters: LoRA = 64 | full fine-tuning = 256</div>
+          <div>Loss before training: 0.15784</div>
+          <div>step 100 | loss 4.47e-03</div>
+          <div>step 300 | loss 3.50e-11</div>
+          <div>step 600 | loss 1.05e-22</div>
+          <div>One real layer: full = 16,777,216 | LoRA = 65,536 | 0.39 % of the size</div>
+        </div>
+      </div>
+      <div>
+        The loss before training is about 0.16 (the model lacks the new skill). It collapses toward zero within a few hundred steps even though only <strong className="text-white">64 of 256</strong> numbers were trained. In a real 4096 × 4096 layer the same trick trains only <strong className="text-white">0.39%</strong> of the numbers.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-rose-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Interactive Knowledge Check
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 1: In LoRA, which weights are trained?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ft-q1-a" name="ft-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-q1-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Only the small matrices A and B, while the original weights stay frozen</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> This is what makes LoRA cheap and keeps the original knowledge safe.</div>
+          </div>
+          <div>
+            <input id="ft-q1-b" name="ft-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-q1-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) All the original weights</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> That is full fine-tuning.</div>
+          </div>
+          <div>
+            <input id="ft-q1-c" name="ft-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-q1-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Only the tokenizer</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The tokenizer is not part of LoRA training.</div>
+          </div>
+          <div>
+            <input id="ft-q1-d" name="ft-q1" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-q1-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Nothing is trained</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The adapters are trained.</div>
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mb-4 font-bold text-white">Question 2: You need the model to know your company&apos;s latest prices, which change weekly. What is the best first choice?</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <input id="ft-q2-a" name="ft-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-q2-a" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-emerald-400/50 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-300">A) Retrieval (RAG), so the model reads fresh data at question time</label>
+            <div className="mt-2 hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-emerald-400">Correct.</strong> Fine-tuning is poor at teaching changing facts. Retrieval keeps answers current without retraining.</div>
+          </div>
+          <div>
+            <input id="ft-q2-b" name="ft-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-q2-b" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">B) Full fine-tuning every week</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> This is expensive and still unreliable for facts.</div>
+          </div>
+          <div>
+            <input id="ft-q2-c" name="ft-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-q2-c" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">C) Delete the model and start over</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> Not necessary and extremely costly.</div>
+          </div>
+          <div>
+            <input id="ft-q2-d" name="ft-q2" type="radio" className="peer sr-only" />
+            <label htmlFor="ft-q2-d" className="block cursor-pointer rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 font-semibold text-slate-300 transition hover:bg-white/[0.06] peer-checked:border-rose-400/50 peer-checked:bg-rose-500/10 peer-checked:text-rose-300">D) Lower the learning rate</label>
+            <div className="mt-2 hidden rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm leading-relaxed text-slate-300 peer-checked:block"><strong className="text-rose-400">Incorrect.</strong> The learning rate does not give the model new knowledge.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      Key Points
+    </h2>
+    <div className="rounded-2xl border border-white/10 bg-[#0B0E17] p-6 sm:p-8">
+      <div className="space-y-4 text-[15px] leading-7 text-slate-200">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Fine-tuning teaches <strong className="text-white">behavior</strong> (style, format, skill). It is not an efficient way to teach many new facts.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">SFT</strong> trains on instruction and ideal-answer pairs, with the same next-token loss, usually only on the answer.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Full fine-tuning needs about 16 bytes per parameter, so about 112 GB for a 7B model, and risks catastrophic forgetting.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">LoRA</strong> freezes W and learns W + (α/r)·B·A with tiny matrices, training well under 1% of the parameters.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span><strong className="text-white">QLoRA</strong> stores the frozen base in 4-bit so fine-tuning fits on a single consumer GPU.</span>
+        </div>
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 font-bold text-emerald-400">✓</span>
+          <span>Try prompting first, use RAG for fresh or private facts, and fine-tune to change behavior.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-400 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      The Big Picture
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-lg font-bold text-cyan-400">Fine-Tuning in One Line</div>
+        <div className="text-center font-bold text-white">
+          Base model + a few good examples + small adapters (LoRA) = a specialist assistant at a fraction of the cost
+        </div>
+      </div>
+      <div>
+        You now understand the full journey of an LLM: how attention and positions work, how a modern block is built, how pre-training creates a base model, and how fine-tuning turns it into something useful. The same ideas appear in every model you will use.
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-slate-300">
+        <strong className="text-white">Up Next:</strong> Alignment methods such as RLHF and DPO, plus prompting techniques, build on everything in this series. They are the next topics in <strong className="text-white">Prompting and Alignment</strong>.
+      </div>
+    </div>
+  </section>
+
+</div>

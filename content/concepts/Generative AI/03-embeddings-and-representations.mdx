@@ -1,0 +1,868 @@
+---
+title: "Embeddings & Representations"
+slug: "embeddings-and-representations"
+order: 3
+category: "Generative AI / LLMs"
+subcategory: "LLM Foundations"
+difficulty: "Beginner"
+readTime: "30 min"
+description: "Learn how token IDs become dense numerical vectors, why embeddings represent semantic information, how embedding tables work, positional information, similarity, dimensions, and how representations flow into Transformer layers."
+---
+
+<div className="mx-auto w-full max-w-4xl space-y-16 pt-2">
+
+  <section>
+    <div className="space-y-5 text-[16px] leading-8 text-slate-300">
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 shadow-[0_0_15px_rgba(0,240,255,0.05)]">
+        <strong className="text-cyan-400">The Core Idea:</strong> Tokenization converts text into token IDs, but token IDs themselves are only identifiers. An LLM needs a richer numerical representation. <strong>Embeddings</strong> map token IDs to dense vectors that the neural network can process and transform through its layers.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-blue-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      1. Beginner: What Is an Embedding?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        An <strong className="text-cyan-300">embedding</strong> is a numerical vector used to represent an item in a continuous mathematical space. In an LLM, token embeddings provide a learned vector representation for each token in the model's vocabulary.
+      </div>
+
+      <div>
+        Remember the previous module: a tokenizer converts text into <strong className="text-violet-300">token IDs</strong>. Those IDs are not meaningful numbers by themselves. The embedding layer uses each ID as an index into a learned table of vectors.
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-6">
+        <div className="mb-4 text-center font-mono text-xs font-bold uppercase tracking-widest text-slate-400">
+          Token ID → Embedding Vector
+        </div>
+
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="w-full rounded-xl border border-cyan-500/40 bg-cyan-500/10 p-4">
+            <div className="text-[10px] uppercase text-cyan-400">Token</div>
+            <div className="mt-1 font-mono text-lg font-bold text-white">"language"</div>
+          </div>
+
+          <div className="text-cyan-400">↓</div>
+
+          <div className="w-full rounded-xl border border-violet-500/40 bg-violet-500/10 p-4">
+            <div className="text-[10px] uppercase text-violet-400">Tokenizer</div>
+            <div className="mt-1 font-mono text-sm text-violet-200">token ID = 1234</div>
+          </div>
+
+          <div className="text-violet-400">↓</div>
+
+          <div className="w-full rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+            <div className="text-[10px] uppercase text-emerald-400">Embedding Table Lookup</div>
+            <div className="mt-2 font-mono text-sm text-emerald-200">row 1234</div>
+          </div>
+
+          <div className="text-emerald-400">↓</div>
+
+          <div className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
+            <div className="text-[10px] uppercase text-amber-400">Dense Vector</div>
+            <div className="mt-2 font-mono text-xs text-amber-200">[0.12, -0.48, 0.77, ...]</div>
+            <span className="mt-2 block text-xs text-slate-400">The vector has a fixed dimensionality chosen by the model architecture.</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-cyan-400">Input</div>
+          <div className="mb-2 text-base font-bold text-white">Token ID</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            An integer used to identify a vocabulary entry.
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-violet-400">Lookup</div>
+          <div className="mb-2 text-base font-bold text-white">Embedding Table</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            A learned matrix containing one vector for each vocabulary entry.
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-1 font-mono text-xs font-bold uppercase text-emerald-400">Output</div>
+          <div className="mb-2 text-base font-bold text-white">Vector</div>
+          <div className="text-xs leading-relaxed text-slate-300">
+            A dense numerical representation that can enter the Transformer.
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-amber-500/25 bg-[#0A0D16] p-5">
+        <strong className="text-amber-300">Important:</strong>
+        <span className="text-slate-300"> The embedding vector is learned during model training. Its individual dimensions are not normally assigned simple human-readable meanings such as "grammar" or "friendliness."</span>
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          What is the main purpose of a token embedding?
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) Convert a token ID into a learned dense vector</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>The embedding lookup provides the numerical vector representation used by the model.</span>
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) Convert a vector back into the original sentence</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>Embeddings are representations used inside the model; they are not a direct sentence decoder.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-violet-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      2. Beginner: The Embedding Matrix
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The token embedding layer can be viewed as a matrix. Each row corresponds to one vocabulary entry, and each row contains the learned vector associated with that token.
+      </div>
+
+      <div className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+        <div className="mb-4 text-center font-mono text-xs font-bold uppercase tracking-widest text-violet-300">
+          Conceptual Embedding Matrix
+        </div>
+
+        <div className="overflow-x-auto">
+          <div className="mx-auto min-w-[560px] max-w-2xl">
+            <div className="grid grid-cols-5 gap-1 text-center text-xs">
+              <div className="rounded bg-white/[0.04] p-2 text-slate-500">Token</div>
+              <div className="rounded bg-white/[0.04] p-2 text-slate-500">d₁</div>
+              <div className="rounded bg-white/[0.04] p-2 text-slate-500">d₂</div>
+              <div className="rounded bg-white/[0.04] p-2 text-slate-500">d₃</div>
+              <div className="rounded bg-white/[0.04] p-2 text-slate-500">...</div>
+
+              <div className="rounded bg-cyan-500/10 p-2 font-mono text-cyan-200">hello</div>
+              <div className="rounded bg-cyan-500/[0.06] p-2 text-slate-300">0.21</div>
+              <div className="rounded bg-cyan-500/[0.06] p-2 text-slate-300">-0.14</div>
+              <div className="rounded bg-cyan-500/[0.06] p-2 text-slate-300">0.73</div>
+              <div className="rounded bg-cyan-500/[0.06] p-2 text-slate-500">...</div>
+
+              <div className="rounded bg-violet-500/10 p-2 font-mono text-violet-200">language</div>
+              <div className="rounded bg-violet-500/[0.06] p-2 text-slate-300">-0.42</div>
+              <div className="rounded bg-violet-500/[0.06] p-2 text-slate-300">0.58</div>
+              <div className="rounded bg-violet-500/[0.06] p-2 text-slate-300">0.11</div>
+              <div className="rounded bg-violet-500/[0.06] p-2 text-slate-500">...</div>
+
+              <div className="rounded bg-emerald-500/10 p-2 font-mono text-emerald-200">model</div>
+              <div className="rounded bg-emerald-500/[0.06] p-2 text-slate-300">0.08</div>
+              <div className="rounded bg-emerald-500/[0.06] p-2 text-slate-300">-0.67</div>
+              <div className="rounded bg-emerald-500/[0.06] p-2 text-slate-300">0.32</div>
+              <div className="rounded bg-emerald-500/[0.06] p-2 text-slate-500">...</div>
+
+              <div className="rounded bg-amber-500/10 p-2 font-mono text-amber-200">...</div>
+              <div className="rounded bg-amber-500/[0.06] p-2 text-slate-500">...</div>
+              <div className="rounded bg-amber-500/[0.06] p-2 text-slate-500">...</div>
+              <div className="rounded bg-amber-500/[0.06] p-2 text-slate-500">...</div>
+              <div className="rounded bg-amber-500/[0.06] p-2 text-slate-500">...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        If a vocabulary contains <strong className="text-white">V</strong> token entries and the embedding dimension is <strong className="text-white">D</strong>, the conceptual shape of the embedding matrix is <strong className="text-cyan-300">V × D</strong>.
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-cyan-300">Rows</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            One row for each vocabulary entry.
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-violet-300">Columns</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            The dimensions of each embedding vector.
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-emerald-300">Lookup</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            A token ID selects one row rather than requiring a full matrix multiplication.
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-amber-500/25 bg-[#0A0D16] p-5">
+        <strong className="text-amber-300">Why this matters:</strong>
+        <span className="text-slate-300"> The embedding matrix is part of the model's learned parameters. During training, its values are updated so that the representations become useful for the model's overall objective.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-emerald-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      3. Beginner: Why Vectors Instead of Token IDs?
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Token IDs are categorical identifiers. If one token has ID <strong className="text-white">100</strong> and another has ID <strong className="text-white">101</strong>, the numerical difference between those IDs does not mean the two tokens are semantically close.
+      </div>
+
+      <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.04] p-6">
+        <div className="mb-4 text-center font-mono text-xs font-bold uppercase tracking-widest text-rose-300">
+          Why Raw IDs Are Not Meaningful Coordinates
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3 md:items-center">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">
+            <div className="text-[10px] uppercase text-slate-500">Token A</div>
+            <div className="mt-2 font-mono text-lg text-white">ID 100</div>
+          </div>
+
+          <div className="text-center text-rose-400">≠ semantic distance</div>
+
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center">
+            <div className="text-[10px] uppercase text-slate-500">Token B</div>
+            <div className="mt-2 font-mono text-lg text-white">ID 101</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        Dense vectors give the neural network a continuous numerical representation. Their geometry can then participate in operations such as dot products, projections, additions, normalization, and attention.
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-cyan-300">Token ID</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            A lookup key. It tells the model which vocabulary entry is being referenced.
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-6">
+          <div className="mb-2 font-bold text-emerald-300">Embedding Vector</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            A learned numerical representation that can participate in neural-network computation.
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-amber-500/25 bg-[#0A0D16] p-6 shadow-[0_0_25px_rgba(245,158,11,0.05)]">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-amber-400">
+          <span>⚡ Knowledge Check</span>
+        </div>
+        <div className="mb-5 text-base font-semibold text-white">
+          If token A has ID 500 and token B has ID 501, what can you conclude?
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>A) They are semantically very similar</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-rose-400">✕ Incorrect.</strong>
+              <span>The numerical IDs are identifiers and do not encode semantic distance.</span>
+            </div>
+          </details>
+
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/[0.06] marker:content-['']">
+              <span>B) They are simply two vocabulary entries</span>
+              <span className="text-amber-400 transition group-open:rotate-180">▼</span>
+            </summary>
+            <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm leading-relaxed text-slate-300">
+              <strong className="mb-1 block text-emerald-400">✓ Correct!</strong>
+              <span>The IDs tell us which vocabulary entries are selected, not how close their meanings are.</span>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-amber-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      4. Beginner: Embedding Dimensions
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Every token embedding has a fixed number of dimensions for a particular model. If the model's hidden size is <strong className="text-amber-300">D</strong>, each token starts with a vector containing D numerical values.
+      </div>
+
+      <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.04] p-6">
+        <div className="mb-4 text-center font-mono text-xs font-bold uppercase tracking-widest text-amber-300">
+          One Token → One Vector
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-2 font-mono text-xs">
+          <span className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-cyan-200">Token ID</span>
+          <span className="text-slate-500">→</span>
+          <span className="rounded-lg border border-violet-500/30 bg-violet-500/10 px-4 py-3 text-violet-200">Embedding Lookup</span>
+          <span className="text-slate-500">→</span>
+          <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-200">[x₁, x₂, x₃, ..., xD]</span>
+        </div>
+      </div>
+
+      <div>
+        A larger embedding dimension provides more numerical capacity for representing information, but it also increases parameter count and computation. The dimension is an architectural choice, not something chosen independently for each token.
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-cyan-300">Fixed Per Model</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Every token starts with vectors of the same dimensionality inside a given model.
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-violet-300">Learned Values</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            The values are learned parameters rather than manually assigned features.
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-emerald-300">Model-Specific</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Different model architectures can use different embedding dimensions.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      5. Intermediate: Semantic Similarity and Vector Geometry
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        One useful property of learned representations is that relationships can be studied geometrically. A common operation is <strong className="text-pink-300">cosine similarity</strong>, which compares the direction of two vectors.
+      </div>
+
+      <div className="rounded-2xl border border-pink-500/25 bg-pink-500/[0.04] p-6">
+        <div className="mb-4 text-center font-mono text-xs font-bold uppercase tracking-widest text-pink-300">
+          Conceptual Vector Space
+        </div>
+
+        <div className="relative mx-auto h-64 max-w-2xl overflow-hidden rounded-xl border border-white/10 bg-[#050811]">
+          <div className="absolute left-1/2 top-0 h-full w-px bg-white/10"></div>
+          <div className="absolute left-0 top-1/2 h-px w-full bg-white/10"></div>
+
+          <div className="absolute left-[58%] top-[30%] rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 font-mono text-xs text-cyan-200">
+            vector A
+          </div>
+
+          <div className="absolute left-[66%] top-[38%] rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 font-mono text-xs text-violet-200">
+            vector B
+          </div>
+
+          <div className="absolute left-[24%] top-[67%] rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 font-mono text-xs text-amber-200">
+            vector C
+          </div>
+
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-widest text-slate-500">
+            conceptual only — not a literal 2D embedding
+          </div>
+        </div>
+      </div>
+
+      <div>
+        If two vectors point in similar directions, their cosine similarity can be high. This can be useful in information retrieval and embedding-based search, although <strong className="text-white">token embeddings inside an LLM should not be treated as a perfect semantic dictionary</strong>.
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-cyan-300">High Similarity</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Vectors point in relatively similar directions.
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-violet-300">Low Similarity</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            Vectors point in substantially different directions.
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-amber-300">Important Caveat</div>
+          <div className="text-sm leading-relaxed text-slate-300">
+            A representation's meaning depends on the model, layer, context, and training objective.
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-2 font-bold text-white">Embedding Models vs LLM Token Embeddings</div>
+        <div className="text-sm leading-relaxed text-slate-300">
+          Dedicated embedding models are often designed to produce useful vectors for retrieval, clustering, or similarity search. An LLM's internal token embeddings serve a different role: they are the starting representations that are transformed repeatedly as information moves through the network.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-cyan-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      6. Intermediate: Contextual Representations
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        A token's initial embedding is not the final representation used by the Transformer. As the sequence passes through attention and feed-forward layers, the representation becomes <strong className="text-cyan-300">contextual</strong>.
+      </div>
+
+      <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+        <div className="mb-4 text-center font-mono text-xs font-bold uppercase tracking-widest text-cyan-300">
+          Same Token, Different Context
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-5 text-center">
+            <div className="text-[10px] uppercase text-violet-400">Context A</div>
+            <div className="mt-3 font-mono text-sm text-white">"river bank"</div>
+            <div className="mt-3 text-xs text-slate-400">The representation of "bank" is influenced by its surrounding context.</div>
+          </div>
+
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+            <div className="text-[10px] uppercase text-emerald-400">Context B</div>
+            <div className="mt-3 font-mono text-sm text-white">"bank account"</div>
+            <div className="mt-3 text-xs text-slate-400">The same token or token pieces can receive different contextual information.</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        The important distinction is <strong className="text-white">static starting embeddings vs contextual hidden states</strong>. The embedding lookup initially associates each token ID with a learned vector. Attention and the rest of the Transformer then transform those vectors based on the entire sequence.
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-cyan-300">Initial</div>
+          <div className="text-sm leading-relaxed text-slate-300">Token embedding selected from the learned embedding table.</div>
+        </div>
+
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-violet-300">Context</div>
+          <div className="text-sm leading-relaxed text-slate-300">Attention allows information from other positions to influence the representation.</div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-emerald-300">Hidden State</div>
+          <div className="text-sm leading-relaxed text-slate-300">The resulting representation carries information shaped by the current context.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-orange-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      7. Intermediate: Position and Embeddings
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Token embeddings tell the model <strong className="text-orange-300">what token</strong> is present, but a sequence also needs information about <strong className="text-white">where</strong> each token occurs. This is the role of positional information.
+      </div>
+
+      <div className="rounded-2xl border border-orange-500/25 bg-orange-500/[0.04] p-6">
+        <div className="mb-4 text-center font-mono text-xs font-bold uppercase tracking-widest text-orange-300">
+          Token Information + Position Information
+        </div>
+
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-full rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center">
+            <div className="text-[10px] uppercase text-cyan-400">Token Embedding</div>
+            <div className="mt-1 font-mono text-sm text-cyan-200">"cat" → learned vector</div>
+          </div>
+
+          <div className="text-orange-400">+</div>
+
+          <div className="w-full rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center">
+            <div className="text-[10px] uppercase text-violet-400">Positional Information</div>
+            <div className="mt-1 font-mono text-sm text-violet-200">position 5 → position representation</div>
+          </div>
+
+          <div className="text-violet-400">↓</div>
+
+          <div className="w-full rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
+            <div className="text-[10px] uppercase text-emerald-400">Transformer Input Representation</div>
+            <div className="mt-1 text-sm text-emerald-200">A representation containing token and positional information according to the architecture.</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        Different Transformer architectures handle positional information differently. Later in the course, you will encounter methods such as <strong className="text-cyan-300">learned positional embeddings</strong>, <strong className="text-violet-300">sinusoidal positional encodings</strong>, and <strong className="text-emerald-300">Rotary Positional Embeddings (RoPE)</strong>.
+      </div>
+
+      <div className="rounded-xl border border-amber-500/25 bg-[#0A0D16] p-5">
+        <strong className="text-amber-300">Connection to the next modules:</strong>
+        <span className="text-slate-300"> Embeddings answer "what is represented?" while positional mechanisms provide information needed to distinguish different positions in a sequence. Attention then uses these representations to model relationships between positions.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      8. Intermediate: Embeddings in the Full LLM Pipeline
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        You can now connect the previous Tokenization module to the upcoming Transformer concepts. The embedding layer sits directly between token IDs and the neural-network computations that follow.
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8 shadow-[0_0_40px_rgba(0,240,255,0.04)]">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">
+            HUMAN TEXT
+          </div>
+
+          <div className="text-center text-cyan-400">↓</div>
+
+          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center text-violet-200">
+            TOKENIZER
+            <span className="mt-1 block text-xs text-slate-400">Text → tokens → token IDs</span>
+          </div>
+
+          <div className="text-center text-violet-400">↓</div>
+
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">
+            TOKEN IDs
+          </div>
+
+          <div className="text-center text-emerald-400">↓</div>
+
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200">
+            TOKEN EMBEDDING LOOKUP
+            <span className="mt-1 block text-xs text-slate-400">IDs → dense vectors</span>
+          </div>
+
+          <div className="text-center text-amber-400">↓</div>
+
+          <div className="rounded-xl border border-pink-500/30 bg-pink-500/10 p-4 text-center text-pink-200">
+            POSITIONAL INFORMATION
+          </div>
+
+          <div className="text-center text-pink-400">↓</div>
+
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center text-indigo-200">
+            TRANSFORMER LAYERS
+            <span className="mt-1 block text-xs text-slate-400">Attention + feed-forward processing</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-cyan-300">Before Embeddings</div>
+          <div className="text-sm leading-relaxed text-slate-300">The model has token IDs, which are identifiers rather than useful continuous features.</div>
+        </div>
+
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-amber-300">Embedding Stage</div>
+          <div className="text-sm leading-relaxed text-slate-300">Token IDs select learned dense vectors from the embedding table.</div>
+        </div>
+
+        <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/[0.04] p-5">
+          <div className="mb-2 font-bold text-indigo-300">After Embeddings</div>
+          <div className="text-sm leading-relaxed text-slate-300">The resulting representations enter the Transformer computation.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-pink-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      9. Intermediate: Token Embeddings vs Sentence Embeddings
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The word <strong className="text-pink-300">embedding</strong> is used in several contexts, so it is important not to confuse token embeddings inside an LLM with embeddings produced by dedicated embedding models.
+      </div>
+
+      <div className="grid gap-5 md:grid-cols-2">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6">
+          <div className="mb-3 font-bold text-cyan-300">Token Embeddings</div>
+          <ul className="space-y-2 text-sm leading-relaxed text-slate-300">
+            <li>• Usually one initial vector per token position.</li>
+            <li>• Stored as learned model parameters.</li>
+            <li>• Feed into the Transformer computation.</li>
+            <li>• Become transformed contextual representations.</li>
+          </ul>
+        </div>
+
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-6">
+          <div className="mb-3 font-bold text-violet-300">Sentence / Text Embeddings</div>
+          <ul className="space-y-2 text-sm leading-relaxed text-slate-300">
+            <li>• Usually represent a larger piece of text with one vector.</li>
+            <li>• Often produced by dedicated embedding models.</li>
+            <li>• Common in semantic search and RAG.</li>
+            <li>• Designed to make text similarity useful for downstream applications.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-5">
+        <strong className="text-amber-300">Why this distinction matters:</strong>
+        <span className="text-slate-300"> When you later learn RAG, you will work with text embeddings and vector databases. Those application-level embeddings should not automatically be assumed to be the same thing as the token embedding matrix inside a generative LLM.</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="code">
+    <h2 className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      10. Code: Inspecting Token Embeddings with Python
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        You can inspect the embedding matrix of a small pretrained Transformer using the Hugging Face Transformers library. This example is intended for understanding the mechanism, not for training a model.
+      </div>
+
+      <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+        <div className="mb-2 font-bold text-cyan-300">Install the library</div>
+        <pre className="overflow-x-auto rounded-xl border border-white/10 bg-[#050811] p-4 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">pip install transformers torch</span>
+          </code>
+        </pre>
+      </div>
+
+      <div>
+        <div className="mb-3 font-bold text-white">Example: Token ID to Embedding Vector</div>
+        <pre className="overflow-x-auto rounded-2xl border border-white/10 bg-[#050811] p-5 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">import torch</span>
+            <span className="block">from transformers import AutoTokenizer, AutoModel</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">model_name = "distilbert-base-uncased"</span>
+            <span className="block">tokenizer = AutoTokenizer.from_pretrained(model_name)</span>
+            <span className="block">model = AutoModel.from_pretrained(model_name)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">text = "Large language models are useful."</span>
+            <span className="block">inputs = tokenizer(text, return_tensors="pt")</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">input_ids = inputs["input_ids"]</span>
+            <span className="block">embedding_layer = model.get_input_embeddings()</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">with torch.no_grad():</span>
+            <span className="block">    embeddings = embedding_layer(input_ids)</span>
+            <span className="block">&nbsp;</span>
+            <span className="block">print("Input IDs shape:", input_ids.shape)</span>
+            <span className="block">print("Embedding shape:", embeddings.shape)</span>
+            <span className="block">print("First token vector:", embeddings[0, 0])</span>
+          </code>
+        </pre>
+      </div>
+
+      <div className="mt-5 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+        <div className="mb-3 font-bold text-emerald-300">Output</div>
+        <pre className="overflow-x-auto rounded-xl border border-white/10 bg-[#050811] p-4 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">Input IDs shape: torch.Size([1, N])</span>
+            <span className="block">Embedding shape: torch.Size([1, N, 768])</span>
+            <span className="block">First token vector: tensor([...])</span>
+          </code>
+        </pre>
+        <div className="mt-4 text-sm leading-relaxed text-slate-300">
+          <strong className="text-emerald-300">What to notice:</strong> The middle dimension represents the token sequence length, while <strong className="text-white">768</strong> is the hidden/embedding dimension of this particular DistilBERT architecture. The exact sequence length depends on tokenization.
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5 text-center">
+          <div className="mb-2 font-bold text-cyan-300">input_ids</div>
+          <div className="text-sm leading-relaxed text-slate-300">Integer token IDs produced by the tokenizer.</div>
+        </div>
+
+        <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.04] p-5 text-center">
+          <div className="mb-2 font-bold text-violet-300">embedding_layer</div>
+          <div className="text-sm leading-relaxed text-slate-300">The learned lookup layer that maps IDs to vectors.</div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5 text-center">
+          <div className="mb-2 font-bold text-emerald-300">embeddings</div>
+          <div className="text-sm leading-relaxed text-slate-300">A tensor containing one vector for each token position.</div>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-3 font-bold text-white">Inspecting the Embedding Table Shape</div>
+        <pre className="overflow-x-auto rounded-2xl border border-white/10 bg-[#050811] p-5 font-mono text-sm leading-7 text-slate-200">
+          <code>
+            <span className="block">weight = embedding_layer.weight</span>
+            <span className="block">print("Embedding table shape:", weight.shape)</span>
+          </code>
+        </pre>
+      </div>
+
+      <div className="rounded-xl border border-amber-500/25 bg-[#0A0D16] p-5">
+        <strong className="text-amber-300">Expected idea:</strong>
+        <span className="text-slate-300"> the embedding table has shape <strong className="text-white">[vocabulary size, embedding dimension]</strong>. The first dimension tells you how many vocabulary entries can be looked up; the second tells you the size of each vector.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="visualization" className="mb-6 border-l-4 border-indigo-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      11. Visual Explanation: From Token ID to Representation
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        The entire idea can be summarized as a lookup followed by neural-network processing. The token ID selects a row from the embedding matrix; the resulting vector becomes part of the model's initial representation of the sequence.
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#060913] p-6 sm:p-8 shadow-[0_0_40px_rgba(0,240,255,0.04)]">
+        <div className="space-y-3 font-mono text-xs">
+          <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-center text-cyan-200">
+            TOKEN ID
+            <span className="mt-1 block text-xs text-slate-400">e.g. 1234</span>
+          </div>
+
+          <div className="text-center text-cyan-400">↓</div>
+
+          <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center text-violet-200">
+            EMBEDDING MATRIX
+            <span className="mt-1 block text-xs text-slate-400">Vocabulary × Embedding Dimension</span>
+          </div>
+
+          <div className="text-center text-violet-400">↓</div>
+
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-emerald-200">
+            SELECTED VECTOR
+            <span className="mt-1 block text-xs text-slate-400">[x₁, x₂, x₃, ..., xD]</span>
+          </div>
+
+          <div className="text-center text-emerald-400">↓</div>
+
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center text-amber-200">
+            POSITIONAL INFORMATION
+          </div>
+
+          <div className="text-center text-amber-400">↓</div>
+
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center text-indigo-200">
+            TRANSFORMER LAYERS
+            <span className="mt-1 block text-xs text-slate-400">Attention transforms representations using context</span>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+            <div className="mb-2 font-bold text-cyan-300">Tokenization</div>
+            <div className="text-xs leading-relaxed text-slate-300">Answers: "Which vocabulary entries are present?"</div>
+          </div>
+
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.04] p-5">
+            <div className="mb-2 font-bold text-emerald-300">Embedding</div>
+            <div className="text-xs leading-relaxed text-slate-300">Answers: "What learned vector starts the representation for each token?"</div>
+          </div>
+
+          <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/[0.04] p-5">
+            <div className="mb-2 font-bold text-indigo-300">Transformer</div>
+            <div className="text-xs leading-relaxed text-slate-300">Answers: "How should these representations interact given the context?"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 className="mb-6 border-l-4 border-teal-500 pl-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      12. Beginner: Key Terms to Remember
+    </h2>
+    <div className="space-y-6 text-[16px] leading-8 text-slate-300">
+      <div>
+        Before moving to <strong className="text-cyan-300">Transformers and Attention</strong>, make sure these concepts are clear.
+      </div>
+
+      <div className="my-6 overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+          <thead className="bg-white/[0.06] text-white">
+            <tr>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Term</th>
+              <th className="border-b border-white/10 px-5 py-4 font-semibold">Meaning</th>
+            </tr>
+          </thead>
+
+          <tbody className="text-slate-300">
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-3.5 font-semibold text-cyan-300">Embedding</td>
+              <td className="px-5 py-3.5">A dense numerical vector representation learned by a model.</td>
+            </tr>
+
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-3.5 font-semibold text-violet-300">Embedding Matrix</td>
+              <td className="px-5 py-3.5">A learned table containing one embedding vector for each vocabulary entry.</td>
+            </tr>
+
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-3.5 font-semibold text-emerald-300">Embedding Dimension</td>
+              <td className="px-5 py-3.5">The number of numerical values in each token embedding vector.</td>
+            </tr>
+
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-3.5 font-semibold text-amber-300">Token ID</td>
+              <td className="px-5 py-3.5">An integer identifier used to select a vocabulary entry and its embedding.</td>
+            </tr>
+
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-3.5 font-semibold text-pink-300">Contextual Representation</td>
+              <td className="px-5 py-3.5">A representation transformed by the network using information from the surrounding sequence.</td>
+            </tr>
+
+            <tr className="border-b border-white/10">
+              <td className="px-5 py-3.5 font-semibold text-blue-300">Positional Information</td>
+              <td className="px-5 py-3.5">Information that helps the architecture distinguish token positions in a sequence.</td>
+            </tr>
+
+            <tr>
+              <td className="px-5 py-3.5 font-semibold text-indigo-300">Sentence Embedding</td>
+              <td className="px-5 py-3.5">A vector representing a larger text span, commonly used in retrieval and similarity applications.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.04] p-5">
+        <strong className="text-cyan-300">Next Step:</strong>
+        <span className="text-slate-300"> You now know how text becomes token IDs and how those IDs become learned vectors. The next step is to understand <strong className="text-white">Transformers</strong>, including self-attention, queries, keys, values, positional information, and how representations change as they pass through the network.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div className="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.04] p-6 shadow-[0_0_30px_rgba(0,240,255,0.04)]">
+      <div className="mb-2 text-xs font-bold uppercase tracking-widest text-cyan-400">Module Complete</div>
+      <div className="text-xl font-bold text-white">
+        You now understand how token IDs become learned numerical representations.
+      </div>
+      <div className="mt-3 text-sm leading-relaxed text-slate-300">
+        You should now be comfortable with embeddings, embedding matrices, dimensions, token IDs, vector geometry, contextual representations, positional information, token embeddings versus text embeddings, and the role of embeddings in the LLM pipeline.
+      </div>
+    </div>
+  </section>
+
+</div>
